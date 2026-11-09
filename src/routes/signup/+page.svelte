@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>Sign up · BeatBattle</title>
+	<title>Sign up · AuxRiot</title>
 	{#if data.turnstileSiteKey}
 		<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 	{/if}

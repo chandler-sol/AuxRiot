@@ -13,7 +13,7 @@
 	}
 </script>
 
-<svelte:head><title>Admin · BeatBattle</title></svelte:head>
+<svelte:head><title>Admin · AuxRiot</title></svelte:head>
 
 <h1>Moderation</h1>
 {#if form?.ok}<p class="success">{form.ok}</p>{/if}

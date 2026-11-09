@@ -6,7 +6,7 @@
 	let busy = $state(false);
 </script>
 
-<svelte:head><title>Log in · BeatBattle</title></svelte:head>
+<svelte:head><title>Log in · AuxRiot</title></svelte:head>
 
 <div class="auth card stack">
 	<h1>Log in</h1>

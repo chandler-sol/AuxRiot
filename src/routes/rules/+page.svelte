@@ -1,4 +1,4 @@
-<svelte:head><title>Rules &amp; voting · BeatBattle</title></svelte:head>
+<svelte:head><title>Rules &amp; voting · AuxRiot</title></svelte:head>
 
 <article class="card stack prose">
 	<h1>How battles work</h1>

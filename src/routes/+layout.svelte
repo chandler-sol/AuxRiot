@@ -9,12 +9,12 @@
 <svelte:head>
 	<link rel="icon" href={favicon} />
 	<meta name="theme-color" content="#0d0d10" />
-	<title>BeatBattle</title>
+	<title>AuxRiot</title>
 </svelte:head>
 
 <header>
 	<div class="container row spread">
-		<a href="/" class="logo">Beat<span>Battle</span></a>
+		<a href="/" class="logo">Aux<span>Riot</span></a>
 		<nav class="row">
 			{#if data.user}
 				<a class="btn primary small-btn" href="/battles/new">+ Battle</a>

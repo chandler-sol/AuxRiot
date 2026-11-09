@@ -1,4 +1,4 @@
-# BeatBattle (working name)
+# AuxRiot
 
 1v1 beat battles. A producer posts a beat; the first producer to answer it locks in the battle, and a 24h or 48h vote starts. Voters score Drums / Melody / Mix / Overall (1–5 stars) after listening to at least 75% of both beats.
 
@@ -36,7 +36,7 @@ Expected cost at launch: **$0/month** on the free tiers, plus a domain.
 
 ```bash
 npm install
-npx wrangler d1 migrations apply beatbattle --local
+npx wrangler d1 migrations apply auxriot --local
 npm run build
 npx wrangler dev --var MIN_VOTER_ACCOUNT_AGE_HOURS:0 --var ADMIN_USERNAMES:yourname
 ```
@@ -50,17 +50,17 @@ npx wrangler login
 ```
 
 ```bash
-npx wrangler d1 create beatbattle
+npx wrangler d1 create auxriot
 ```
 
 Paste the printed `database_id` into `wrangler.jsonc`.
 
 ```bash
-npx wrangler r2 bucket create beatbattle-audio
+npx wrangler r2 bucket create auxriot-audio
 ```
 
 ```bash
-npx wrangler d1 migrations apply beatbattle --remote
+npx wrangler d1 migrations apply auxriot --remote
 ```
 
 ```bash

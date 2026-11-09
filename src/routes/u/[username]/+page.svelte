@@ -8,7 +8,7 @@
 	let winRate = $derived(decided ? Math.round((p.wins / decided) * 100) : null);
 </script>
 
-<svelte:head><title>{p.username} · BeatBattle</title></svelte:head>
+<svelte:head><title>{p.username} · AuxRiot</title></svelte:head>
 
 <section class="card stack">
 	<h1>{p.username}</h1>

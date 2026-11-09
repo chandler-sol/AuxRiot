@@ -5,7 +5,7 @@
 	let { data }: PageProps = $props();
 </script>
 
-<svelte:head><title>BeatBattle · 1v1 beat battles</title></svelte:head>
+<svelte:head><title>AuxRiot · 1v1 beat battles</title></svelte:head>
 
 <section class="hero">
 	<h1>Drop a beat. Get challenged. Let the crowd decide.</h1>

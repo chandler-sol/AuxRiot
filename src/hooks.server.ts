@@ -3,6 +3,13 @@ import { DEVICE_COOKIE, SESSION_COOKIE, getSessionUser } from '#lib/server/auth.
 import { getEnv, newId } from '#lib/server/util.ts';
 
 export const handle: Handle = async ({ event, resolve }) => {
+	// One canonical host: www.auxriot.com → auxriot.com
+	if (event.url.hostname.startsWith('www.')) {
+		const target = new URL(event.url);
+		target.hostname = target.hostname.slice(4);
+		return Response.redirect(target.toString(), 301);
+	}
+
 	const env = getEnv();
 	event.locals.user = null;
 	event.locals.ip = event.request.headers.get('cf-connecting-ip') ?? '';

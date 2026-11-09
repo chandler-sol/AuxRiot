@@ -5,7 +5,7 @@
 	let { form }: PageProps = $props();
 </script>
 
-<svelte:head><title>DMCA &amp; copyright · BeatBattle</title></svelte:head>
+<svelte:head><title>DMCA &amp; copyright · AuxRiot</title></svelte:head>
 
 <article class="stack">
 	<section class="card stack">

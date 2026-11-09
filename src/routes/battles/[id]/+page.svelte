@@ -57,7 +57,7 @@
 	let commentBody = $state('');
 </script>
 
-<svelte:head><title>{b.title} · BeatBattle</title></svelte:head>
+<svelte:head><title>{b.title} · AuxRiot</title></svelte:head>
 
 <article class="stack">
 	<header class="stack">

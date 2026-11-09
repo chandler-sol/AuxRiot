@@ -10,7 +10,7 @@
 	let busy = $state(false);
 </script>
 
-<svelte:head><title>New battle · BeatBattle</title></svelte:head>
+<svelte:head><title>New battle · AuxRiot</title></svelte:head>
 
 <h1>Start a battle</h1>
 <p class="muted">Upload your beat. The first producer to answer it becomes your opponent, and voting starts right away.</p>
