@@ -11,6 +11,17 @@
 	// Pages that use the wide desktop layout; forms and reading pages stay narrow.
 	const WIDE = new Set(['/', '/battles', '/battles/[id]', '/u/[username]', '/admin/news']);
 	let wide = $derived(WIDE.has(page.route.id ?? ''));
+
+	// Pages can override the share preview by returning `og: { title, description }` from their load.
+	const SITE = 'https://auxriot.com';
+	let og = $derived({
+		title: (page.data.og as { title?: string } | undefined)?.title ?? 'AuxRiot · 1v1 beat battles',
+		description:
+			(page.data.og as { description?: string } | undefined)?.description ??
+			'Post a beat. Get called out. A crowd that actually listened decides who hit harder. No likes, no algorithm.',
+		url: SITE + page.url.pathname,
+		image: SITE + '/og.png'
+	});
 	let menuEl = $state<HTMLDetailsElement>();
 
 	function closeOnOutside(e: MouseEvent) {
@@ -25,8 +36,26 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+	<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 	<meta name="theme-color" content="#0e0d0b" />
 	<title>AuxRiot</title>
+	<!-- Link previews (iMessage, Messenger, WhatsApp, Discord, Slack, X…) -->
+	<meta name="description" content={og.description} />
+	<meta property="og:site_name" content="AuxRiot" />
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content={og.title} />
+	<meta property="og:description" content={og.description} />
+	<meta property="og:url" content={og.url} />
+	<meta property="og:image" content={og.image} />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta property="og:image:alt" content="AuxRiot — 1v1 beat battles. No likes. No algorithm. Just who hit harder." />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content={og.title} />
+	<meta name="twitter:description" content={og.description} />
+	<meta name="twitter:image" content={og.image} />
+	<link rel="canonical" href={og.url} />
 </svelte:head>
 
 <header>

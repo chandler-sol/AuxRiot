@@ -61,6 +61,12 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			return { ...b, score: r ? ([r.slots[0].total, r.slots[1].total] as [number, number]) : null };
 		}),
 		isMe: locals.user?.id === profile.id,
+		og: {
+			title: `${profile.username} · ${profile.wins}-${profile.losses}${profile.ties ? `-${profile.ties}` : ''} on AuxRiot`,
+			description: profile.bio
+				? `${profile.bio.slice(0, 150)}`
+				: `${profile.username}'s battles and record on AuxRiot — 1v1 beat battles where the crowd decides.`
+		},
 		now: Date.now()
 	};
 };

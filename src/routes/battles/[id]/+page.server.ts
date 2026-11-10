@@ -131,11 +131,28 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 		voterUnlockAt: user ? user.createdAt + minHours * HOUR : null,
 		canRespond: battle.status === 'open' && !!user && user.id !== battle.creator_id,
 		threshold: LISTEN_THRESHOLD,
+		og: battleOg(battle),
 		promo,
 		views: battle.views + (newView ? 1 : 0),
 		now: Date.now()
 	};
 };
+
+function battleOg(b: BattleRow) {
+	const vs = `${b.creator} vs ${b.challenger ?? '???'}`;
+	if (b.status === 'open') {
+		return { title: `${b.creator} wants smoke — who's answering? · AuxRiot`, description: `"${b.title}" — open 1v1 beat battle. First producer to answer takes corner B.` };
+	}
+	if (b.status === 'voting') {
+		const h = b.voting_ends_at ? Math.max(1, Math.round((b.voting_ends_at - Date.now()) / 3_600_000)) : 0;
+		return { title: `${vs} · live vote · AuxRiot`, description: `"${b.title}" — listen to both beats and score it.${h ? ` Voting closes in ~${h}h.` : ''}` };
+	}
+	if (b.status === 'closed') {
+		const winner = b.winner_id === null ? null : b.winner_id === b.creator_id ? b.creator : b.challenger;
+		return { title: `${winner ? `${winner} wins` : 'Dead even'} — ${vs} · AuxRiot`, description: `"${b.title}" — final scores are in. Hear both beats and see the card.` };
+	}
+	return { title: `${vs} · AuxRiot`, description: `"${b.title}" on AuxRiot.` };
+}
 
 /** One view per device per battle; repeat visits and refreshes don't count again. */
 async function countView(env: Env, battleId: string, deviceId: string) {

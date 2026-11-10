@@ -100,6 +100,10 @@ export const load: PageServerLoad = async ({ platform, url }) => {
 	const promoted = promoIds.map((id) => promoRows.results.find((r) => r.id === id)).filter((r): r is Row => !!r).map(shape);
 
 	return {
+		og: {
+			title: `Tonight's card · ${counts?.live ?? 0} live on AuxRiot`,
+			description: 'Live votes, open challenges and fresh results. Hear both beats, then score them.'
+		},
 		tab,
 		sort,
 		sorts: q.sorts.map((k) => ({ key: k, label: SORT_LABELS[k] })),
