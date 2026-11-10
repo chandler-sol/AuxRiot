@@ -12,6 +12,8 @@ Ideas and decisions captured so far. Nothing below is built unless it's under **
 - Flyer redesign; per-battle color pairs; user signature colors with clash rules.
 - Profiles: avatar, bio, social links (Instagram, TikTok, YouTube, SoundCloud, Spotify, Apple Music, BeatStars, X, Twitch, website).
 - Auto-deploy to Cloudflare on every push to `main`.
+- **Battle results ledger** (`battle_outcomes`): every finished battle records each participant's win/loss/tie, scores, counted votes and close time, ready for retroactive credit awards.
+- **Promo slots**: 2 concurrent slots above the feed, scheduled booking (next open slot or a specific time), automatic start/stop, early end when a battle closes. Admin-booked for now.
 
 ## Next up (small to medium)
 
@@ -27,7 +29,7 @@ Ideas and decisions captured so far. Nothing below is built unless it's under **
 
 Credits are an in-site currency. **They can never be cashed out or traded for anything of real value.** Cash-out would make AuxRiot a regulated money service.
 
-**Spending: promoted battles**
+**Spending: promoted battles** (slots and scheduling already built; credits plug into `bookPromotion` with `source: 'credits'`)
 - 500 credits = 1 hour at the top of the feed (1,000 = 2 hours, and so on).
 - One or two "Promoted" slots above the feed, clearly labeled; a queue when they're full.
 - Only open or live battles can be promoted.
@@ -55,6 +57,7 @@ No packs under ~$5: card fees (≈30¢ + 3%) eat small purchases.
 
 **Build notes**
 - A credits ledger (every earn and spend is a row, so balances are auditable and reversible).
+- Launch backfill: award past records from `battle_outcomes`, applying the same minimum-counted-votes rule.
 - Stripe Checkout for purchases.
 - The promo queue.
 
