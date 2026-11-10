@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { USERNAME_RE, createSession, hashPassword, recordSignals, verifyTurnstile } from '#lib/server/auth.ts';
 import { getEnv, newId } from '#lib/server/util.ts';
 import { describeHours, getVoterMinAgeHours } from '#lib/server/settings.ts';
+import { createEmailToken, sendEmail, verifyEmail } from '#lib/server/email.ts';
 
 export const load: PageServerLoad = async ({ locals, platform }) => {
 	if (locals.user) redirect(303, '/battles');
@@ -45,6 +46,13 @@ export const actions: Actions = {
 			.run();
 		await recordSignals(env.DB, id, locals.ip, locals.deviceId, env.SIGNAL_SALT ?? 'dev-salt');
 		await createSession(env.DB, cookies, id, url.protocol === 'https:');
+
+		// Verification email. A failure here never blocks sign-up; they can resend from the banner.
+		const t = await createEmailToken(env.DB, id, 'verify');
+		if ('token' in t) {
+			const link = `${url.origin}/verify?token=${t.token}`;
+			await sendEmail(env, { to: email, ...verifyEmail(username, link, t.token) });
+		}
 		redirect(303, '/battles');
 	}
 };

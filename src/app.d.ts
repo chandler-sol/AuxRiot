@@ -23,6 +23,7 @@ declare global {
 		TURNSTILE_SITE_KEY: string;
 		TURNSTILE_SECRET?: string;
 		SIGNAL_SALT?: string;
+		RESEND_API_KEY?: string;
 	}
 
 	interface SessionUser {
@@ -31,6 +32,7 @@ declare global {
 		isAdmin: boolean;
 		shadowbanned: boolean;
 		createdAt: number;
+		emailVerified: boolean;
 	}
 
 	type D1Database = import('@cloudflare/workers-types').D1Database;

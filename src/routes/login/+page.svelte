@@ -32,7 +32,7 @@
 		{#if form?.error}<p class="error">{form.error}</p>{/if}
 		<button class="primary" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
 	</form>
-	<p class="small">New here? <a href="/signup">Create an account</a></p>
+	<p class="small"><a href="/forgot">Forgot password?</a> · New here? <a href="/signup">Create an account</a></p>
 </div>
 
 <style>

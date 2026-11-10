@@ -3,9 +3,11 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import type { LayoutProps } from './$types';
 	import { page } from '$app/state';
+	import { enhance } from '$app/forms';
 
 	let { children, data }: LayoutProps = $props();
 	let menuOpen = $state(false);
+	let verifyMsg = $state('');
 	// Pages that use the wide desktop layout; forms and reading pages stay narrow.
 	const WIDE = new Set(['/', '/battles', '/battles/[id]', '/u/[username]']);
 	let wide = $derived(WIDE.has(page.route.id ?? ''));
@@ -50,6 +52,27 @@
 	</div>
 </header>
 
+{#if data.user && !data.user.emailVerified && page.route.id !== '/verify'}
+	<div class="verify-bar">
+		<div class="container wide vb">
+			<span class="mono">{verifyMsg || 'Confirm your email to unlock voting — check your inbox.'}</span>
+			{#if !verifyMsg}
+				<form
+					method="POST"
+					action="/verify?/resend"
+					use:enhance={() =>
+						async ({ result }) => {
+							if (result.type === 'success') verifyMsg = 'Sent — check your inbox (and spam).';
+							else if (result.type === 'failure') verifyMsg = String((result.data as { resendError?: string })?.resendError ?? 'Try again in a minute.');
+						}}
+				>
+					<button class="link-btn">Resend link</button>
+				</form>
+			{/if}
+		</div>
+	</div>
+{/if}
+
 <main class="container" class:wide>
 	{@render children()}
 </main>
@@ -92,6 +115,11 @@
 	}
 	.menu a:hover, .menu .logout:hover { background: var(--ink-3); color: var(--paper); }
 	.menu form { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
+	.verify-bar { background: var(--paper); color: var(--ink); }
+	.vb { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; padding-bottom: 9px; flex-wrap: wrap; }
+	.vb .mono { color: var(--ink); }
+	.vb .link-btn { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+	.vb .link-btn:hover { color: var(--pink); }
 	.beat { min-height: 38px; padding: 2px 14px 0; font-size: 1.05rem; }
 	footer { display: flex; gap: 10px; justify-content: center; padding-top: 40px; padding-bottom: 40px; color: var(--muted); }
 	footer a { color: var(--muted); text-decoration: none; }

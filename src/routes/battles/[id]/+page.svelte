@@ -341,6 +341,11 @@
 					<p class="muted"><a href="/login?next=/battles/{b.id}">Log in</a> to vote.</p>
 				{:else if data.voteBlock === 'participant'}
 					<p class="muted">You're in this battle, so you can't vote. Share it and let the crowd decide.</p>
+				{:else if data.voteBlock === 'unverified'}
+					<p class="muted">
+						Confirm your email to vote — it keeps every vote tied to a real inbox. Check your email for the link, or use
+						"Resend link" in the bar at the top.
+					</p>
 				{:else if data.voteBlock === 'age'}
 					<p class="muted">
 						New accounts can vote after a short waiting period, to keep battles fair. Yours unlocks in

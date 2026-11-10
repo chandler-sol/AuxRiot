@@ -30,6 +30,7 @@
 		"@breezystack/lamejs": "^1.2.7",
 		"@fontsource/anton": "^5.3.0",
 		"@fontsource/archivo": "^5.3.0",
-		"@fontsource/space-mono": "^5.3.0"
+		"@fontsource/space-mono": "^5.3.0",
+		"resend": "^6.38.0"
 	}
 }

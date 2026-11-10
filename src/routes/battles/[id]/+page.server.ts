@@ -92,6 +92,7 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 	if (battle.status === 'voting') {
 		if (!user) voteBlock = 'login';
 		else if (isParticipant) voteBlock = 'participant';
+		else if (!user.emailVerified) voteBlock = 'unverified';
 		else if (!voterAgeOk(user, minHours)) voteBlock = 'age';
 	}
 
@@ -202,6 +203,9 @@ export const actions: Actions = {
 		}
 		if (user.id === battle.creator_id || user.id === battle.challenger_id) {
 			return fail(403, { voteError: "You can't vote in your own battle." });
+		}
+		if (!user.emailVerified) {
+			return fail(403, { voteError: 'Confirm your email to vote — check your inbox for the link.' });
 		}
 		if (!voterAgeOk(user, await getVoterMinAgeHours(env.DB, env))) {
 			return fail(403, { voteError: 'Your account is too new to vote yet.' });
