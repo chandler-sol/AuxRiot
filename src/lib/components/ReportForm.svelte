@@ -8,7 +8,7 @@
 </script>
 
 <details class="report" bind:open>
-	<summary class="small muted">{label}</summary>
+	<summary class="mono">{label}</summary>
 	{#if done}
 		<p class="small success">Thanks — a moderator will take a look.</p>
 	{:else}
@@ -39,7 +39,8 @@
 </details>
 
 <style>
-	.report summary { cursor: pointer; list-style: none; display: inline; }
+	.report summary { cursor: pointer; list-style: none; display: inline; color: var(--muted); font-weight: 400; }
+	.report summary:hover { color: var(--paper); }
 	.report summary::-webkit-details-marker { display: none; }
 	.report[open] { display: block; width: 100%; margin-top: 8px; }
 	.report form { margin-top: 8px; }

@@ -9,7 +9,11 @@
 </div>
 
 <style>
-	.notice { background: rgba(255, 181, 71, 0.08); border: 1px solid rgba(255, 181, 71, 0.3); border-radius: 10px; padding: 12px; }
-	.ack { display: flex; gap: 10px; align-items: flex-start; margin-top: 10px; font-weight: 500; cursor: pointer; }
-	.ack input { width: 20px; height: 20px; flex: none; margin-top: 1px; accent-color: var(--accent); }
+	.notice { border-left: 3px solid var(--line-2); padding: 4px 0 4px 12px; color: var(--dim); }
+	.notice strong { color: var(--paper); }
+	.ack {
+		display: flex; gap: 10px; align-items: flex-start; margin-top: 10px; cursor: pointer;
+		font-family: var(--body); font-size: 0.9rem; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--paper);
+	}
+	.ack input { width: 20px; height: 20px; flex: none; margin-top: 1px; accent-color: var(--pink); }
 </style>

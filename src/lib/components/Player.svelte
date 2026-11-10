@@ -20,16 +20,26 @@
 		entryId?: string;
 		listenedMs?: number;
 		threshold?: number;
+		/** Battler name shown in the header (full) or row (compact). */
+		name?: string;
+		corner?: string;
+		/** full = poster player, compact = one-line replay row, bare = transport only. */
+		variant?: 'full' | 'compact' | 'bare';
+		tag?: string;
 	}
 	let {
 		src,
 		peaks,
 		durationMs,
 		label = '',
-		accent = 'var(--accent)',
+		accent = 'var(--a)',
 		entryId,
 		listenedMs = $bindable(0),
-		threshold = 0.75
+		threshold = 0.75,
+		name = '',
+		corner = '',
+		variant = 'bare',
+		tag = ''
 	}: Props = $props();
 
 	let audio: HTMLAudioElement;
@@ -136,45 +146,66 @@
 	});
 </script>
 
-<div class="player" style:--c={accent}>
-	<button class="play" onclick={toggle} aria-label={playing ? `Pause ${label}` : `Play ${label}`}>
+{#snippet playButton(size: number)}
+	<button class="play" style:width="{size}px" style:height="{size}px" onclick={toggle} aria-label={playing ? `Pause ${label || name}` : `Play ${label || name}`}>
 		{#if loading && !playing}
 			<span class="spinner"></span>
 		{:else if playing}
-			<svg viewBox="0 0 24 24" width="22" height="22"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+			<svg viewBox="0 0 24 24" width={size * 0.4} height={size * 0.4}><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
 		{:else}
-			<svg viewBox="0 0 24 24" width="22" height="22"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" /></svg>
+			<svg viewBox="0 0 24 24" width={size * 0.4} height={size * 0.4}><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" /></svg>
 		{/if}
 	</button>
+{/snippet}
 
-	<div class="body">
-		<div
-			class="wave"
-			role="slider"
-			tabindex="0"
-			aria-label="Seek {label}"
-			aria-valuemin={0}
-			aria-valuemax={Math.round(duration)}
-			aria-valuenow={Math.round(time)}
-			onpointerdown={seekFrom}
-			onkeydown={onKey}
-		>
-			<svg viewBox="0 0 {peaks.length} 100" preserveAspectRatio="none" aria-hidden="true">
-				{#each peaks as p, i (i)}
-					{@const h = Math.max(6, (p / 255) * 100)}
-					<rect x={i + 0.15} y={(100 - h) / 2} width="0.7" height={h} class:done={i / peaks.length < progress} />
-				{/each}
-			</svg>
+<div class="player {variant}" style:--c={accent}>
+	{#if variant === 'compact'}
+		{@render playButton(38)}
+		<span class="cname display">{name}</span>
+		<span class="mono ctag">{tag ? `${tag} · ` : ''}{playing || time > 0 ? `${clock(time)} / ` : ''}{clock(duration)}</span>
+	{:else}
+		{#if variant === 'full'}
+			<div class="head">
+				<span class="pname display">{name}</span>
+				{#if corner}<span class="mono corner">{corner}</span>{/if}
+			</div>
+		{/if}
+		<div class="transport">
+			{@render playButton(56)}
+			<div
+				class="wave"
+				role="slider"
+				tabindex="0"
+				aria-label="Seek {label || name}"
+				aria-valuemin={0}
+				aria-valuemax={Math.round(duration)}
+				aria-valuenow={Math.round(time)}
+				onpointerdown={seekFrom}
+				onkeydown={onKey}
+			>
+				<svg viewBox="0 0 {peaks.length} 100" preserveAspectRatio="none" aria-hidden="true">
+					{#each peaks as p, i (i)}
+						{@const h = Math.max(8, (p / 255) * 100)}
+						<rect x={i + 0.2} y={(100 - h) / 2} width="0.6" height={h} class:done={i / peaks.length < progress} />
+					{/each}
+				</svg>
+			</div>
 		</div>
-		<div class="meta row spread small">
-			<span class="muted">{clock(time)} / {clock(duration)}</span>
-			{#if entryId}
-				<span class:ok={unlocked} class="listened">
-					{unlocked ? '✓ ' : ''}{pct}% heard{unlocked ? '' : ` · ${Math.round(threshold * 100)}% to vote`}
-				</span>
-			{/if}
+		<div class="meta">
+			<span class="mono time">{clock(time)} / {clock(duration)}</span>
+			{#if entryId}<span class="mono heard">Heard {pct}%</span>{/if}
 		</div>
-	</div>
+		{#if entryId}
+			<div class="meter" aria-hidden="true">
+				<span class="fill" style:width="{pct}%"></span>
+				<span class="gate" style:left="{threshold * 100}%"></span>
+			</div>
+			<span class="mono gatecopy" class:ok={unlocked}>
+				{unlocked ? 'Cleared to score' : `Vote unlocks at ${Math.round(threshold * 100)}% — ${Math.round(threshold * 100) - pct}% to go`}
+			</span>
+		{/if}
+	{/if}
+
 
 	<audio
 		bind:this={audio}
@@ -192,25 +223,46 @@
 </div>
 
 <style>
-	.player { display: flex; gap: 12px; align-items: center; }
-	.play {
-		flex: none; width: 52px; height: 52px; padding: 0; border-radius: 50%;
-		background: var(--c); border-color: var(--c); color: #fff;
+	.player { --c: var(--a); }
+	.full {
+		display: flex; flex-direction: column; gap: 12px;
+		background: var(--ink-2); border-left: 6px solid var(--c); border-radius: var(--radius);
+		padding: 16px;
 	}
-	.play:hover { background: var(--c); filter: brightness(1.1); }
+	.bare { display: flex; flex-direction: column; gap: 8px; }
+	.head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+	.pname { font-size: 2.1rem; color: var(--c); overflow-wrap: anywhere; }
+	.corner { color: var(--muted); }
+	.transport { display: flex; align-items: center; gap: 12px; }
+	.play {
+		flex: none; padding: 0; border-radius: 50%; min-height: 0;
+		background: var(--c); border: none; color: var(--ink);
+	}
+	.play:hover { background: var(--c); filter: brightness(1.12); }
 	.play svg { fill: currentColor; }
-	.body { flex: 1; min-width: 0; }
-	.wave { height: 56px; cursor: pointer; touch-action: none; user-select: none; border-radius: 6px; }
+	.wave { flex: 1; min-width: 0; height: 56px; cursor: pointer; touch-action: none; user-select: none; }
 	.wave svg { display: block; width: 100%; height: 100%; }
-	.wave:focus-visible { outline: 2px solid var(--accent-2); }
-	.wave rect { fill: #3a3a46; transition: fill 0.1s; }
-	.wave rect.done { fill: var(--c); }
-	.meta { margin-top: 2px; }
-	.listened { color: var(--warn); font-weight: 600; }
-	.listened.ok { color: var(--good); }
+	.wave:focus-visible { outline: 2px solid var(--paper); outline-offset: 2px; }
+	.wave rect { fill: var(--c); opacity: 0.28; transition: opacity 0.1s; }
+	.wave rect.done { opacity: 1; }
+	.meta { display: flex; justify-content: space-between; gap: 8px; }
+	.time { color: var(--dim); font-weight: 400; }
+	.heard { color: var(--paper); }
+	.meter { position: relative; height: 6px; background: var(--line); border-radius: 3px; }
+	.fill { position: absolute; inset: 0 auto 0 0; background: var(--c); border-radius: 3px; transition: width 0.3s; }
+	.gate { position: absolute; top: -4px; width: 2px; height: 14px; background: var(--paper); }
+	.gatecopy { color: var(--muted); font-weight: 400; }
+	.gatecopy.ok { color: var(--c); font-weight: 700; }
+	.compact {
+		display: flex; align-items: center; gap: 12px;
+		background: var(--ink-2); border-left: 4px solid var(--c); border-radius: var(--radius);
+		padding: 10px 14px 10px 12px;
+	}
+	.cname { flex: 1; min-width: 0; font-size: 1.4rem; color: var(--c); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.ctag { color: var(--dim); white-space: nowrap; }
 	.spinner {
 		width: 20px; height: 20px; border-radius: 50%;
-		border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: #fff;
+		border: 2px solid rgba(0, 0, 0, 0.3); border-top-color: var(--ink);
 		animation: spin 0.7s linear infinite;
 	}
 	@keyframes spin { to { transform: rotate(360deg); } }

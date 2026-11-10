@@ -69,13 +69,15 @@
 
 <style>
 	.drop {
-		display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
-		padding: 28px 16px; border: 2px dashed var(--border); border-radius: var(--radius);
-		cursor: pointer; font-weight: 400; transition: border-color 0.15s;
+		display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+		padding: 26px 16px; border: 1.5px solid var(--line-2); border-radius: var(--radius);
+		background: var(--ink); cursor: pointer; transition: border-color 0.15s;
+		text-transform: none; letter-spacing: 0; font-family: var(--body); font-weight: 400; font-size: 1rem; color: var(--paper);
 	}
-	.drop:hover { border-color: var(--accent-2); }
-	.drop.busy { cursor: progress; border-color: var(--accent); }
+	.drop strong { font-family: var(--display); font-weight: 400; font-size: 1.6rem; text-transform: uppercase; letter-spacing: 0.03em; }
+	.drop:hover { border-color: var(--paper); }
+	.drop.busy { cursor: progress; border-color: var(--pink); }
 	.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 	.warn { color: var(--warn); }
-	.preview { background: var(--bg); }
+	.preview { background: var(--ink); }
 </style>

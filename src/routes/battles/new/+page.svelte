@@ -12,13 +12,14 @@
 
 <svelte:head><title>New battle · AuxRiot</title></svelte:head>
 
-<h1>Start a battle</h1>
-<p class="muted">Upload your beat. The first producer to answer it becomes your opponent, and voting starts right away.</p>
+<p class="mono muted kicker">New battle — corner A</p>
+<h1 class="headline">Drop a <span>beat.</span></h1>
+<p class="muted lede">The first producer to answer it becomes your opponent, and voting starts right away.</p>
 
 <form
 	method="POST"
 	enctype="multipart/form-data"
-	class="card stack"
+	class="stack form"
 	use:enhance={({ formData, cancel }) => {
 		if (!prepared) return cancel();
 		formData.set('audio', prepared.blob, 'beat.mp3');
@@ -38,11 +39,11 @@
 	<Uploader bind:prepared />
 
 	<div>
-		<label for="vote_hours">Voting window (starts when a challenger answers)</label>
-		<select id="vote_hours" name="vote_hours">
-			<option value="24">24 hours</option>
-			<option value="48" selected>48 hours</option>
-		</select>
+		<span class="lab">Voting window — starts when a challenger answers</span>
+		<div class="hours" role="radiogroup" aria-label="Voting window">
+			<label class="hour"><input type="radio" name="vote_hours" value="24" /><span class="display">24h</span></label>
+			<label class="hour"><input type="radio" name="vote_hours" value="48" checked /><span class="display">48h</span></label>
+		</div>
 	</div>
 
 	<CopyrightNotice />
@@ -50,3 +51,21 @@
 	{#if form?.error}<p class="error">{form.error}</p>{/if}
 	<button class="primary" disabled={!prepared || busy}>{busy ? 'Uploading…' : 'Post battle'}</button>
 </form>
+
+<style>
+	.kicker { margin: 8px 0 10px; }
+	.headline { font-size: clamp(3.2rem, 16vw, 5.5rem); line-height: 0.9; }
+	.headline span { color: var(--pink); }
+	.lede { margin: 0 0 20px; }
+	.form button.primary { width: 100%; }
+	.lab { display: block; font-family: var(--mono); font-weight: 700; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin-bottom: 6px; }
+	.hours { display: flex; gap: 8px; }
+	.hour { position: relative; margin: 0; cursor: pointer; }
+	.hour input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+	.hour span {
+		display: block; padding: 8px 18px 6px; border: 1.5px solid var(--line-2); border-radius: var(--radius);
+		font-size: 1.3rem; color: var(--dim); letter-spacing: 0.04em;
+	}
+	.hour input:checked + span { background: var(--paper); border-color: var(--paper); color: var(--ink); }
+	.hour input:focus-visible + span { outline: 2px solid var(--paper); outline-offset: 2px; }
+</style>
