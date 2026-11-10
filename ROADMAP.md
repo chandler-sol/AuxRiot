@@ -15,12 +15,14 @@ Ideas and decisions captured so far. Nothing below is built unless it's under **
 - **Battle results ledger** (`battle_outcomes`): every finished battle records each participant's win/loss/tie, scores, counted votes and close time, ready for retroactive credit awards.
 - **Promo slots**: Slot 1 and Slot 2 above the feed. Every booking automatically takes the earliest opening in either slot; the booker is told the slot and start time, and the battle's creator sees it on their battle page. Automatic start/stop, early end when a battle closes. Admin-booked for now.
 - Live-ticking countdowns on cards, unique view counts, feed sorting (ending soonest/last, newest/oldest, most votes/comments/views).
+- **Email (Resend)**: mail.auxriot.com verified; sign-up confirmation (required to vote), forgot/reset password. Sender: AuxRiot <admin@mail.auxriot.com>.
+- Landing page for visitors with 30-second previews; desktop layout.
 - Winner reveal animation when a battle's clock runs out (and once for first-time visitors to recently finished battles).
 
 ## Next up (small to medium)
 
 - **Google / Discord login** alongside email (the `oauth_accounts` table already exists).
-- **Email verification and password reset** (needs an email provider, e.g. Resend's free tier).
+- **Bounce/complaint webhooks** from Resend so bad addresses stop getting mail.
 - **Notifications**: "someone answered your battle", "voting closed — you won".
 - **Login and sign-up rate limiting** with a Cloudflare rate-limit rule.
 - **Pool battles**: one beat, many challengers, one winner.
