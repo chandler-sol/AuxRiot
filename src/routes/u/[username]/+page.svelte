@@ -2,19 +2,21 @@
 	import Avatar from '#lib/components/Avatar.svelte';
 	import BattleCard from '#lib/components/BattleCard.svelte';
 	import SocialLinks from '#lib/components/SocialLinks.svelte';
+	import { hexFor } from '#lib/colors.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 	let p = $derived(data.profile);
 	let decided = $derived(p.wins + p.losses);
+	let accent = $derived(hexFor(p.color));
 	let winRate = $derived(decided ? Math.round((p.wins / decided) * 100) : null);
 </script>
 
 <svelte:head><title>{p.username} · AuxRiot</title></svelte:head>
 
-<section class="head">
+<section class="head" style:--me={accent}>
 	<div class="id">
-		<Avatar username={p.username} avatarKey={p.avatar_key} size={88} />
+		<Avatar username={p.username} avatarKey={p.avatar_key} color={p.color} size={88} />
 		<div class="idtext">
 			<p class="mono muted">Producer — joined {new Date(p.created_at).toLocaleDateString()}</p>
 			{#if data.isMe}<a class="mono edit" href="/settings/profile">Edit profile</a>{/if}
@@ -47,11 +49,11 @@
 	.id { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
 	.idtext { display: flex; flex-direction: column; gap: 6px; }
 	.idtext p { margin: 0; }
-	.edit { color: var(--pink); text-decoration: none; }
+	.edit { color: var(--me); text-decoration: none; }
 	.edit:hover { color: var(--paper); }
 	.bio { color: var(--dim); margin: 0 0 14px; white-space: pre-line; overflow-wrap: anywhere; }
 	.soc { margin-bottom: 16px; }
-	.name { font-size: clamp(3rem, 16vw, 5.5rem); line-height: 0.9; color: var(--pink); overflow-wrap: anywhere; }
+	.name { font-size: clamp(3rem, 16vw, 5.5rem); line-height: 0.9; color: var(--me); overflow-wrap: anywhere; }
 	.ticket {
 		display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
 		background: var(--paper); color: var(--ink); border-radius: var(--radius); padding: 12px 8px 10px; text-align: center;

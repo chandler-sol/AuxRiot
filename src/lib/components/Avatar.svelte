@@ -1,11 +1,17 @@
 <script lang="ts">
-	let { username, avatarKey = null, size = 40 }: { username: string; avatarKey?: string | null; size?: number } = $props();
+	import { hexFor } from '#lib/colors.ts';
+	let {
+		username,
+		avatarKey = null,
+		size = 40,
+		color = null
+	}: { username: string; avatarKey?: string | null; size?: number; color?: string | null } = $props();
 </script>
 
 {#if avatarKey}
 	<img class="av" src="/{avatarKey}" alt="" width={size} height={size} loading="lazy" decoding="async" style:width="{size}px" style:height="{size}px" />
 {:else}
-	<span class="av fallback display" aria-hidden="true" style:width="{size}px" style:height="{size}px" style:font-size="{size * 0.55}px">
+	<span class="av fallback display" aria-hidden="true" style:width="{size}px" style:height="{size}px" style:font-size="{size * 0.55}px" style:background={hexFor(color)}>
 		{username.slice(0, 1)}
 	</span>
 {/if}

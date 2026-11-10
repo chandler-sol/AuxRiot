@@ -3,18 +3,20 @@ import type { Actions, PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
 import { BIO_MAX, normalizeSocial, parseSocials, storeAvatar } from '#lib/server/profile.ts';
 import { SOCIALS } from '#lib/socials.ts';
+import { colorByKey } from '#lib/colors.ts';
 
 export const load: PageServerLoad = async ({ locals, platform, url }) => {
 	if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(url.pathname)}`);
 	const row = await getEnv(platform)
-		.DB.prepare('SELECT username, avatar_key, bio, socials FROM users WHERE id = ?')
+		.DB.prepare('SELECT username, avatar_key, bio, socials, color FROM users WHERE id = ?')
 		.bind(locals.user.id)
-		.first<{ username: string; avatar_key: string | null; bio: string; socials: string }>();
+		.first<{ username: string; avatar_key: string | null; bio: string; socials: string; color: string | null }>();
 	return {
 		username: row!.username,
 		avatarKey: row!.avatar_key,
 		bio: row!.bio,
 		socials: parseSocials(row!.socials),
+		color: row!.color,
 		bioMax: BIO_MAX
 	};
 };
@@ -28,6 +30,9 @@ export const actions: Actions = {
 		for (const s of SOCIALS) raw[s.key] = String(f.get(s.key) ?? '');
 		if (bio.length > BIO_MAX) return fail(400, { error: `Bio must be ${BIO_MAX} characters or fewer.`, bio, raw });
 
+		const colorRaw = String(f.get('color') ?? '');
+		const color = colorRaw && colorByKey(colorRaw) ? colorRaw : null;
+
 		const socials: Record<string, string> = {};
 		for (const s of SOCIALS) {
 			const r = normalizeSocial(s.key, raw[s.key]);
@@ -35,8 +40,8 @@ export const actions: Actions = {
 			if (r) socials[s.key] = r;
 		}
 		await getEnv(platform)
-			.DB.prepare('UPDATE users SET bio = ?, socials = ? WHERE id = ?')
-			.bind(bio, JSON.stringify(socials), locals.user.id)
+			.DB.prepare('UPDATE users SET bio = ?, socials = ?, color = ? WHERE id = ?')
+			.bind(bio, JSON.stringify(socials), color, locals.user.id)
 			.run();
 		return { saved: true };
 	},

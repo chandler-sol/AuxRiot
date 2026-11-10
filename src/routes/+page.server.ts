@@ -16,7 +16,7 @@ export const load: PageServerLoad = async ({ platform, url }) => {
 	const q = TABS[tab] ?? TABS.voting;
 
 	const rows = await env.DB.prepare(
-		`SELECT b.id, b.title, b.status, b.created_at, b.voting_ends_at, b.winner_id, b.vote_hours, b.result_json, b.challenger_id,
+		`SELECT b.id, b.title, b.status, b.created_at, b.voting_ends_at, b.winner_id, b.vote_hours, b.result_json, b.color_a, b.color_b, b.challenger_id,
 		        c.username AS creator, c.id AS creator_id, ch.username AS challenger,
 		        (SELECT COUNT(*) FROM votes v WHERE v.battle_id = b.id) AS votes,
 		        (SELECT COUNT(*) FROM comments m WHERE m.battle_id = b.id AND m.hidden = 0) AS comments
@@ -37,6 +37,8 @@ export const load: PageServerLoad = async ({ platform, url }) => {
 		creator_id: string;
 		challenger_id: string | null;
 		result_json: string | null;
+		color_a: string | null;
+		color_b: string | null;
 		challenger: string | null;
 		votes: number;
 		comments: number;

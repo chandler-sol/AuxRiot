@@ -12,6 +12,7 @@ import {
 } from '#lib/server/battles.ts';
 import { getEnv, newId, HOUR } from '#lib/server/util.ts';
 import { getVoterMinAgeHours } from '#lib/server/settings.ts';
+import { challengerColor, creatorColor } from '#lib/colors.ts';
 
 interface BattleRow {
 	id: string;
@@ -25,6 +26,8 @@ interface BattleRow {
 	voting_ends_at: number | null;
 	winner_id: string | null;
 	result_json: string | null;
+	color_a: string | null;
+	color_b: string | null;
 	creator: string;
 	challenger: string | null;
 }
@@ -56,13 +59,13 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			.bind(battle.id)
 			.all<{ id: string; user_id: string; slot: number; audio_key: string; duration_ms: number; peaks: string; removed: number }>(),
 		env.DB.prepare(
-			`SELECT m.id, m.body, m.created_at, m.user_id, u.username, u.avatar_key
+			`SELECT m.id, m.body, m.created_at, m.user_id, u.username, u.avatar_key, u.color
 			 FROM comments m JOIN users u ON u.id = m.user_id
 			 WHERE m.battle_id = ? AND m.hidden = 0 AND (u.shadowbanned = 0 OR m.user_id = ?)
 			 ORDER BY m.created_at ASC LIMIT 500`
 		)
 			.bind(battle.id, user?.id ?? '')
-			.all<{ id: string; body: string; created_at: number; user_id: string; username: string; avatar_key: string | null }>(),
+			.all<{ id: string; body: string; created_at: number; user_id: string; username: string; avatar_key: string | null; color: string | null }>(),
 		env.DB.prepare('SELECT COUNT(*) AS n FROM votes WHERE battle_id = ?').bind(battle.id).first<{ n: number }>(),
 		user
 			? env.DB.prepare('SELECT * FROM votes WHERE battle_id = ? AND voter_id = ?').bind(battle.id, user.id).first<Record<string, number>>()
@@ -100,6 +103,8 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			createdAt: battle.created_at,
 			votingEndsAt: battle.voting_ends_at,
 			winnerId: battle.winner_id,
+			colorA: battle.color_a,
+			colorB: battle.color_b,
 			result: battle.result_json ? (JSON.parse(battle.result_json) as BattleResult) : null
 		},
 		entries: entries.results.map((e) => ({
@@ -147,6 +152,9 @@ export const actions: Actions = {
 		// ever succeed, and the batch runs as a single transaction.
 		const now = Date.now();
 		const ends = now + battle.vote_hours * HOUR;
+		const me = await env.DB.prepare('SELECT color FROM users WHERE id = ?').bind(user.id).first<{ color: string | null }>();
+		const colorA = battle.color_a ?? creatorColor(battle.id, null);
+		const colorB = challengerColor(battle.id, colorA, me?.color);
 		try {
 			const res = await env.DB.batch([
 				env.DB.prepare(
@@ -154,10 +162,10 @@ export const actions: Actions = {
 					 SELECT ?, id, ?, 1, ?, ?, ?, ? FROM battles WHERE id = ? AND status = 'open' AND creator_id != ?`
 				).bind(newId(), user.id, audio.key, audio.durationMs, audio.peaks, now, battle.id, user.id),
 				env.DB.prepare(
-					`UPDATE battles SET challenger_id = ?, status = 'voting', voting_started_at = ?, voting_ends_at = ?
+					`UPDATE battles SET challenger_id = ?, status = 'voting', voting_started_at = ?, voting_ends_at = ?, color_a = ?, color_b = ?
 					 WHERE id = ? AND status = 'open'
 					   AND EXISTS (SELECT 1 FROM entries WHERE battle_id = ? AND slot = 1 AND user_id = ?)`
-				).bind(user.id, now, ends, battle.id, battle.id, user.id)
+				).bind(user.id, now, ends, colorA, colorB, battle.id, battle.id, user.id)
 			]);
 			if (!res[1].meta.changes) throw new Error('lost race');
 		} catch {

@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { storeAudio } from '#lib/server/battles.ts';
 import { getEnv, newId } from '#lib/server/util.ts';
+import { creatorColor } from '#lib/colors.ts';
 
 const MAX_OPEN_PER_USER = 3;
 
@@ -33,10 +34,12 @@ export const actions: Actions = {
 
 		const battleId = newId(8);
 		const now = Date.now();
+		const me = await env.DB.prepare('SELECT color FROM users WHERE id = ?').bind(locals.user.id).first<{ color: string | null }>();
+		const colorA = creatorColor(battleId, me?.color);
 		await env.DB.batch([
 			env.DB.prepare(
-				`INSERT INTO battles (id, title, creator_id, status, vote_hours, created_at) VALUES (?, ?, ?, 'open', ?, ?)`
-			).bind(battleId, title, locals.user.id, voteHours, now),
+				`INSERT INTO battles (id, title, creator_id, status, vote_hours, created_at, color_a) VALUES (?, ?, ?, 'open', ?, ?, ?)`
+			).bind(battleId, title, locals.user.id, voteHours, now, colorA),
 			env.DB.prepare(
 				`INSERT INTO entries (id, battle_id, user_id, slot, audio_key, duration_ms, peaks, created_at) VALUES (?, ?, ?, 0, ?, ?, ?, ?)`
 			).bind(newId(), battleId, locals.user.id, audio.key, audio.durationMs, audio.peaks, now)

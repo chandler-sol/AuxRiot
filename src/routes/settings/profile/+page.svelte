@@ -2,17 +2,20 @@
 	import { enhance } from '$app/forms';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { SOCIALS } from '#lib/socials.ts';
+	import { PALETTE, hexFor } from '#lib/colors.ts';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
 
 	let bio = $state('');
+	let color = $state('');
 	let links = $state<Record<string, string>>({});
 	let seeded = false;
 	$effect.pre(() => {
 		if (seeded) return;
 		seeded = true;
 		bio = data.bio;
+		color = data.color ?? '';
 		links = Object.fromEntries(SOCIALS.map((s) => [s.key, displayValue(s.key, data.socials[s.key] ?? '')]));
 	});
 
@@ -71,7 +74,7 @@
 		{#if preview}
 			<img class="pv" src={preview} alt="Your new avatar" width="96" height="96" />
 		{:else}
-			<Avatar username={data.username} avatarKey={data.avatarKey} size={96} />
+			<Avatar username={data.username} avatarKey={data.avatarKey} color={color || null} size={96} />
 		{/if}
 		<div class="avactions">
 			<label class="btn pick">
@@ -119,7 +122,23 @@
 		};
 	}}
 >
-	<h2>Bio</h2>
+	<h2>Your color</h2>
+	<p class="muted small">
+		Your name, your tile and your side of every battle. If your opponent already has a color too close to yours, you'll get
+		the best contrasting one for that battle.
+	</p>
+	<div class="swatches" role="radiogroup" aria-label="Signature color">
+		{#each PALETTE as c (c.key)}
+			<label class="sw" title={c.label} style:--sw={c.hex}>
+				<input type="radio" name="color" value={c.key} bind:group={color} />
+				<span class="chip"></span>
+				<span class="sr">{c.label}</span>
+			</label>
+		{/each}
+	</div>
+	<p class="mono preview-name" style:color={hexFor(color || null)}>{data.username}{color ? '' : ' — default'}</p>
+
+	<h2 class="links-h">Bio</h2>
 	<textarea name="bio" maxlength={data.bioMax} rows="3" placeholder="Who you are, what you make, what gear you swear by." bind:value={bio}></textarea>
 	<p class="mono muted count" class:over={bio.length > data.bioMax - 10}>{bio.length} / {data.bioMax}</p>
 
@@ -164,5 +183,13 @@
 	.link input { border-radius: 0 var(--radius) var(--radius) 0; }
 	.link:focus-within .ic { color: var(--paper); border-color: var(--paper); }
 	.full { width: 100%; }
+	.swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 12px 0 10px; max-width: 360px; }
+	.sw { position: relative; margin: 0; cursor: pointer; }
+	.sw input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+	.chip { display: block; aspect-ratio: 1; background: var(--sw); border-radius: var(--radius); border: 3px solid transparent; outline: 1.5px solid transparent; transition: transform 0.1s; }
+	.sw input:checked + .chip { border-color: var(--ink); outline-color: var(--paper); transform: scale(1.04); }
+	.sw input:focus-visible + .chip { outline-color: var(--paper); outline-width: 2px; }
+	@media (hover: hover) { .sw:hover .chip { transform: scale(1.08); } }
+	.preview-name { font-family: var(--display); font-size: 2rem; font-weight: 400; margin: 0 0 8px; letter-spacing: 0.02em; }
 	.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 </style>

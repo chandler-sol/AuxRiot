@@ -78,7 +78,7 @@
 
 <svelte:head><title>{b.creator} vs {b.challenger ?? '???'} · AuxRiot</title></svelte:head>
 
-<article style={pairStyle(b.id)}>
+<article style={pairStyle(b.id, b.colorA, b.colorB)}>
 	{#if b.status === 'closed' && b.result}
 		{@const r = b.result}
 		<!-- RESULTS -->
@@ -316,7 +316,7 @@
 			{#each data.comments as c (c.id)}
 				<li>
 					<div class="cmeta">
-						<a class="mono who" href="/u/{c.username}"><Avatar username={c.username} avatarKey={c.avatar_key} size={28} />@{c.username}</a>
+						<a class="mono who" href="/u/{c.username}"><Avatar username={c.username} avatarKey={c.avatar_key} color={c.color} size={28} />@{c.username}</a>
 						<span class="mono muted actions">
 							{ago(c.created_at, now)}
 							{#if data.user && (data.user.id === c.user_id || data.user.isAdmin)}

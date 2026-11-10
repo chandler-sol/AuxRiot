@@ -17,6 +17,8 @@
 		votes?: number;
 		comments?: number;
 		score?: [number, number] | null;
+		color_a?: string | null;
+		color_b?: string | null;
 	}
 	let { battle: b, now }: { battle: Battle; now: number } = $props();
 
@@ -27,7 +29,7 @@
 	let loserIsB = $derived(b.status === 'closed' && b.winner_id !== null && b.winner_id === b.creator_id);
 </script>
 
-<a class="bcard" href="/battles/{b.id}" style={pairStyle(b.id)} data-sveltekit-preload-data="hover">
+<a class="bcard" href="/battles/{b.id}" style={pairStyle(b.id, b.color_a, b.color_b)} data-sveltekit-preload-data="hover">
 	<span class="edge" aria-hidden="true"><i class="ea"></i><i class="eb"></i></span>
 	<span class="body">
 		<span class="strip mono">
