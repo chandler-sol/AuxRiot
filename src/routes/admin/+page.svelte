@@ -4,6 +4,9 @@
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
+	let promoMode = $state('next');
+	const fmt = (t: number) =>
+		new Date(t).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 	const keep = () => async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) => update({ reset: false });
 
 	function targetLink(type: string, id: string) {
@@ -18,6 +21,62 @@
 <h1>Moderation</h1>
 {#if form?.ok}<p class="success">{form.ok}</p>{/if}
 {#if form?.error}<p class="error">{form.error}</p>{/if}
+
+<section class="card stack">
+	<h2>Promoted battles</h2>
+	<p class="muted small">
+		{data.promoSlots} slots run at once above the feed. Promos start and stop on their own, and end early if the battle closes.
+		Times are shown in your local time.
+	</p>
+	{#if form?.nextAt}
+		<p class="small">Next opening: <strong>{fmt(form.nextAt)}</strong> — pick that time or use "Next open slot".</p>
+	{/if}
+	{#if form?.bookedStart}
+		<p class="success small">Booked: {fmt(form.bookedStart)} → {fmt(form.bookedEnd)}</p>
+	{/if}
+	<form
+		method="POST"
+		action="?/promote"
+		class="stack"
+		use:enhance={({ formData }) => {
+			formData.set('tz', String(new Date().getTimezoneOffset()));
+			return async ({ update }) => update({ reset: false });
+		}}
+	>
+		<input name="battle" type="text" placeholder="Battle URL or ID" required />
+		<div class="row">
+			<select name="hours" style="flex:1;min-width:120px">
+				{#each Array.from({ length: data.promoMaxHours }, (_, i) => i + 1) as h (h)}
+					<option value={h}>{h} hour{h > 1 ? 's' : ''}</option>
+				{/each}
+			</select>
+			<select name="mode" bind:value={promoMode} style="flex:1;min-width:160px">
+				<option value="next">Next open slot</option>
+				<option value="at">Specific start time</option>
+			</select>
+		</div>
+		{#if promoMode === 'at'}<input name="start" type="datetime-local" required />{/if}
+		<button class="primary">Book promo</button>
+	</form>
+
+	{#each data.promos as p (p.id)}
+		{@const live = p.starts_at <= data.now}
+		<div class="row spread item small">
+			<span>
+				<span class="pill" class:voting={live}>{live ? 'running' : 'scheduled'}</span>
+				<a href="/battles/{p.battle_id}">{p.creator} vs {p.challenger ?? '???'}</a>
+				<br /><span class="muted">{fmt(p.starts_at)} → {fmt(p.ends_at)} · {p.source}</span>
+			</span>
+			<form method="POST" action="?/cancelPromo" use:enhance={keep}>
+				<input type="hidden" name="id" value={p.id} />
+				<button>Cancel</button>
+			</form>
+		</div>
+	{:else}
+		<p class="muted small">No promos running or scheduled.</p>
+	{/each}
+	<p class="muted small">Battle results on record for future credit awards: {data.outcomesRecorded}</p>
+</section>
 
 <section class="card stack">
 	<h2>Voting eligibility</h2>

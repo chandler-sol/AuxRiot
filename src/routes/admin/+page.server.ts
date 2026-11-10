@@ -2,6 +2,7 @@ import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
 import { VOTER_AGE_KEY, getVoterMinAgeHours, setSetting } from '#lib/server/settings.ts';
+import { PROMO_MAX_HOURS, PROMO_SLOTS, bookPromotion } from '#lib/server/promos.ts';
 
 function requireAdmin(locals: App.Locals) {
 	if (!locals.user?.isAdmin) error(404);
@@ -34,7 +35,24 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 		db.prepare(`SELECT username FROM users WHERE shadowbanned = 1 ORDER BY username LIMIT 200`).all<{ username: string }>()
 	]);
 
+	const now = Date.now();
+	const promos = await db
+		.prepare(
+			`SELECT p.id, p.battle_id, p.starts_at, p.ends_at, p.source, b.title, c.username AS creator, ch.username AS challenger, b.status
+			 FROM promotions p JOIN battles b ON b.id = p.battle_id
+			 JOIN users c ON c.id = b.creator_id LEFT JOIN users ch ON ch.id = b.challenger_id
+			 WHERE p.cancelled = 0 AND p.ends_at > ? ORDER BY p.starts_at ASC LIMIT 50`
+		)
+		.bind(now)
+		.all<{ id: string; battle_id: string; starts_at: number; ends_at: number; source: string; title: string; creator: string; challenger: string | null; status: string }>();
+	const outcomes = await db.prepare('SELECT COUNT(*) AS n FROM battle_outcomes').first<{ n: number }>();
+
 	return {
+		promos: promos.results,
+		promoSlots: PROMO_SLOTS,
+		promoMaxHours: PROMO_MAX_HOURS,
+		outcomesRecorded: outcomes?.n ?? 0,
+		now,
 		voterMinAgeHours: await getVoterMinAgeHours(db, getEnv(platform)),
 		reports: reports.results,
 		linked: linked.results,
@@ -45,6 +63,28 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 };
 
 export const actions: Actions = {
+	promote: async ({ request, locals, platform }) => {
+		const admin = requireAdmin(locals);
+		const f = await request.formData();
+		const raw = String(f.get('battle') ?? '').trim();
+		const battleId = raw.match(/battles\/([A-Za-z0-9_-]+)/)?.[1] ?? raw;
+		const hours = Number(f.get('hours'));
+		const mode = f.get('mode') === 'at' ? 'at' : 'next';
+		const local = String(f.get('start') ?? '');
+		const tzOffset = Number(f.get('tz') ?? 0); // minutes, from the admin's browser
+		const startAt = local ? Date.parse(local + 'Z') + tzOffset * 60_000 : undefined;
+		const res = await bookPromotion(getEnv(platform).DB, { battleId, bookedBy: admin.id, hours, mode, startAt, source: 'admin' });
+		if (!res.ok) return fail(400, { error: res.error, nextAt: res.nextAt });
+		return { bookedStart: res.startsAt, bookedEnd: res.endsAt };
+	},
+
+	cancelPromo: async ({ request, locals, platform }) => {
+		requireAdmin(locals);
+		const id = String((await request.formData()).get('id') ?? '');
+		await getEnv(platform).DB.prepare('UPDATE promotions SET cancelled = 1 WHERE id = ?').bind(id).run();
+		return { ok: 'Promo cancelled.' };
+	},
+
 	voterAge: async ({ request, locals, platform }) => {
 		const admin = requireAdmin(locals);
 		const f = await request.formData();

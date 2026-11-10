@@ -31,6 +31,16 @@
 	</div>
 </div>
 
+{#if data.promoted.length}
+	<section class="promoted" aria-label="Promoted battles">
+		<ul class="list">
+			{#each data.promoted as b (b.id)}
+				<li><BattleCard battle={b} now={data.now} promoted /></li>
+			{/each}
+		</ul>
+	</section>
+{/if}
+
 <nav class="tabs" data-sveltekit-noscroll>
 	<a href="/?tab=voting" class:active={data.tab === 'voting'}>Live · {c.live}</a>
 	<a href="/?tab=open" class:active={data.tab === 'open'}>Open · {c.open}</a>
@@ -77,5 +87,6 @@
 	@media (prefers-reduced-motion: reduce) { .tape { animation: none; } }
 	.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
 	.empty { padding: 32px 0; }
+	.promoted { margin-bottom: 24px; }
 	.big { font-size: 2.2rem; margin: 0 0 8px; }
 </style>

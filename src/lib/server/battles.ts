@@ -62,10 +62,13 @@ export async function storeAudio(bucket: R2Bucket, file: File, peaksRaw: string)
 
 export async function finalizeDue(db: D1Database, openExpiryDays: number) {
 	const now = Date.now();
-	await db
-		.prepare(`UPDATE battles SET status = 'expired' WHERE status = 'open' AND created_at < ?`)
-		.bind(now - openExpiryDays * DAY)
-		.run();
+	await db.batch([
+		db.prepare(
+			`UPDATE promotions SET cancelled = 1 WHERE cancelled = 0 AND battle_id IN
+			   (SELECT id FROM battles WHERE status = 'open' AND created_at < ?)`
+		).bind(now - openExpiryDays * DAY),
+		db.prepare(`UPDATE battles SET status = 'expired' WHERE status = 'open' AND created_at < ?`).bind(now - openExpiryDays * DAY)
+	]);
 
 	const due = await db
 		.prepare(`SELECT id FROM battles WHERE status = 'voting' AND voting_ends_at <= ? LIMIT 25`)
@@ -139,6 +142,21 @@ export async function finalizeBattle(db: D1Database, battleId: string) {
 			.bind(battle.creator_id, battle.challenger_id)
 			.run();
 	}
+
+	// Permanent per-battle record (used later to award credits retroactively).
+	const closedAt = Date.now();
+	const outcome = (uid: string) => (winner === null ? 'tie' : winner === uid ? 'win' : 'loss');
+	const ins = db.prepare(
+		`INSERT OR IGNORE INTO battle_outcomes (battle_id, user_id, outcome, score, opponent_score, counted_votes, closed_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`
+	);
+	await db.batch([
+		ins.bind(battleId, battle.creator_id, outcome(battle.creator_id), a.total, b.total, result.countedVotes, closedAt),
+		ins.bind(battleId, battle.challenger_id, outcome(battle.challenger_id), b.total, a.total, result.countedVotes, closedAt),
+		// A finished battle can't stay promoted: end any running promo now and drop future ones, freeing the slot.
+		db.prepare(`UPDATE promotions SET ends_at = ? WHERE battle_id = ? AND cancelled = 0 AND starts_at <= ? AND ends_at > ?`).bind(closedAt, battleId, closedAt, closedAt),
+		db.prepare(`UPDATE promotions SET cancelled = 1 WHERE battle_id = ? AND cancelled = 0 AND starts_at > ?`).bind(battleId, closedAt)
+	]);
 }
 
 // ---------------------------------------------------------------------------

@@ -20,7 +20,7 @@
 		color_a?: string | null;
 		color_b?: string | null;
 	}
-	let { battle: b, now }: { battle: Battle; now: number } = $props();
+	let { battle: b, now, promoted = false }: { battle: Battle; now: number; promoted?: boolean } = $props();
 
 	let winnerName = $derived(
 		b.status !== 'closed' ? null : b.winner_id === null ? null : b.winner_id === b.creator_id ? b.creator : b.challenger
@@ -29,9 +29,10 @@
 	let loserIsB = $derived(b.status === 'closed' && b.winner_id !== null && b.winner_id === b.creator_id);
 </script>
 
-<a class="bcard" href="/battles/{b.id}" style={pairStyle(b.id, b.color_a, b.color_b)} data-sveltekit-preload-data="hover">
+<a class="bcard" class:promoted href="/battles/{b.id}" style={pairStyle(b.id, b.color_a, b.color_b)} data-sveltekit-preload-data="hover">
 	<span class="edge" aria-hidden="true"><i class="ea"></i><i class="eb"></i></span>
 	<span class="body">
+		{#if promoted}<span class="promo mono">★ Promoted</span>{/if}
 		<span class="strip mono">
 			{#if b.status === 'voting'}
 				<span class="status live">● Live vote</span>
@@ -92,6 +93,8 @@
 	.bcard:focus-visible { outline: 2px solid var(--paper); outline-offset: 2px; }
 	.na, .nb { transition: letter-spacing 0.2s; }
 	.bcard:active { transform: scale(0.99); }
+	.promoted { box-shadow: 0 0 0 1.5px var(--line-2); }
+	.promo { align-self: flex-start; background: var(--paper); color: var(--ink); padding: 3px 8px 2px; border-radius: var(--radius); }
 	.edge { display: flex; flex-direction: column; width: 8px; flex: none; }
 	.edge i { flex: 1; }
 	.ea { background: var(--a); }
