@@ -21,8 +21,23 @@
 
 <svelte:head><title>Admin · AuxRiot</title></svelte:head>
 
-<h1>Moderation</h1>
+<h1>Admin</h1>
+
+{#if data.userStats}
+	{@const u = data.userStats}
+	<section class="users" aria-label="User counts">
+		<div class="big"><span class="display">{u.total}</span><span class="mono">Registered users</span></div>
+		<div><span class="display">{u.today}</span><span class="mono">New today</span></div>
+		<div><span class="display">{u.week}</span><span class="mono">New this week</span></div>
+		<div><span class="display">{u.confirmed}</span><span class="mono">Confirmed email</span></div>
+		<div><span class="display">{u.battlers}</span><span class="mono">Have battled</span></div>
+		<div><span class="display">{u.voters}</span><span class="mono">Have voted</span></div>
+		<div><span class="display">{u.news}</span><span class="mono">News opt-ins</span></div>
+	</section>
+{/if}
+
 <p><a class="btn primary" href="/admin/news">Compose AuxRiot news →</a></p>
+<h2 class="mod-h">Moderation</h2>
 {#if form?.ok}<p class="success">{form.ok}</p>{/if}
 {#if form?.error}<p class="error">{form.error}</p>{/if}
 
@@ -181,6 +196,16 @@
 
 <style>
 	section { margin-bottom: 16px; }
+	.users {
+		display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin: 8px 0 20px;
+		background: var(--paper); color: var(--ink); border-radius: var(--radius); padding: 4px;
+	}
+	.users div { display: flex; flex-direction: column; align-items: center; padding: 12px 4px 10px; text-align: center; }
+	.users .big { grid-column: 1 / -1; border-bottom: 1.5px dashed rgba(14, 13, 11, 0.25); padding-bottom: 14px; }
+	.users .display { font-size: 2.2rem; line-height: 1; }
+	.users .big .display { font-size: 4rem; color: var(--pink); }
+	.users .mono { color: #5a544b; font-size: 0.58rem; margin-top: 4px; }
+	.mod-h { margin-top: 24px; }
 	.item { border-top: 1px solid var(--border); padding-top: 10px; }
 	.booked { display: flex; gap: 12px; align-items: center; background: var(--paper); color: var(--ink); padding: 10px 14px; border-radius: var(--radius); }
 	.booked .display { font-size: 1.6rem; }

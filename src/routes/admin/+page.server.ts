@@ -46,12 +46,27 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 		.bind(now)
 		.all<{ id: string; battle_id: string; starts_at: number; ends_at: number; source: string; slot: number | null; title: string; creator: string; challenger: string | null; status: string }>();
 	const outcomes = await db.prepare('SELECT COUNT(*) AS n FROM battle_outcomes').first<{ n: number }>();
+	const DAY_MS = 86_400_000;
+	const userStats = await db
+		.prepare(
+			`SELECT COUNT(*) AS total,
+			        COALESCE(SUM(email_verified_at IS NOT NULL), 0) AS confirmed,
+			        COALESCE(SUM(created_at >= ?), 0) AS today,
+			        COALESCE(SUM(created_at >= ?), 0) AS week,
+			        COALESCE(SUM(news_opt_in = 1), 0) AS news,
+			        (SELECT COUNT(DISTINCT user_id) FROM entries) AS battlers,
+			        (SELECT COUNT(DISTINCT voter_id) FROM votes) AS voters
+			 FROM users`
+		)
+		.bind(now - DAY_MS, now - 7 * DAY_MS)
+		.first<{ total: number; confirmed: number; today: number; week: number; news: number; battlers: number; voters: number }>();
 
 	return {
 		promos: promos.results,
 		promoSlots: PROMO_SLOTS,
 		promoMaxHours: PROMO_MAX_HOURS,
 		outcomesRecorded: outcomes?.n ?? 0,
+		userStats: userStats ?? { total: 0, confirmed: 0, today: 0, week: 0, news: 0, battlers: 0, voters: 0 },
 		now,
 		voterMinAgeHours: await getVoterMinAgeHours(db, getEnv(platform)),
 		reports: reports.results,
