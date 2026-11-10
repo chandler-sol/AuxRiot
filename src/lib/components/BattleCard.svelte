@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { pairStyle } from '#lib/colors.ts';
-	import { ago, timeLeft } from '#lib/format.ts';
+	import { ago, countdown } from '#lib/format.ts';
 
 	interface Battle {
 		id: string;
@@ -16,6 +16,7 @@
 		challenger_id?: string | null;
 		votes?: number;
 		comments?: number;
+		views?: number;
 		score?: [number, number] | null;
 		color_a?: string | null;
 		color_b?: string | null;
@@ -36,7 +37,9 @@
 		<span class="strip mono">
 			{#if b.status === 'voting'}
 				<span class="status live">● Live vote</span>
-				<span>{b.voting_ends_at ? timeLeft(b.voting_ends_at - now) : ''}</span>
+				<span class="clock" class:hot={b.voting_ends_at !== null && b.voting_ends_at - now < 3_600_000}>
+					{b.voting_ends_at ? countdown(b.voting_ends_at - now) : ''}
+				</span>
 			{:else if b.status === 'open'}
 				<span class="status open">○ Needs a challenger</span>
 				<span>{b.vote_hours}h vote</span>
@@ -70,6 +73,7 @@
 				{:else}
 					{b.votes ?? 0} vote{b.votes === 1 ? '' : 's'} · {b.comments ?? 0} comment{b.comments === 1 ? '' : 's'}
 				{/if}
+				{#if b.views !== undefined} · {b.views} view{b.views === 1 ? '' : 's'}{/if}
 			</span>
 			<span class="admit">Admit one</span>
 		</span>
@@ -102,6 +106,8 @@
 	.body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; }
 	.strip { display: flex; justify-content: space-between; gap: 8px; color: var(--paper); }
 	.status { color: var(--muted); }
+	.clock { font-variant-numeric: tabular-nums; }
+	.clock.hot { color: var(--a); }
 	.status.live { color: var(--a); }
 	.status.open { color: var(--lime); }
 	.names { display: flex; flex-direction: column; font-size: clamp(2.4rem, 12vw, 3.4rem); line-height: 0.95; overflow-wrap: anywhere; }

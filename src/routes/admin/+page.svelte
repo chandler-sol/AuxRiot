@@ -4,7 +4,10 @@
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
-	let promoMode = $state('next');
+	function until(t: number) {
+		const m = Math.max(1, Math.round((t - Date.now()) / 60000));
+		return m < 60 ? `${m} min` : `${Math.floor(m / 60)}h ${m % 60}m`;
+	}
 	const fmt = (t: number) =>
 		new Date(t).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 	const keep = () => async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) => update({ reset: false });
@@ -25,24 +28,20 @@
 <section class="card stack">
 	<h2>Promoted battles</h2>
 	<p class="muted small">
-		{data.promoSlots} slots run at once above the feed. Promos start and stop on their own, and end early if the battle closes.
-		Times are shown in your local time.
+		{data.promoSlots} slots run at once above the feed. Each booking automatically takes the earliest opening in either slot,
+		starts and stops on its own, and ends early if the battle closes. Times are in your local time.
 	</p>
-	{#if form?.nextAt}
-		<p class="small">Next opening: <strong>{fmt(form.nextAt)}</strong> — pick that time or use "Next open slot".</p>
+	{#if form?.booked}
+		{@const bk = form.booked}
+		<div class="booked">
+			<span class="display">Slot {bk.slot}</span>
+			<span>
+				{bk.startsNow ? 'Live now' : `Starts in ${until(bk.startsAt)} (${fmt(bk.startsAt)})`} · runs {bk.hours} hour{bk.hours > 1 ? 's' : ''}, until
+				{fmt(bk.endsAt)}
+			</span>
+		</div>
 	{/if}
-	{#if form?.bookedStart}
-		<p class="success small">Booked: {fmt(form.bookedStart)} → {fmt(form.bookedEnd)}</p>
-	{/if}
-	<form
-		method="POST"
-		action="?/promote"
-		class="stack"
-		use:enhance={({ formData }) => {
-			formData.set('tz', String(new Date().getTimezoneOffset()));
-			return async ({ update }) => update({ reset: false });
-		}}
-	>
+	<form method="POST" action="?/promote" class="stack" use:enhance={keep}>
 		<input name="battle" type="text" placeholder="Battle URL or ID" required />
 		<div class="row">
 			<select name="hours" style="flex:1;min-width:120px">
@@ -50,20 +49,15 @@
 					<option value={h}>{h} hour{h > 1 ? 's' : ''}</option>
 				{/each}
 			</select>
-			<select name="mode" bind:value={promoMode} style="flex:1;min-width:160px">
-				<option value="next">Next open slot</option>
-				<option value="at">Specific start time</option>
-			</select>
+			<button class="primary">Book next open slot</button>
 		</div>
-		{#if promoMode === 'at'}<input name="start" type="datetime-local" required />{/if}
-		<button class="primary">Book promo</button>
 	</form>
 
 	{#each data.promos as p (p.id)}
 		{@const live = p.starts_at <= data.now}
 		<div class="row spread item small">
 			<span>
-				<span class="pill" class:voting={live}>{live ? 'running' : 'scheduled'}</span>
+				<span class="pill" class:voting={live}>{p.slot ? `Slot ${p.slot} · ` : ''}{live ? 'running' : `starts in ${until(p.starts_at)}`}</span>
 				<a href="/battles/{p.battle_id}">{p.creator} vs {p.challenger ?? '???'}</a>
 				<br /><span class="muted">{fmt(p.starts_at)} → {fmt(p.ends_at)} · {p.source}</span>
 			</span>
@@ -187,5 +181,7 @@
 <style>
 	section { margin-bottom: 16px; }
 	.item { border-top: 1px solid var(--border); padding-top: 10px; }
+	.booked { display: flex; gap: 12px; align-items: center; background: var(--paper); color: var(--ink); padding: 10px 14px; border-radius: var(--radius); }
+	.booked .display { font-size: 1.6rem; }
 	.item button { min-height: 34px; padding: 0 12px; font-size: 0.85rem; }
 </style>

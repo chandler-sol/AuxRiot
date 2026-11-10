@@ -13,7 +13,9 @@ Ideas and decisions captured so far. Nothing below is built unless it's under **
 - Profiles: avatar, bio, social links (Instagram, TikTok, YouTube, SoundCloud, Spotify, Apple Music, BeatStars, X, Twitch, website).
 - Auto-deploy to Cloudflare on every push to `main`.
 - **Battle results ledger** (`battle_outcomes`): every finished battle records each participant's win/loss/tie, scores, counted votes and close time, ready for retroactive credit awards.
-- **Promo slots**: 2 concurrent slots above the feed, scheduled booking (next open slot or a specific time), automatic start/stop, early end when a battle closes. Admin-booked for now.
+- **Promo slots**: Slot 1 and Slot 2 above the feed. Every booking automatically takes the earliest opening in either slot; the booker is told the slot and start time, and the battle's creator sees it on their battle page. Automatic start/stop, early end when a battle closes. Admin-booked for now.
+- Live-ticking countdowns on cards, unique view counts, feed sorting (ending soonest/last, newest/oldest, most votes/comments/views).
+- Winner reveal animation when a battle's clock runs out (and once for first-time visitors to recently finished battles).
 
 ## Next up (small to medium)
 
@@ -24,6 +26,7 @@ Ideas and decisions captured so far. Nothing below is built unless it's under **
 - **Pool battles**: one beat, many challengers, one winner.
 - **David vs Goliath**: challenge mode unlocked after N wins at a minimum win rate (e.g. 5–10 wins, ≥60%).
 - **Phone verification** for tournaments or money battles only.
+- **Promo scheduler**: let people pick a specific start time instead of the next opening (the booking engine already supports `mode: 'at'`).
 
 ## Battle Credits
 

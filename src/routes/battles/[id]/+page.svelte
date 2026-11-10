@@ -7,7 +7,9 @@
 	import CopyrightNotice from '#lib/components/CopyrightNotice.svelte';
 	import ReportForm from '#lib/components/ReportForm.svelte';
 	import type { PreparedAudio } from '#lib/audio-prep.ts';
-	import { pairStyle } from '#lib/colors.ts';
+	import WinnerReveal from '#lib/components/WinnerReveal.svelte';
+	import { invalidateAll } from '$app/navigation';
+	import { battleColors, pairStyle } from '#lib/colors.ts';
 	import { ago, timeLeft } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 
@@ -70,6 +72,59 @@
 
 	let winnerSlot = $derived(b.winnerId === null ? null : b.winnerId === b.creatorId ? 0 : 1);
 
+	// --- Winner reveal --------------------------------------------------------
+	let hexes = $derived(battleColors(b.id, b.colorA, b.colorB));
+	let revealing = $state(false);
+	let counting = $state(false);
+	const seenKey = (id: string) => `auxriot:reveal:${id}`;
+	function markSeen(id: string) {
+		try {
+			localStorage.setItem(seenKey(id), '1');
+		} catch {}
+	}
+
+	// First visit to a battle that finished in the last two weeks: play the reveal once.
+	let revealChecked = '';
+	$effect(() => {
+		if (revealChecked === b.id) return;
+		revealChecked = b.id;
+		if (b.status !== 'closed' || !b.result) return;
+		const recent = b.votingEndsAt && Date.now() - b.votingEndsAt < 14 * 86_400_000;
+		let seen = false;
+		try {
+			seen = !!localStorage.getItem(seenKey(b.id));
+		} catch {}
+		if (recent && !seen) {
+			revealing = true;
+			markSeen(b.id);
+		}
+	});
+
+	// Watching live when the clock runs out: show "counting", ask the server to tally, then reveal.
+	$effect(() => {
+		if (b.status !== 'voting' || !b.votingEndsAt || now < b.votingEndsAt || counting) return;
+		counting = true;
+		revealing = true;
+		(async () => {
+			for (let i = 0; i < 12; i++) {
+				await new Promise((r) => setTimeout(r, i === 0 ? 1500 : 3000));
+				await invalidateAll();
+				if (data.battle.status === 'closed') break;
+			}
+		})();
+	});
+	$effect(() => {
+		if (counting && b.status === 'closed') {
+			counting = false;
+			markSeen(b.id);
+		}
+	});
+	function untilText(t: number) {
+		const m = Math.max(1, Math.round((t - now) / 60000));
+		return m < 60 ? `${m} min` : `${Math.floor(m / 60)}h ${m % 60}m`;
+	}
+	const clockTime = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
 	let prepared = $state<PreparedAudio | null>(null);
 	let responding = $state(false);
 	let voting = $state(false);
@@ -77,6 +132,21 @@
 </script>
 
 <svelte:head><title>{b.creator} vs {b.challenger ?? '???'} · AuxRiot</title></svelte:head>
+
+{#if revealing}
+	{@const r = b.result}
+	<WinnerReveal
+		{counting}
+		{tag}
+		winnerName={winnerSlot !== null ? names[winnerSlot] : null}
+		winnerColor={winnerSlot !== null ? hexes[winnerSlot] : undefined}
+		loserName={winnerSlot !== null ? names[1 - winnerSlot] : ''}
+		loserColor={winnerSlot !== null ? hexes[1 - winnerSlot] : hexes[1]}
+		winnerScore={r ? r.slots[winnerSlot ?? 0].total : 0}
+		loserScore={r ? r.slots[winnerSlot === null ? 1 : 1 - winnerSlot].total : 0}
+		onclose={() => (revealing = false)}
+	/>
+{/if}
 
 <article style={pairStyle(b.id, b.colorA, b.colorB)}>
 	{#if b.status === 'closed' && b.result}
@@ -150,7 +220,7 @@
 	{:else}
 		<!-- LIVE / OPEN / EXPIRED -->
 		<section class="poster">
-			<p class="mono kicker">Battle {tag} — {b.title}</p>
+			<p class="mono kicker">Battle {tag} — {b.title} — {data.views} view{data.views === 1 ? '' : 's'}</p>
 			<a class="pname display" href="/u/{b.creator}" style:color={COLORS[0]} style:font-size={fitSize(b.creator, 6)}>{b.creator}</a>
 			<span class="vs display">— vs —</span>
 			{#if b.challenger}
@@ -184,6 +254,16 @@
 			</div>
 		{:else}
 			<p class="mono muted">Expired — nobody answered in time · posted {ago(b.createdAt, now)}</p>
+		{/if}
+
+		{#if data.promo}
+			{@const pr = data.promo}
+			<p class="promo-status mono">
+				★ {pr.starts_at <= now ? 'Promoted' : 'Promo booked'}{pr.slot ? ` · slot ${pr.slot}` : ''} ·
+				{pr.starts_at <= now
+					? `live until ${clockTime(pr.ends_at)}`
+					: `starts in ${untilText(pr.starts_at)} (${clockTime(pr.starts_at)}), runs until ${clockTime(pr.ends_at)}`}
+			</p>
 		{/if}
 
 		<section class="players">
@@ -362,6 +442,7 @@
 	.tv.sm { font-size: 1.6rem; }
 
 	.players { display: grid; gap: 12px; }
+	.promo-status { background: var(--paper); color: var(--ink); padding: 8px 12px 7px; border-radius: var(--radius); margin: -10px 0 24px; }
 	.slot { background: var(--ink-2); border-left: 6px solid var(--c); border-radius: var(--radius); padding: 16px; }
 	.open-cta { font-size: 1.8rem; color: var(--c); margin: 0 0 6px; }
 	.answer { color: var(--c); }

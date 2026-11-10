@@ -10,8 +10,9 @@ import {
 	type BattleResult,
 	type Scores
 } from '#lib/server/battles.ts';
-import { getEnv, newId, HOUR } from '#lib/server/util.ts';
+import { getEnv, newId, sha256, HOUR } from '#lib/server/util.ts';
 import { getVoterMinAgeHours } from '#lib/server/settings.ts';
+import { promoStatus } from '#lib/server/promos.ts';
 import { challengerColor, creatorColor } from '#lib/colors.ts';
 
 interface BattleRow {
@@ -28,6 +29,7 @@ interface BattleRow {
 	result_json: string | null;
 	color_a: string | null;
 	color_b: string | null;
+	views: number;
 	creator: string;
 	challenger: string | null;
 }
@@ -54,6 +56,9 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 	}
 
 	const user = locals.user;
+	const newView = await countView(env, battle.id, locals.deviceId);
+	const isCreator = !!user && user.id === battle.creator_id;
+	const promo = isCreator || user?.isAdmin ? await promoStatus(env.DB, battle.id, Date.now()) : null;
 	const [entries, comments, voteCount, myVote, listens] = await Promise.all([
 		env.DB.prepare(`SELECT id, user_id, slot, audio_key, duration_ms, peaks, removed FROM entries WHERE battle_id = ? ORDER BY slot`)
 			.bind(battle.id)
@@ -125,9 +130,22 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 		voterUnlockAt: user ? user.createdAt + minHours * HOUR : null,
 		canRespond: battle.status === 'open' && !!user && user.id !== battle.creator_id,
 		threshold: LISTEN_THRESHOLD,
+		promo,
+		views: battle.views + (newView ? 1 : 0),
 		now: Date.now()
 	};
 };
+
+/** One view per device per battle; repeat visits and refreshes don't count again. */
+async function countView(env: Env, battleId: string, deviceId: string) {
+	const viewer = await sha256((env.SIGNAL_SALT ?? 'dev-salt') + ':v:' + deviceId);
+	const ins = await env.DB.prepare('INSERT OR IGNORE INTO battle_views (battle_id, viewer_hash, viewed_at) VALUES (?, ?, ?)')
+		.bind(battleId, viewer, Date.now())
+		.run();
+	if (!ins.meta.changes) return false;
+	await env.DB.prepare('UPDATE battles SET views = views + 1 WHERE id = ?').bind(battleId).run();
+	return true;
+}
 
 function requireUser(locals: App.Locals, path: string) {
 	if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(path)}`);

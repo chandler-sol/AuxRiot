@@ -4,12 +4,38 @@ import { getEnv } from '#lib/server/util.ts';
 import { activePromotedIds } from '#lib/server/promos.ts';
 
 const TABS = {
-	voting: { where: `b.status = 'voting'`, order: 'b.voting_ends_at ASC' },
-	open: { where: `b.status = 'open'`, order: 'b.created_at DESC' },
-	results: { where: `b.status = 'closed'`, order: 'b.voting_ends_at DESC' }
+	voting: { where: `b.status = 'voting'`, sorts: ['ending', 'ending_last', 'newest', 'votes', 'comments', 'views'] },
+	open: { where: `b.status = 'open'`, sorts: ['newest', 'oldest', 'comments', 'views'] },
+	results: { where: `b.status = 'closed'`, sorts: ['newest', 'votes', 'comments', 'views'] }
 } as const;
 
-const BASE = `SELECT b.id, b.title, b.status, b.created_at, b.voting_ends_at, b.winner_id, b.vote_hours, b.result_json, b.color_a, b.color_b, b.challenger_id,
+type Tab = keyof typeof TABS;
+type Sort = 'ending' | 'ending_last' | 'newest' | 'oldest' | 'votes' | 'comments' | 'views';
+
+const SORT_LABELS: Record<Sort, string> = {
+	ending: 'Ending soonest',
+	ending_last: 'Ending last',
+	newest: 'Newest',
+	oldest: 'Oldest',
+	votes: 'Most votes',
+	comments: 'Most comments',
+	views: 'Most views'
+};
+
+function orderBy(tab: Tab, sort: Sort): string {
+	switch (sort) {
+		case 'ending': return 'b.voting_ends_at ASC';
+		case 'ending_last': return 'b.voting_ends_at DESC';
+		case 'oldest': return 'b.created_at ASC';
+		case 'votes': return 'votes DESC, b.created_at DESC';
+		case 'comments': return 'comments DESC, b.created_at DESC';
+		case 'views': return 'b.views DESC, b.created_at DESC';
+		default:
+			return tab === 'voting' ? 'b.voting_started_at DESC' : tab === 'results' ? 'b.voting_ends_at DESC' : 'b.created_at DESC';
+	}
+}
+
+const BASE = `SELECT b.id, b.title, b.status, b.created_at, b.voting_ends_at, b.winner_id, b.vote_hours, b.result_json, b.color_a, b.color_b, b.challenger_id, b.views,
 		        c.username AS creator, c.id AS creator_id, ch.username AS challenger,
 		        (SELECT COUNT(*) FROM votes v WHERE v.battle_id = b.id) AS votes,
 		        (SELECT COUNT(*) FROM comments m WHERE m.battle_id = b.id AND m.hidden = 0) AS comments
@@ -40,13 +66,16 @@ export const load: PageServerLoad = async ({ platform, url }) => {
 	const env = getEnv(platform);
 	await finalizeDue(env.DB, Number(env.OPEN_BATTLE_EXPIRY_DAYS) || 14);
 
-	const tab = (url.searchParams.get('tab') ?? 'voting') as keyof typeof TABS;
-	const q = TABS[tab] ?? TABS.voting;
+	const tabParam = url.searchParams.get('tab') ?? 'voting';
+	const tab: Tab = tabParam in TABS ? (tabParam as Tab) : 'voting';
+	const q = TABS[tab];
+	const sortParam = url.searchParams.get('sort') as Sort | null;
+	const sort: Sort = sortParam && (q.sorts as readonly string[]).includes(sortParam) ? sortParam : q.sorts[0];
 
 	const now = Date.now();
 	const promoIds = await activePromotedIds(env.DB, now);
 
-	const rows = await env.DB.prepare(`${BASE} WHERE ${q.where} ORDER BY ${q.order} LIMIT 50`).all<Row>();
+	const rows = await env.DB.prepare(`${BASE} WHERE ${q.where} ORDER BY ${orderBy(tab, sort)} LIMIT 50`).all<Row>();
 	const promoRows = promoIds.length
 		? await env.DB.prepare(`${BASE} WHERE b.id IN (${promoIds.map(() => '?').join(',')})`)
 				.bind(...promoIds)
@@ -71,7 +100,9 @@ export const load: PageServerLoad = async ({ platform, url }) => {
 	const promoted = promoIds.map((id) => promoRows.results.find((r) => r.id === id)).filter((r): r is Row => !!r).map(shape);
 
 	return {
-		tab: tab in TABS ? tab : 'voting',
+		tab,
+		sort,
+		sorts: q.sorts.map((k) => ({ key: k, label: SORT_LABELS[k] })),
 		battles,
 		promoted,
 		counts: counts ?? { live: 0, open: 0, producers: 0 },

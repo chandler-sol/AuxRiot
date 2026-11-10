@@ -2,7 +2,18 @@
 	import BattleCard from '#lib/components/BattleCard.svelte';
 	import type { PageProps } from './$types';
 
+	import { goto } from '$app/navigation';
+
 	let { data }: PageProps = $props();
+	let now = $state(Date.now());
+	$effect(() => {
+		const t = setInterval(() => (now = Date.now()), 1000);
+		return () => clearInterval(t);
+	});
+	function changeSort(e: Event) {
+		const sort = (e.currentTarget as HTMLSelectElement).value;
+		goto(`/?tab=${data.tab}&sort=${sort}`, { reset: false });
+	}
 	let c = $derived(data.counts);
 	let tape = $derived([
 		`${c.live} live now`,
@@ -35,7 +46,7 @@
 	<section class="promoted" aria-label="Promoted battles">
 		<ul class="list">
 			{#each data.promoted as b (b.id)}
-				<li><BattleCard battle={b} now={data.now} promoted /></li>
+				<li><BattleCard battle={b} {now} promoted /></li>
 			{/each}
 		</ul>
 	</section>
@@ -46,6 +57,15 @@
 	<a href="/?tab=open" class:active={data.tab === 'open'}>Open · {c.open}</a>
 	<a href="/?tab=results" class:active={data.tab === 'results'}>Results</a>
 </nav>
+
+<form class="sortbar" method="GET" action="/">
+	<input type="hidden" name="tab" value={data.tab} />
+	<label class="mono" for="sort">Sort</label>
+	<select id="sort" name="sort" value={data.sort} onchange={changeSort}>
+		{#each data.sorts as o (o.key)}<option value={o.key}>{o.label}</option>{/each}
+	</select>
+	<noscript><button>Go</button></noscript>
+</form>
 
 {#if data.battles.length === 0}
 	<div class="empty">
@@ -65,7 +85,7 @@
 {:else}
 	<ul class="list">
 		{#each data.battles as b (b.id)}
-			<li><BattleCard battle={b} now={data.now} /></li>
+			<li><BattleCard battle={b} {now} /></li>
 		{/each}
 	</ul>
 {/if}
@@ -88,5 +108,8 @@
 	.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
 	.empty { padding: 32px 0; }
 	.promoted { margin-bottom: 24px; }
+	.sortbar { display: flex; align-items: center; gap: 10px; margin: -4px 0 16px; }
+	.sortbar label { margin: 0; color: var(--muted); }
+	.sortbar select { width: auto; padding: 8px 12px; font-family: var(--mono); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 	.big { font-size: 2.2rem; margin: 0 0 8px; }
 </style>

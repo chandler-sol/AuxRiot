@@ -7,6 +7,15 @@ export function timeLeft(ms: number): string {
 	return `${Math.floor(h / 24)}d ${h % 24}h left`;
 }
 
+/** Countdown for battle cards: "1d 22h left" until the last day, then a ticking "05:12:33 left". */
+export function countdown(ms: number): string {
+	if (ms <= 0) return 'Time — counting';
+	const s = Math.floor(ms / 1000);
+	if (s >= 86_400) return `${Math.floor(s / 86_400)}d ${Math.floor((s % 86_400) / 3600)}h left`;
+	const p = (n: number) => String(n).padStart(2, '0');
+	return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)} left`;
+}
+
 export function ago(ts: number, now = Date.now()): string {
 	const s = Math.max(0, Math.floor((now - ts) / 1000));
 	if (s < 60) return 'just now';

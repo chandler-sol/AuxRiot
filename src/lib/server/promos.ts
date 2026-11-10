@@ -1,65 +1,72 @@
 import { newId, HOUR } from './util.ts';
 
-/** How many battles can be promoted at the same time. */
+/** How many battles can be promoted at the same time (slot 1 and slot 2). */
 export const PROMO_SLOTS = 2;
 export const PROMO_MAX_HOURS = 24;
-/** How far ahead a promo can be booked. */
+/** How far ahead the queue may reach. */
 export const PROMO_MAX_LEAD = 14 * 24 * HOUR;
 
-interface Window {
+interface Booking {
 	starts_at: number;
 	ends_at: number;
+	slot: number | null;
 }
 
-/** Highest number of bookings running at the same moment anywhere inside [start, end). */
-function peakOverlap(bookings: Window[], start: number, end: number): number {
-	const inside = bookings.filter((b) => b.starts_at < end && b.ends_at > start);
-	// Concurrency only changes at booking starts, so checking those points (and `start`) is enough.
-	const points = [start, ...inside.map((b) => b.starts_at).filter((t) => t > start && t < end)];
-	let peak = 0;
-	for (const t of points) {
-		const n = inside.filter((b) => b.starts_at <= t && b.ends_at > t).length;
-		if (n > peak) peak = n;
-	}
-	return peak;
-}
+const overlaps = (a: { starts_at: number; ends_at: number }, start: number, end: number) =>
+	a.starts_at < end && a.ends_at > start;
 
 /**
- * Earliest start at or after `earliest` where a promo of `durationMs` fits
- * without exceeding PROMO_SLOTS concurrent promos. Candidates are `earliest`
- * itself and every moment an existing booking ends (when a slot frees up).
+ * Earliest [start, start + duration) at or after `earliest` where one slot is
+ * free for the whole window. Each slot is checked independently, so a promo
+ * keeps the same slot from start to finish. Ties go to the lower slot number.
+ * `avoid` holds this battle's own promos, which it must never overlap.
  */
-export function findSlot(bookings: Window[], earliest: number, durationMs: number, avoid: Window[] = []): number | null {
-	const candidates = [earliest, ...[...bookings, ...avoid].map((b) => b.ends_at).filter((t) => t > earliest)].sort((x, y) => x - y);
-	for (const t of candidates) {
-		if (t - earliest > PROMO_MAX_LEAD) break;
-		const end = t + durationMs;
-		if (avoid.some((w) => w.starts_at < end && w.ends_at > t)) continue; // never overlap the same battle's own promo
-		if (peakOverlap(bookings, t, end) < PROMO_SLOTS) return t;
+export function findSlot(
+	bookings: Booking[],
+	earliest: number,
+	durationMs: number,
+	avoid: { starts_at: number; ends_at: number }[] = []
+): { start: number; slot: number } | null {
+	let best: { start: number; slot: number } | null = null;
+	for (let slot = 1; slot <= PROMO_SLOTS; slot++) {
+		// Legacy rows without a slot count against every slot.
+		const inSlot = bookings.filter((b) => b.slot === slot || b.slot === null);
+		const candidates = [earliest, ...[...inSlot, ...avoid].map((b) => b.ends_at).filter((t) => t > earliest)].sort(
+			(x, y) => x - y
+		);
+		for (const t of candidates) {
+			if (t - earliest > PROMO_MAX_LEAD) break;
+			const end = t + durationMs;
+			if (avoid.some((w) => overlaps(w, t, end))) continue;
+			if (inSlot.some((b) => overlaps(b, t, end))) continue;
+			if (!best || t < best.start) best = { start: t, slot };
+			break;
+		}
 	}
-	return null;
+	return best;
 }
 
-export async function upcomingBookings(db: D1Database, now: number): Promise<Window[]> {
+async function upcomingBookings(db: D1Database, now: number): Promise<Booking[]> {
 	const rows = await db
-		.prepare('SELECT starts_at, ends_at FROM promotions WHERE cancelled = 0 AND ends_at > ?')
+		.prepare('SELECT starts_at, ends_at, slot FROM promotions WHERE cancelled = 0 AND ends_at > ?')
 		.bind(now)
-		.all<Window>();
+		.all<Booking>();
 	return rows.results;
 }
 
 export type BookResult =
-	| { ok: true; id: string; startsAt: number; endsAt: number }
+	| { ok: true; id: string; startsAt: number; endsAt: number; slot: number; startsNow: boolean }
 	| { ok: false; error: string; nextAt?: number };
 
 /**
- * Book a promo window for a battle. `mode: 'next'` takes the earliest free
- * window; `mode: 'at'` requires the exact start time to be free. Shared by the
- * admin tools now and the credits checkout later.
+ * Book a promo for a battle. By default (`mode: 'next'`) it is placed
+ * automatically in the earliest opening across both slots. `mode: 'at'`
+ * (reserved for a future scheduler) requires a specific start to be free.
+ * Shared by the admin tools now and the credits checkout later.
  */
 export async function bookPromotion(
 	db: D1Database,
-	opts: { battleId: string; bookedBy: string; hours: number; mode: 'next' | 'at'; startAt?: number; source: 'admin' | 'credits' }
+	opts: { battleId: string; bookedBy: string; hours: number; mode?: 'next' | 'at'; startAt?: number; source: 'admin' | 'credits' }
 ): Promise<BookResult> {
 	const now = Date.now();
 	const { battleId, hours } = opts;
@@ -81,51 +88,58 @@ export async function bookPromotion(
 		await db
 			.prepare('SELECT starts_at, ends_at FROM promotions WHERE battle_id = ? AND cancelled = 0 AND ends_at > ?')
 			.bind(battleId, now)
-			.all<Window>()
+			.all<{ starts_at: number; ends_at: number }>()
 	).results;
-	let start: number | null;
+
+	let placed: { start: number; slot: number } | null;
 	if (opts.mode === 'at') {
-		const at = opts.startAt ?? NaN;
+		const at = Math.max(opts.startAt ?? NaN, now);
 		if (!Number.isFinite(at)) return { ok: false, error: 'Pick a start time.' };
-		start = Math.max(at, now);
-		if (start - now > PROMO_MAX_LEAD) return { ok: false, error: 'Promos can be booked up to 14 days ahead.' };
-		if (own.some((w) => w.starts_at < start! + duration && w.ends_at > start!)) {
-			return { ok: false, error: 'This battle is already promoted during that time.' };
-		}
-		if (peakOverlap(bookings, start, start + duration) >= PROMO_SLOTS) {
-			const next = findSlot(bookings, start, duration, own);
-			return next
-				? { ok: false, error: 'Both promo slots are taken then.', nextAt: next }
-				: { ok: false, error: 'Both promo slots are booked for the next two weeks.' };
+		if (at - now > PROMO_MAX_LEAD) return { ok: false, error: 'Promos can be booked up to 14 days ahead.' };
+		placed = findSlot(bookings, at, duration, own);
+		if (placed && placed.start !== at) {
+			return { ok: false, error: 'Both promo slots are taken then.', nextAt: placed.start };
 		}
 	} else {
-		start = findSlot(bookings, now, duration, own);
-		if (start === null) return { ok: false, error: 'Both promo slots are booked for the next two weeks.' };
+		placed = findSlot(bookings, now, duration, own);
 	}
-	const end = start + duration;
+	if (!placed) return { ok: false, error: 'Both promo slots are booked for the next two weeks.' };
 
+	const { start, slot } = placed;
+	const end = start + duration;
 	if (battle.status === 'voting' && battle.voting_ends_at && start >= battle.voting_ends_at) {
-		return { ok: false, error: 'That battle closes before the promo would start.' };
+		return { ok: false, error: 'The next opening is after this battle closes.' };
 	}
 	const id = newId();
 	await db
 		.prepare(
-			'INSERT INTO promotions (id, battle_id, booked_by, source, starts_at, ends_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+			'INSERT INTO promotions (id, battle_id, booked_by, source, starts_at, ends_at, slot, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
 		)
-		.bind(id, battleId, opts.bookedBy, opts.source, start, end, now)
+		.bind(id, battleId, opts.bookedBy, opts.source, start, end, slot, now)
 		.run();
-	return { ok: true, id, startsAt: start, endsAt: end };
+	return { ok: true, id, startsAt: start, endsAt: end, slot, startsNow: start <= now + 1000 };
 }
 
-/** Battles promoted right now (still open or live), newest booking first. */
+/** Battles promoted right now (still open or live), in slot order. */
 export async function activePromotedIds(db: D1Database, now: number): Promise<string[]> {
 	const rows = await db
 		.prepare(
 			`SELECT p.battle_id FROM promotions p JOIN battles b ON b.id = p.battle_id
 			 WHERE p.cancelled = 0 AND p.starts_at <= ? AND p.ends_at > ? AND b.status IN ('open', 'voting')
-			 ORDER BY p.starts_at ASC LIMIT ?`
+			 ORDER BY COALESCE(p.slot, 9), p.starts_at ASC LIMIT ?`
 		)
 		.bind(now, now, PROMO_SLOTS)
 		.all<{ battle_id: string }>();
 	return rows.results.map((r) => r.battle_id);
+}
+
+/** The battle's current or next promo, for showing its status to the creator. */
+export async function promoStatus(db: D1Database, battleId: string, now: number) {
+	return db
+		.prepare(
+			`SELECT starts_at, ends_at, slot FROM promotions
+			 WHERE battle_id = ? AND cancelled = 0 AND ends_at > ? ORDER BY starts_at ASC LIMIT 1`
+		)
+		.bind(battleId, now)
+		.first<{ starts_at: number; ends_at: number; slot: number | null }>();
 }

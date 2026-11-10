@@ -9,6 +9,11 @@
 	let p = $derived(data.profile);
 	let decided = $derived(p.wins + p.losses);
 	let accent = $derived(hexFor(p.color));
+	let now = $state(Date.now());
+	$effect(() => {
+		const t = setInterval(() => (now = Date.now()), 1000);
+		return () => clearInterval(t);
+	});
 	let winRate = $derived(decided ? Math.round((p.wins / decided) * 100) : null);
 </script>
 
@@ -39,7 +44,7 @@
 {:else}
 	<ul class="list">
 		{#each data.battles as b (b.id)}
-			<li><BattleCard battle={b} now={data.now} /></li>
+			<li><BattleCard battle={b} {now} /></li>
 		{/each}
 	</ul>
 {/if}
