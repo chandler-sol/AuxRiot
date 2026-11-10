@@ -1,115 +1,193 @@
 <script lang="ts">
-	import BattleCard from '#lib/components/BattleCard.svelte';
+	import Player from '#lib/components/Player.svelte';
 	import type { PageProps } from './$types';
 
-	import { goto } from '$app/navigation';
-
 	let { data }: PageProps = $props();
-	let now = $state(Date.now());
-	$effect(() => {
-		const t = setInterval(() => (now = Date.now()), 1000);
-		return () => clearInterval(t);
-	});
-	function changeSort(e: Event) {
-		const sort = (e.currentTarget as HTMLSelectElement).value;
-		goto(`/?tab=${data.tab}&sort=${sort}`, { reset: false });
-	}
-	let c = $derived(data.counts);
-	let tape = $derived([
-		`${c.live} live now`,
-		`${c.open} need a challenger`,
-		`${c.producers} producer${c.producers === 1 ? '' : 's'}`,
-		'tonight'
-	]);
+	let st = $derived(data.stats);
+
+	const ROUNDS = [
+		['01', 'Drop it', 'Post a beat, up to 2:00.'],
+		['02', 'Get called out', 'First producer to answer takes corner B.'],
+		['03', 'Crowd scores it', 'Drums, melody, mix, overall — after hearing 75% of both.'],
+		['04', 'Winner gets stamped', 'Scores stay sealed until the clock hits zero.']
+	];
+	const TAPE = ['No bots', 'No payola', '75% listen rule', 'Sealed scores', '1v1 only', 'Crowd decides'];
 </script>
 
-<svelte:head><title>AuxRiot · 1v1 beat battles</title></svelte:head>
+<svelte:head>
+	<title>AuxRiot — 1v1 beat battles. The crowd decides.</title>
+	<meta
+		name="description"
+		content="1v1 beat battles judged by people who actually listened. Post a beat, get called out, let the crowd decide."
+	/>
+</svelte:head>
 
 <section class="hero">
-	<p class="mono kicker">No. 001 — 1v1 beat battles — every night</p>
-	<h1 class="headline">Drop a beat.<br /><span>Get called out.</span><br />Crowd decides.</h1>
-	<p class="sub">First producer to answer takes the slot. Voters have to actually listen.</p>
-	{#if !data.user}
-		<a class="btn primary" href="/signup">Start battling</a>
-	{/if}
+	<p class="mono kicker">AuxRiot — 1v1 beat battles — open every night</p>
+	<h1 class="headline">
+		No likes.<br />
+		No algorithm.<br />
+		<span>Just who hit harder.</span>
+	</h1>
+	<p class="sub">
+		Post a beat. Get called out. Let a crowd that actually listened decide who walks away with the W.
+	</p>
+	<div class="ctas">
+		<a class="btn primary big" href="/signup">Join free</a>
+		<a class="btn big" href="/battles">See live battles{st.live ? ` · ${st.live}` : ''}</a>
+	</div>
 </section>
 
 <div class="tape-wrap" aria-hidden="true">
 	<div class="tape mono">
-		{#each [0, 1] as rep (rep)}
-			{#each tape as t, i (i)}<span>{t}</span><span>★</span>{/each}
+		{#each [0, 1, 2] as rep (rep)}
+			{#each TAPE as t, i (i)}<span>{t}</span><span>★</span>{/each}
 		{/each}
 	</div>
 </div>
 
-{#if data.promoted.length}
-	<section class="promoted" aria-label="Promoted battles">
-		<ul class="list">
-			{#each data.promoted as b (b.id)}
-				<li><BattleCard battle={b} {now} promoted /></li>
-			{/each}
-		</ul>
-	</section>
-{/if}
-
-<nav class="tabs" data-sveltekit-noscroll>
-	<a href="/?tab=voting" class:active={data.tab === 'voting'}>Live · {c.live}</a>
-	<a href="/?tab=open" class:active={data.tab === 'open'}>Open · {c.open}</a>
-	<a href="/?tab=results" class:active={data.tab === 'results'}>Results</a>
-</nav>
-
-<form class="sortbar" method="GET" action="/">
-	<input type="hidden" name="tab" value={data.tab} />
-	<label class="mono" for="sort">Sort</label>
-	<select id="sort" name="sort" value={data.sort} onchange={changeSort}>
-		{#each data.sorts as o (o.key)}<option value={o.key}>{o.label}</option>{/each}
-	</select>
-	<noscript><button>Go</button></noscript>
-</form>
-
-{#if data.battles.length === 0}
-	<div class="empty">
-		<p class="display big">
-			{#if data.tab === 'open'}No open battles.{:else if data.tab === 'voting'}Nothing live.{:else}No results yet.{/if}
-		</p>
-		<p class="muted">
-			{#if data.tab === 'open'}
-				<a href="/battles/new">Drop a beat</a> and wait for someone brave enough to answer.
-			{:else if data.tab === 'voting'}
-				Answer an <a href="/?tab=open">open battle</a> to kick off a vote.
-			{:else}
-				Finished battles land here.
-			{/if}
-		</p>
+{#if st.battles > 0}
+	<div class="stats">
+		<div><span class="display">{st.battles}</span><span class="mono">Battles fought</span></div>
+		<div><span class="display">{st.producers}</span><span class="mono">Producers</span></div>
+		<div><span class="display">{st.votes}</span><span class="mono">Votes cast</span></div>
 	</div>
-{:else}
-	<ul class="list">
-		{#each data.battles as b (b.id)}
-			<li><BattleCard battle={b} {now} /></li>
-		{/each}
-	</ul>
 {/if}
+
+<section class="block">
+	<div class="block-head">
+		<h2>Hear the riot</h2>
+		<span class="mono muted">30-second previews</span>
+	</div>
+	{#if data.samples.length}
+		<div class="samples">
+			{#each data.samples as s (s.id)}
+				<div class="sample">
+					<Player
+						variant="full"
+						src={s.src}
+						peaks={s.peaks}
+						durationMs={s.durationMs}
+						name={s.name}
+						corner={s.status === 'voting' ? '● Live' : s.status === 'open' ? 'Open' : 'Final'}
+						accent={s.color}
+						previewSeconds={30}
+					/>
+					<a class="mono from" href="/battles/{s.battleId}">From {s.matchup} →</a>
+				</div>
+			{/each}
+		</div>
+		<p class="more">
+			<a class="btn primary" href="/signup">Hear full beats and vote</a>
+		</p>
+	{:else}
+		<div class="empty">
+			<p class="display">The first beats drop soon.</p>
+			<p class="muted">Be one of them — the first battles set the bar.</p>
+			<a class="btn primary" href="/signup">Claim your spot</a>
+		</div>
+	{/if}
+</section>
+
+<section class="block">
+	<div class="block-head">
+		<h2>How it goes down</h2>
+		<a class="mono rules" href="/rules">Full rules →</a>
+	</div>
+	<ol class="rounds">
+		{#each ROUNDS as [n, t, d] (n)}
+			<li><span class="display num">{n}</span><div><h3>{t}</h3><p>{d}</p></div></li>
+		{/each}
+	</ol>
+</section>
+
+<section class="block">
+	<h2>Why it's different</h2>
+	<div class="tickets">
+		<div class="ticket">
+			<span class="mono k">Rule 1</span>
+			<span class="display v">You listen, then you vote.</span>
+			<p>No drive-by votes. You have to hear 75% of both beats before your scorecard unlocks.</p>
+		</div>
+		<div class="ticket">
+			<span class="mono k">Rule 2</span>
+			<span class="display v">Scores stay sealed.</span>
+			<p>Nobody sees who's winning until the clock runs out. No pile-ons, no bandwagons.</p>
+		</div>
+		<div class="ticket">
+			<span class="mono k">Rule 3</span>
+			<span class="display v">Alts don't count.</span>
+			<p>Fake accounts and vote rings get quietly discounted. Win it straight or don't win it.</p>
+		</div>
+	</div>
+</section>
+
+<section class="final">
+	<p class="mono kicker">Doors are open</p>
+	<p class="display line">Your beat.<br />Their beat.<br /><span>One winner.</span></p>
+	<div class="ctas">
+		<a class="btn primary big" href="/signup">Join free</a>
+		<a class="btn big" href="/login">Log in</a>
+	</div>
+</section>
 
 <style>
-	.hero { padding: 16px 0 24px; }
-	.kicker { color: var(--muted); margin: 0 0 12px; }
-	.headline { font-size: clamp(2.9rem, 13.5vw, 5.2rem); line-height: 0.92; margin-bottom: 14px; }
-	.headline span { color: var(--lime); }
-	.sub { color: var(--dim); margin: 0 0 18px; max-width: 32em; }
-	.tape-wrap { overflow: hidden; margin: 4px -16px 22px; padding: 10px 0; }
+	.hero { padding: 24px 0 20px; }
+	.kicker { color: var(--muted); margin: 0 0 14px; }
+	.headline { font-size: clamp(2.8rem, 13.2vw, 6.4rem); line-height: 0.9; margin-bottom: 18px; }
+	.headline span { color: var(--pink); }
+	.sub { color: var(--dim); font-size: 1.1rem; max-width: 30em; margin: 0 0 22px; }
+	.ctas { display: flex; gap: 10px; flex-wrap: wrap; }
+	.big { min-height: 54px; padding: 4px 26px 0; font-size: 1.35rem; }
+
+	.tape-wrap { overflow: hidden; margin: 18px -16px 26px; padding: 12px 0; }
 	.tape {
 		display: flex; gap: 18px; white-space: nowrap; width: max-content;
-		background: var(--paper); color: var(--ink); padding: 9px 20px; font-size: 0.75rem;
-		transform: rotate(2deg) translateX(-10px);
-		animation: scroll 40s linear infinite;
+		background: var(--pink); color: var(--ink); padding: 10px 20px; font-size: 0.8rem;
+		transform-origin: 0 50%;
+		transform: rotate(-2deg) translateX(-10px);
+		animation: scroll 36s linear infinite;
 	}
-	@keyframes scroll { to { transform: rotate(2deg) translateX(-50%); } }
+	@keyframes scroll { to { transform: rotate(-2deg) translateX(-33.33%); } }
 	@media (prefers-reduced-motion: reduce) { .tape { animation: none; } }
-	.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
-	.empty { padding: 32px 0; }
-	.promoted { margin-bottom: 24px; }
-	.sortbar { display: flex; align-items: center; gap: 10px; margin: -4px 0 16px; }
-	.sortbar label { margin: 0; color: var(--muted); }
-	.sortbar select { width: auto; padding: 8px 12px; font-family: var(--mono); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-	.big { font-size: 2.2rem; margin: 0 0 8px; }
+
+	.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--paper); color: var(--ink); border-radius: var(--radius); padding: 14px 8px 12px; text-align: center; margin-bottom: 8px; }
+	.stats div { display: flex; flex-direction: column; }
+	.stats .display { font-size: 2.2rem; line-height: 1; }
+	.stats .mono { color: #5a544b; font-size: 0.6rem; margin-top: 4px; }
+
+	.block { margin-top: 36px; }
+	.block-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+	.block-head h2 { margin: 0; font-size: 2.2rem; }
+	.block > h2 { font-size: 2.2rem; }
+	.samples { display: grid; gap: 14px; }
+	.sample { display: flex; flex-direction: column; gap: 6px; }
+	.from { color: var(--muted); text-decoration: none; align-self: flex-end; font-weight: 400; }
+	.from:hover { color: var(--paper); }
+	.more { margin: 18px 0 0; }
+	.empty { background: var(--ink-2); border-left: 6px solid var(--pink); padding: 20px 16px; border-radius: var(--radius); }
+	.empty .display { font-size: 2rem; margin: 0 0 6px; }
+	.empty p { margin: 0 0 14px; }
+
+	.rules { color: var(--paper); text-decoration: none; border-bottom: 1.5px solid var(--pink); }
+	.rules:hover { color: var(--pink); }
+	.rounds { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+	.rounds li { display: flex; gap: 16px; align-items: flex-start; background: var(--ink-2); padding: 14px 16px; }
+	.num { font-size: 2.3rem; line-height: 0.9; color: var(--pink); min-width: 48px; }
+	.rounds h3 { margin: 2px 0 2px; font-size: 1.4rem; }
+	.rounds p { margin: 0; color: var(--dim); }
+
+	.tickets { display: grid; gap: 12px; }
+	@media (min-width: 640px) { .tickets { grid-template-columns: repeat(3, 1fr); } }
+	.ticket {
+		position: relative; background: var(--paper); color: var(--ink); border-radius: var(--radius); padding: 16px 16px 14px;
+		display: flex; flex-direction: column; gap: 6px;
+	}
+	.ticket .k { color: var(--pink); }
+	.ticket .v { font-size: 1.7rem; line-height: 0.95; }
+	.ticket p { margin: 8px 0 0; padding-top: 10px; border-top: 1.5px dashed rgba(14, 13, 11, 0.25); color: #3d3831; font-size: 0.95rem; }
+
+	.final { margin-top: 48px; padding: 28px 0 8px; border-top: 1.5px dashed var(--line-2); }
+	.line { font-size: clamp(3rem, 15vw, 5.6rem); line-height: 0.9; margin: 0 0 22px; }
+	.line span { color: var(--pink); }
 </style>

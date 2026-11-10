@@ -5,7 +5,7 @@ import { getEnv, newId } from '#lib/server/util.ts';
 import { describeHours, getVoterMinAgeHours } from '#lib/server/settings.ts';
 
 export const load: PageServerLoad = async ({ locals, platform }) => {
-	if (locals.user) redirect(303, '/');
+	if (locals.user) redirect(303, '/battles');
 	const env = getEnv(platform);
 	return {
 		turnstileSiteKey: env.TURNSTILE_SITE_KEY || '',
@@ -45,6 +45,6 @@ export const actions: Actions = {
 			.run();
 		await recordSignals(env.DB, id, locals.ip, locals.deviceId, env.SIGNAL_SALT ?? 'dev-salt');
 		await createSession(env.DB, cookies, id, url.protocol === 'https:');
-		redirect(303, '/');
+		redirect(303, '/battles');
 	}
 };

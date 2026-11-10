@@ -26,6 +26,8 @@
 		/** full = poster player, compact = one-line replay row, bare = transport only. */
 		variant?: 'full' | 'compact' | 'bare';
 		tag?: string;
+		/** Teaser mode: playback stops after this many seconds and seeking is limited to it. */
+		previewSeconds?: number;
 	}
 	let {
 		src,
@@ -39,14 +41,20 @@
 		name = '',
 		corner = '',
 		variant = 'bare',
-		tag = ''
+		tag = '',
+		previewSeconds
 	}: Props = $props();
 
 	let audio: HTMLAudioElement;
 	let playing = $state(false);
 	let loading = $state(false);
 	let time = $state(0);
-	let duration = $derived(durationMs / 1000);
+	let fullDuration = $derived(durationMs / 1000);
+	let duration = $derived(previewSeconds ? Math.min(previewSeconds, fullDuration) : fullDuration);
+	let shownPeaks = $derived(
+		previewSeconds && fullDuration > duration ? peaks.slice(0, Math.max(8, Math.ceil(peaks.length * (duration / fullDuration)))) : peaks
+	);
+	let previewDone = $state(false);
 	let progress = $derived(duration ? Math.min(1, time / duration) : 0);
 
 	// Listen tracking: unique whole seconds actually played at 1x speed.
@@ -78,6 +86,13 @@
 	}
 
 	function onTime() {
+		if (previewSeconds && audio.currentTime >= duration) {
+			audio.pause();
+			audio.currentTime = 0;
+			time = 0;
+			previewDone = true;
+			return;
+		}
 		time = audio.currentTime;
 		if (!entryId || audio.paused || audio.seeking || audio.playbackRate !== 1) {
 			lastTime = time;
@@ -94,6 +109,7 @@
 
 	function toggle() {
 		if (audio.paused) {
+			previewDone = false;
 			claim(audio);
 			audio.playbackRate = 1;
 			loading = true;
@@ -119,7 +135,7 @@
 
 	function seekFrom(e: PointerEvent) {
 		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-		const x = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+		const x = Math.min(0.999, Math.max(0, (e.clientX - rect.left) / rect.width));
 		audio.currentTime = x * duration;
 		time = audio.currentTime;
 		lastTime = time;
@@ -183,16 +199,17 @@
 				onpointerdown={seekFrom}
 				onkeydown={onKey}
 			>
-				<svg viewBox="0 0 {peaks.length} 100" preserveAspectRatio="none" aria-hidden="true">
-					{#each peaks as p, i (i)}
+				<svg viewBox="0 0 {shownPeaks.length} 100" preserveAspectRatio="none" aria-hidden="true">
+					{#each shownPeaks as p, i (i)}
 						{@const h = Math.max(8, (p / 255) * 100)}
-						<rect x={i + 0.2} y={(100 - h) / 2} width="0.6" height={h} class:done={i / peaks.length < progress} />
+						<rect x={i + 0.2} y={(100 - h) / 2} width="0.6" height={h} class:done={i / shownPeaks.length < progress} />
 					{/each}
 				</svg>
 			</div>
 		</div>
 		<div class="meta">
 			<span class="mono time">{clock(time)} / {clock(duration)}</span>
+			{#if previewSeconds}<span class="mono heard">{previewDone ? 'Preview over — hear the rest inside' : `${Math.round(duration)}s preview`}</span>{/if}
 			{#if entryId}<span class="mono heard">Heard {pct}%</span>{/if}
 		</div>
 		{#if entryId}

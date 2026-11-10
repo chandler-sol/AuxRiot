@@ -4,11 +4,11 @@ import { createSession, recordSignals, verifyPassword } from '#lib/server/auth.t
 import { getEnv } from '#lib/server/util.ts';
 
 export const load: PageServerLoad = ({ locals }) => {
-	if (locals.user) redirect(303, '/');
+	if (locals.user) redirect(303, '/battles');
 };
 
 function safeNext(next: string | null) {
-	return next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+	return next && next.startsWith('/') && !next.startsWith('//') ? next : '/battles';
 }
 
 export const actions: Actions = {
