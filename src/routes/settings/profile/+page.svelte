@@ -36,6 +36,13 @@
 	let avatarErr = $state('');
 	let busy = $state(false);
 	let saving = $state(false);
+	let newsOn = $state(false);
+	let newsSeeded = false;
+	$effect.pre(() => {
+		if (newsSeeded) return;
+		newsSeeded = true;
+		newsOn = data.newsOptIn;
+	});
 
 	async function pickAvatar(e: Event) {
 		const file = (e.currentTarget as HTMLInputElement).files?.[0];
@@ -159,6 +166,22 @@
 	<button class="primary full" disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</button>
 </form>
 
+<section class="block">
+	<h2>Email preferences</h2>
+	<form method="POST" action="?/news" use:enhance={() => async ({ update }) => update({ reset: false })}>
+		<label class="optin">
+			<input type="checkbox" name="news" bind:checked={newsOn} onchange={(e) => (e.currentTarget as HTMLInputElement).form?.requestSubmit()} />
+			<span>
+				<strong>AuxRiot news</strong> — battle of the week, events, new features. A few emails a month at most.
+			</span>
+		</label>
+		<noscript><button>Save</button></noscript>
+	</form>
+	{#if form?.newsSaved}<p class="success small">{form.newsSaved === 'subscribed' ? "You're on the list." : "You're off the list."}</p>{/if}
+	{#if newsOn && !data.emailVerified}<p class="muted small">Confirm your email to start getting news.</p>{/if}
+	<p class="muted small">Account emails (confirmations, password resets) always come through.</p>
+</section>
+
 <style>
 	.kicker { margin: 8px 0 10px; }
 	.headline { font-size: clamp(3rem, 15vw, 5rem); line-height: 0.9; }
@@ -183,6 +206,9 @@
 	.link input { border-radius: 0 var(--radius) var(--radius) 0; }
 	.link:focus-within .ic { color: var(--paper); border-color: var(--paper); }
 	.full { width: 100%; }
+	.optin { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; margin: 8px 0; font-family: var(--body); font-size: 0.95rem; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--dim); }
+	.optin strong { color: var(--paper); }
+	.optin input { width: 22px; height: 22px; flex: none; margin-top: 1px; accent-color: var(--pink); }
 	.swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 12px 0 10px; max-width: 360px; }
 	.sw { position: relative; margin: 0; cursor: pointer; }
 	.sw input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }

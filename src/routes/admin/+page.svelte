@@ -22,6 +22,7 @@
 <svelte:head><title>Admin · AuxRiot</title></svelte:head>
 
 <h1>Moderation</h1>
+<p><a class="btn primary" href="/admin/news">Compose AuxRiot news →</a></p>
 {#if form?.ok}<p class="success">{form.ok}</p>{/if}
 {#if form?.error}<p class="error">{form.error}</p>{/if}
 

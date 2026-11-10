@@ -38,6 +38,10 @@
 			<label for="password">Password</label>
 			<input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required />
 		</div>
+		<label class="optin">
+			<input type="checkbox" name="news" />
+			<span>Send me AuxRiot news — battles of the week, events, new features. Unsubscribe anytime.</span>
+		</label>
 		{#if data.turnstileSiteKey}
 			<div class="cf-turnstile" data-sitekey={data.turnstileSiteKey} data-theme="dark"></div>
 		{/if}
@@ -52,4 +56,6 @@
 
 <style>
 	.auth { max-width: 420px; margin: 24px auto; }
+	.optin { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-family: var(--body); font-size: 0.9rem; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--dim); }
+	.optin input { width: 20px; height: 20px; flex: none; margin-top: 1px; accent-color: var(--pink); }
 </style>

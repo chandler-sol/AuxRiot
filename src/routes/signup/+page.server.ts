@@ -41,8 +41,11 @@ export const actions: Actions = {
 		}
 
 		const id = newId();
-		await env.DB.prepare('INSERT INTO users (id, username, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?)')
-			.bind(id, username, email, await hashPassword(password), Date.now())
+		const news = form.get('news') === 'on';
+		await env.DB.prepare(
+			'INSERT INTO users (id, username, email, password_hash, created_at, news_opt_in, news_opt_in_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+		)
+			.bind(id, username, email, await hashPassword(password), Date.now(), news ? 1 : 0, news ? Date.now() : null)
 			.run();
 		await recordSignals(env.DB, id, locals.ip, locals.deviceId, env.SIGNAL_SALT ?? 'dev-salt');
 		await createSession(env.DB, cookies, id, url.protocol === 'https:');

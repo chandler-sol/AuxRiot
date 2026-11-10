@@ -94,14 +94,14 @@ export async function consumeEmailToken(db: D1Database, token: string, purpose: 
 
 function layout(opts: { kicker: string; headline: string; body: string; button: string; url: string; footer: string }) {
 	const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-	return `<!doctype html><html><body style="margin:0;background:#0e0d0b;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;color:#ede6d6">
+	return `<!doctype html><html><head><meta charset="utf-8"><style>@import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');</style></head><body style="margin:0;background:#0e0d0b;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;color:#ede6d6">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px">
-<tr><td style="font-family:Impact,'Arial Narrow Bold','Arial Black',sans-serif;font-size:30px;letter-spacing:1px;color:#ede6d6;padding-bottom:28px">AUX<span style="color:#ff3d7f">RIOT</span></td></tr>
+<tr><td style="font-family:Anton,Impact,'Arial Narrow Bold','Arial Black',sans-serif;font-size:30px;letter-spacing:1px;color:#ede6d6;padding-bottom:28px">AUX<span style="color:#ff3d7f">RIOT</span></td></tr>
 <tr><td style="font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#8a8274;padding-bottom:10px">${esc(opts.kicker)}</td></tr>
-<tr><td style="font-family:Impact,'Arial Narrow Bold','Arial Black',sans-serif;font-size:44px;line-height:1;text-transform:uppercase;color:#ede6d6;padding-bottom:18px">${opts.headline}</td></tr>
+<tr><td style="font-family:Anton,Impact,'Arial Narrow Bold','Arial Black',sans-serif;font-size:44px;line-height:1;text-transform:uppercase;color:#ede6d6;padding-bottom:18px">${opts.headline}</td></tr>
 <tr><td style="font-size:16px;line-height:1.5;color:#bdb5a3;padding-bottom:26px">${esc(opts.body)}</td></tr>
-<tr><td style="padding-bottom:26px"><a href="${esc(opts.url)}" style="display:inline-block;background:#ede6d6;color:#0e0d0b;text-decoration:none;font-family:Impact,'Arial Narrow Bold','Arial Black',sans-serif;font-size:20px;letter-spacing:1px;text-transform:uppercase;padding:14px 26px;border-radius:2px">${esc(opts.button)}</a></td></tr>
+<tr><td style="padding-bottom:26px"><a href="${esc(opts.url)}" style="display:inline-block;background:#ede6d6;color:#0e0d0b;text-decoration:none;font-family:Anton,Impact,'Arial Narrow Bold','Arial Black',sans-serif;font-size:20px;letter-spacing:1px;text-transform:uppercase;padding:14px 26px;border-radius:2px">${esc(opts.button)}</a></td></tr>
 <tr><td style="font-size:13px;line-height:1.5;color:#8a8274;border-top:1px dashed #3a352e;padding-top:16px">${esc(opts.footer)}<br>Button not working? Paste this link into your browser:<br><a href="${esc(opts.url)}" style="color:#ede6d6;word-break:break-all">${esc(opts.url)}</a></td></tr>
 </table></td></tr></table></body></html>`;
 }

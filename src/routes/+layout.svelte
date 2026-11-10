@@ -9,7 +9,7 @@
 	let menuOpen = $state(false);
 	let verifyMsg = $state('');
 	// Pages that use the wide desktop layout; forms and reading pages stay narrow.
-	const WIDE = new Set(['/', '/battles', '/battles/[id]', '/u/[username]']);
+	const WIDE = new Set(['/', '/battles', '/battles/[id]', '/u/[username]', '/admin/news']);
 	let wide = $derived(WIDE.has(page.route.id ?? ''));
 	let menuEl = $state<HTMLDetailsElement>();
 

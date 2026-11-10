@@ -24,6 +24,8 @@ declare global {
 		TURNSTILE_SECRET?: string;
 		SIGNAL_SALT?: string;
 		RESEND_API_KEY?: string;
+		RESEND_ADMIN_KEY?: string;
+		NEWS_SEGMENT_ID: string;
 	}
 
 	interface SessionUser {

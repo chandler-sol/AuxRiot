@@ -2,14 +2,18 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
 import { consumeEmailToken, createEmailToken, sendEmail, verifyEmail } from '#lib/server/email.ts';
+import { syncNewsContact } from '#lib/server/news.ts';
 
 export const load: PageServerLoad = async ({ url, platform }) => {
 	const token = url.searchParams.get('token');
 	if (!token) return { state: 'missing' as const };
-	const db = getEnv(platform).DB;
+	const env = getEnv(platform);
+	const db = env.DB;
 	const userId = await consumeEmailToken(db, token, 'verify');
 	if (!userId) return { state: 'invalid' as const };
 	await db.prepare('UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?').bind(Date.now(), userId).run();
+	const u = await db.prepare('SELECT email, username, news_opt_in FROM users WHERE id = ?').bind(userId).first<{ email: string; username: string; news_opt_in: number }>();
+	if (u?.news_opt_in) await syncNewsContact(env, { id: userId, email: u.email, username: u.username, optIn: true, verified: true });
 	return { state: 'verified' as const };
 };
 
