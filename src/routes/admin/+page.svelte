@@ -20,6 +20,27 @@
 {#if form?.error}<p class="error">{form.error}</p>{/if}
 
 <section class="card stack">
+	<h2>Voting eligibility</h2>
+	<p class="muted small">
+		How old an account must be before it can vote. Lower it during launches or growth pushes so newcomers can join in;
+		raise it when the crowd is big enough that fresh alt accounts are the bigger risk. Changes apply instantly.
+	</p>
+	<p>
+		Current: <strong>{data.voterMinAgeHours === 0 ? 'no waiting period' : `${data.voterMinAgeHours} hours`}</strong>
+		{#if data.voterMinAgeHours >= 48}<span class="muted small">({+(data.voterMinAgeHours / 24).toFixed(1)} days)</span>{/if}
+	</p>
+	<form method="POST" action="?/voterAge" class="row" use:enhance={keep}>
+		{#each [[0, 'None'], [24, '24 hours'], [72, '3 days'], [168, '7 days']] as [h, label] (h)}
+			<button name="hours" value={h} class:primary={data.voterMinAgeHours === h}>{label}</button>
+		{/each}
+	</form>
+	<form method="POST" action="?/voterAge" class="row" use:enhance={keep}>
+		<input name="hours" type="number" min="0" max="2160" step="1" placeholder="Custom hours" required style="flex:1;min-width:140px" />
+		<button>Set</button>
+	</form>
+</section>
+
+<section class="card stack">
 	<h2>Shadowban</h2>
 	<p class="muted small">Shadowbanned users see nothing different, but their votes count for zero and their comments are hidden from everyone else.</p>
 	<form method="POST" action="?/shadowban" class="row" use:enhance={keep}>

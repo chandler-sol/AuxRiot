@@ -1,6 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
+import { VOTER_AGE_KEY, getVoterMinAgeHours, setSetting } from '#lib/server/settings.ts';
 
 function requireAdmin(locals: App.Locals) {
 	if (!locals.user?.isAdmin) error(404);
@@ -34,6 +35,7 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 	]);
 
 	return {
+		voterMinAgeHours: await getVoterMinAgeHours(db, getEnv(platform)),
 		reports: reports.results,
 		linked: linked.results,
 		discounted: discounted.results,
@@ -43,6 +45,17 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 };
 
 export const actions: Actions = {
+	voterAge: async ({ request, locals, platform }) => {
+		const admin = requireAdmin(locals);
+		const f = await request.formData();
+		const hours = Number(f.get('hours'));
+		if (!Number.isInteger(hours) || hours < 0 || hours > 24 * 90) {
+			return fail(400, { error: 'Enter whole hours between 0 and 2160.' });
+		}
+		await setSetting(getEnv(platform).DB, VOTER_AGE_KEY, String(hours), admin.username);
+		return { ok: hours === 0 ? 'Any account can now vote immediately.' : `New accounts can now vote after ${hours} hours.` };
+	},
+
 	shadowban: async ({ request, locals, platform }) => {
 		requireAdmin(locals);
 		const f = await request.formData();

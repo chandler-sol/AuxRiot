@@ -11,6 +11,7 @@ import {
 	type Scores
 } from '#lib/server/battles.ts';
 import { getEnv, newId, HOUR } from '#lib/server/util.ts';
+import { getVoterMinAgeHours } from '#lib/server/settings.ts';
 
 interface BattleRow {
 	id: string;
@@ -77,7 +78,7 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 
 	const listenMap = Object.fromEntries((listens?.results ?? []).map((l) => [l.entry_id, l.listened_ms]));
 	const isParticipant = !!user && (user.id === battle.creator_id || user.id === battle.challenger_id);
-	const minHours = Number(env.MIN_VOTER_ACCOUNT_AGE_HOURS) || 0;
+	const minHours = await getVoterMinAgeHours(env.DB, env);
 
 	let voteBlock: string | null = null;
 	if (battle.status === 'voting') {
@@ -176,7 +177,7 @@ export const actions: Actions = {
 		if (user.id === battle.creator_id || user.id === battle.challenger_id) {
 			return fail(403, { voteError: "You can't vote in your own battle." });
 		}
-		if (!voterAgeOk(user, Number(env.MIN_VOTER_ACCOUNT_AGE_HOURS) || 0)) {
+		if (!voterAgeOk(user, await getVoterMinAgeHours(env.DB, env))) {
 			return fail(403, { voteError: 'Your account is too new to vote yet.' });
 		}
 

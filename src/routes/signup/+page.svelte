@@ -45,7 +45,7 @@
 		<button class="primary" disabled={busy}>{busy ? 'Creating…' : 'Sign up'}</button>
 	</form>
 	<p class="muted small">
-		New accounts can battle right away. Voting unlocks after your account is a week old — that keeps battles fair.
+		New accounts can battle right away.{#if data.voterWait}{' '}Voting unlocks once your account is {data.voterWait} old — that keeps battles fair.{/if}
 	</p>
 	<p class="small">Already have an account? <a href="/login">Log in</a></p>
 </div>

@@ -2,10 +2,15 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { USERNAME_RE, createSession, hashPassword, recordSignals, verifyTurnstile } from '#lib/server/auth.ts';
 import { getEnv, newId } from '#lib/server/util.ts';
+import { describeHours, getVoterMinAgeHours } from '#lib/server/settings.ts';
 
-export const load: PageServerLoad = ({ locals, platform }) => {
+export const load: PageServerLoad = async ({ locals, platform }) => {
 	if (locals.user) redirect(303, '/');
-	return { turnstileSiteKey: getEnv(platform).TURNSTILE_SITE_KEY || '' };
+	const env = getEnv(platform);
+	return {
+		turnstileSiteKey: env.TURNSTILE_SITE_KEY || '',
+		voterWait: describeHours(await getVoterMinAgeHours(env.DB, env))
+	};
 };
 
 export const actions: Actions = {

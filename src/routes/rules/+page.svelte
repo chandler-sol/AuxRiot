@@ -1,3 +1,8 @@
+<script lang="ts">
+	import type { PageProps } from './$types';
+	let { data }: PageProps = $props();
+</script>
+
 <svelte:head><title>Rules &amp; voting · AuxRiot</title></svelte:head>
 
 <article class="card stack prose">
@@ -12,7 +17,10 @@
 	<ul>
 		<li>Voters rate each beat 1–5 stars on <strong>Drums</strong>, <strong>Melody</strong>, <strong>Mix</strong> and <strong>Overall</strong>.</li>
 		<li>You must play at least <strong>75% of both beats</strong> before your vote is accepted. Skipped sections don't count.</li>
-		<li>Accounts must be at least a week old to vote. Participants can't vote in their own battle.</li>
+		<li>
+			{#if data.voterWait}Accounts must be at least {data.voterWait} old to vote.{/if}
+			Participants can't vote in their own battle.
+		</li>
 		<li>Scores stay hidden until voting closes; only the number of votes is shown. You can change your vote until then.</li>
 		<li>A beat's score is the average of its four category averages. If it's level, the higher Overall average wins.</li>
 	</ul>
