@@ -66,8 +66,8 @@
 	}
 
 	/** Largest size (rem cap) at which a single-line name still fits the column; Anton glyphs ≈ 0.5em wide. */
-	function fitSize(name: string, maxRem: number) {
-		return `min(${maxRem}rem, calc(var(--namecol) / ${(Math.max(4, name.length) * 0.5).toFixed(2)}))`;
+	function fitSize(name: string, maxVar: '--namemax' | '--winmax') {
+		return `min(var(${maxVar}), calc(var(--namecol) / ${(Math.max(4, name.length) * 0.5).toFixed(2)}))`;
 	}
 
 	let winnerSlot = $derived(b.winnerId === null ? null : b.winnerId === b.creatorId ? 0 : 1);
@@ -156,7 +156,7 @@
 		<section class="winner">
 			<p class="mono kicker">Battle {tag} — Final — {r.countedVotes} counted vote{r.countedVotes === 1 ? '' : 's'}</p>
 			{#if winnerSlot !== null}
-				<h1 class="wname" style:color={COLORS[winnerSlot]} style:font-size={fitSize(names[winnerSlot], 7.5)}>{names[winnerSlot]}</h1>
+				<h1 class="wname" style:color={COLORS[winnerSlot]} style:font-size={fitSize(names[winnerSlot], '--winmax')}>{names[winnerSlot]}</h1>
 				<div class="final">
 					<span class="display big" style:color={COLORS[winnerSlot]}>{r.slots[winnerSlot].total.toFixed(1)}</span>
 					<span class="display dash">—</span>
@@ -224,10 +224,10 @@
 		<section class="poster">
 			<p class="mono kicker">Battle {tag} — {b.title} — {data.views} view{data.views === 1 ? '' : 's'}</p>
 			<div class="faceoff">
-				<a class="pname display na" href="/u/{b.creator}" style:color={COLORS[0]} style:font-size={fitSize(b.creator, 6)}>{b.creator}</a>
+				<a class="pname display na" href="/u/{b.creator}" style:color={COLORS[0]} style:font-size={fitSize(b.creator, '--namemax')}>{b.creator}</a>
 				<span class="vs display">— vs —</span>
 				{#if b.challenger}
-					<a class="pname display nb" href="/u/{b.challenger}" style:color={COLORS[1]} style:font-size={fitSize(b.challenger, 6)}>{b.challenger}</a>
+					<a class="pname display nb" href="/u/{b.challenger}" style:color={COLORS[1]} style:font-size={fitSize(b.challenger, '--namemax')}>{b.challenger}</a>
 				{:else}
 					<span class="pname display nb tbd">???</span>
 				{/if}
@@ -432,7 +432,7 @@
 </article>
 
 <style>
-	article { --namecol: calc(min(100vw, 760px) - 34px); }
+	article { --namecol: calc(min(100vw, 760px) - 34px); --namemax: 6rem; --winmax: 7.5rem; }
 	article > section, article > .ticket, .results-top > section, .lower > section { margin-bottom: 24px; }
 	.kicker { color: var(--muted); margin: 0 0 10px; overflow-wrap: anywhere; }
 
@@ -498,6 +498,20 @@
 	.val { color: var(--paper); }
 	.val.lose { color: var(--muted); opacity: 1; }
 	.replay { display: grid; gap: 8px; }
+
+	/* Phones: tighter vertical rhythm so the countdown and both players fit on one screen. */
+	@media (max-width: 959px) {
+		article { --namemax: 3.4rem; --winmax: 5rem; }
+		article > section, article > .ticket, .results-top > section, .lower > section { margin-bottom: 14px; }
+		.kicker { margin-bottom: 6px; }
+		.poster { padding-top: 0; }
+		.vs { font-size: 1.05rem; margin: 2px 0; }
+		.ticket { padding: 10px 14px 9px; }
+		.tv { font-size: 2.1rem; }
+		.tv.sm { font-size: 1.35rem; }
+		.players { gap: 10px; }
+		.promo-status { margin: -4px 0 14px; }
+	}
 
 	@media (min-width: 960px) {
 		article { --namecol: calc((min(100vw, 1200px) - 64px - 140px) / 2); }

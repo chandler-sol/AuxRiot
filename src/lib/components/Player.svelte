@@ -287,4 +287,10 @@
 		animation: spin 0.7s linear infinite;
 	}
 	@keyframes spin { to { transform: rotate(360deg); } }
+	@media (max-width: 959px) {
+		.full { padding: 12px 14px; gap: 8px; }
+		.pname { font-size: 1.65rem; }
+		.wave { height: 44px; }
+		.full .play { width: 48px !important; height: 48px !important; }
+	}
 </style>
