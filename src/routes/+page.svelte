@@ -23,6 +23,7 @@
 </svelte:head>
 
 <section class="hero">
+	<div class="hero-main">
 	<p class="mono kicker">AuxRiot — 1v1 beat battles — open every night</p>
 	<h1 class="headline">
 		No likes.<br />
@@ -36,23 +37,44 @@
 		<a class="btn primary big" href="/signup">Join free</a>
 		<a class="btn big" href="/battles">See live battles{st.live ? ` · ${st.live}` : ''}</a>
 	</div>
+	</div>
+	{#if data.samples.length || st.battles > 0}
+		<aside class="hero-side">
+			{#if data.samples[0]}
+				{@const f = data.samples[0]}
+				<div class="featured">
+					<p class="mono kicker">Now playing on AuxRiot</p>
+					<Player
+						variant="full"
+						src={f.src}
+						peaks={f.peaks}
+						durationMs={f.durationMs}
+						name={f.name}
+						corner={f.status === 'voting' ? '● Live' : f.status === 'open' ? 'Open' : 'Final'}
+						accent={f.color}
+						previewSeconds={30}
+					/>
+					<a class="mono from" href="/battles/{f.battleId}">From {f.matchup} →</a>
+				</div>
+			{/if}
+			{#if st.battles > 0}
+				<div class="stats">
+					<div><span class="display">{st.battles}</span><span class="mono">Battles fought</span></div>
+					<div><span class="display">{st.producers}</span><span class="mono">Producers</span></div>
+					<div><span class="display">{st.votes}</span><span class="mono">Votes cast</span></div>
+				</div>
+			{/if}
+		</aside>
+	{/if}
 </section>
 
 <div class="tape-wrap" aria-hidden="true">
 	<div class="tape mono">
-		{#each [0, 1, 2] as rep (rep)}
+		{#each [0, 1, 2, 3, 4, 5] as rep (rep)}
 			{#each TAPE as t, i (i)}<span>{t}</span><span>★</span>{/each}
 		{/each}
 	</div>
 </div>
-
-{#if st.battles > 0}
-	<div class="stats">
-		<div><span class="display">{st.battles}</span><span class="mono">Battles fought</span></div>
-		<div><span class="display">{st.producers}</span><span class="mono">Producers</span></div>
-		<div><span class="display">{st.votes}</span><span class="mono">Votes cast</span></div>
-	</div>
-{/if}
 
 <section class="block">
 	<div class="block-head">
@@ -123,8 +145,10 @@
 </section>
 
 <section class="final">
-	<p class="mono kicker">Doors are open</p>
-	<p class="display line">Your beat.<br />Their beat.<br /><span>One winner.</span></p>
+	<div>
+		<p class="mono kicker">Doors are open</p>
+		<p class="display line">Your beat.<br />Their beat.<br /><span>One winner.</span></p>
+	</div>
 	<div class="ctas">
 		<a class="btn primary big" href="/signup">Join free</a>
 		<a class="btn big" href="/login">Log in</a>
@@ -140,17 +164,20 @@
 	.ctas { display: flex; gap: 10px; flex-wrap: wrap; }
 	.big { min-height: 54px; padding: 4px 26px 0; font-size: 1.35rem; }
 
-	.tape-wrap { overflow: hidden; margin: 18px -16px 26px; padding: 12px 0; }
+	.tape-wrap { overflow: hidden; margin: 6px calc(50% - 50vw) 14px; padding: max(12px, 2vw) 0; }
 	.tape {
 		display: flex; gap: 18px; white-space: nowrap; width: max-content;
 		background: var(--pink); color: var(--ink); padding: 10px 20px; font-size: 0.8rem;
-		transform-origin: 0 50%;
+		transform-origin: 50vw 50%;
 		transform: rotate(-2deg) translateX(-10px);
 		animation: scroll 36s linear infinite;
 	}
-	@keyframes scroll { to { transform: rotate(-2deg) translateX(-33.33%); } }
+	@keyframes scroll { to { transform: rotate(-2deg) translateX(-50%); } }
 	@media (prefers-reduced-motion: reduce) { .tape { animation: none; } }
 
+	.hero-side { display: flex; flex-direction: column; gap: 14px; margin-top: 24px; }
+	.featured { display: none; }
+	.featured .kicker { margin-bottom: 10px; }
 	.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--paper); color: var(--ink); border-radius: var(--radius); padding: 14px 8px 12px; text-align: center; margin-bottom: 8px; }
 	.stats div { display: flex; flex-direction: column; }
 	.stats .display { font-size: 2.2rem; line-height: 1; }
@@ -190,4 +217,24 @@
 	.final { margin-top: 48px; padding: 28px 0 8px; border-top: 1.5px dashed var(--line-2); }
 	.line { font-size: clamp(3rem, 15vw, 5.6rem); line-height: 0.9; margin: 0 0 22px; }
 	.line span { color: var(--pink); }
+
+	@media (min-width: 960px) {
+		.hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 56px; align-items: center; padding-top: 48px; }
+		.headline { font-size: clamp(3.6rem, 5.4vw, 6.4rem); }
+		.sub { font-size: 1.2rem; }
+		.hero-side { margin-top: 0; }
+		.featured { display: flex; flex-direction: column; gap: 6px; }
+		.samples { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+		/* The first beat is already featured in the hero on desktop. */
+		.samples .sample:first-child { display: none; }
+		.block { margin-top: 56px; }
+		.block-head h2, .block > h2 { font-size: 3rem; }
+		.rounds { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+		.rounds li { flex-direction: column; gap: 10px; padding: 22px 20px; border-radius: 0; }
+		.rounds li:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+		.rounds li:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+		.num { font-size: 3.2rem; }
+		.final { display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; margin-top: 72px; }
+		.line { font-size: clamp(4rem, 7vw, 7rem); margin: 0; }
+	}
 </style>

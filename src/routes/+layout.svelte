@@ -2,9 +2,13 @@
 	import '../app.css';
 	import favicon from '#lib/assets/favicon.svg';
 	import type { LayoutProps } from './$types';
+	import { page } from '$app/state';
 
 	let { children, data }: LayoutProps = $props();
 	let menuOpen = $state(false);
+	// Pages that use the wide desktop layout; forms and reading pages stay narrow.
+	const WIDE = new Set(['/', '/battles', '/battles/[id]', '/u/[username]']);
+	let wide = $derived(WIDE.has(page.route.id ?? ''));
 	let menuEl = $state<HTMLDetailsElement>();
 
 	function closeOnOutside(e: MouseEvent) {
@@ -24,7 +28,7 @@
 </svelte:head>
 
 <header>
-	<div class="container bar">
+	<div class="container wide bar">
 		<a href="/" class="logo display" aria-label="AuxRiot home">AUX<span>RIOT</span></a>
 		<nav>
 			{#if data.user}
@@ -46,11 +50,11 @@
 	</div>
 </header>
 
-<main class="container">
+<main class="container" class:wide>
 	{@render children()}
 </main>
 
-<footer class="container mono">
+<footer class="container wide mono">
 	<a href="/rules">Rules &amp; voting</a>
 	<span>·</span>
 	<a href="/dmca">DMCA / copyright</a>

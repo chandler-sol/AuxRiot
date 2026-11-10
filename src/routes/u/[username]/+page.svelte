@@ -19,6 +19,7 @@
 
 <svelte:head><title>{p.username} · AuxRiot</title></svelte:head>
 
+<div class="pgrid">
 <section class="head" style:--me={accent}>
 	<div class="id">
 		<Avatar username={p.username} avatarKey={p.avatar_key} color={p.color} size={88} />
@@ -38,6 +39,7 @@
 	</div>
 </section>
 
+<div class="battles">
 <h2>Battles</h2>
 {#if data.battles.length === 0}
 	<p class="muted">No battles yet.</p>
@@ -48,6 +50,8 @@
 		{/each}
 	</ul>
 {/if}
+</div>
+</div>
 
 <style>
 	.head { padding: 8px 0 24px; }
@@ -67,4 +71,12 @@
 	.v { font-size: 2rem; line-height: 1; }
 	.l { color: #5a544b; font-size: 0.6rem; margin-top: 4px; }
 	.list { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+
+	@media (min-width: 960px) {
+		.pgrid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 40px; align-items: start; padding-top: 16px; }
+		.head { position: sticky; top: 84px; padding: 0; }
+		.name { font-size: clamp(2.6rem, 4.4vw, 4rem); }
+		.battles h2 { margin-top: 0; }
+		.list { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+	}
 </style>

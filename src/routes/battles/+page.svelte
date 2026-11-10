@@ -26,20 +26,24 @@
 <svelte:head><title>AuxRiot · 1v1 beat battles</title></svelte:head>
 
 <section class="hero">
-	<p class="mono kicker">The feed — live from AuxRiot</p>
-	<h1 class="headline">Tonight's <span>card.</span></h1>
-	<p class="sub">
-		Live votes, open challenges and fresh results.
-		<a class="how mono" href="/rules">How battles go down →</a>
-	</p>
-	{#if !data.user}
-		<a class="btn primary" href="/signup">Start battling</a>
-	{/if}
+	<div>
+		<p class="mono kicker">The feed — live from AuxRiot</p>
+		<h1 class="headline">Tonight's <span>card.</span></h1>
+	</div>
+	<div class="hero-aside">
+		<p class="sub">
+			Live votes, open challenges and fresh results.
+			<a class="how mono" href="/rules">How battles go down →</a>
+		</p>
+		{#if !data.user}
+			<a class="btn primary" href="/signup">Start battling</a>
+		{/if}
+	</div>
 </section>
 
 <div class="tape-wrap" aria-hidden="true">
 	<div class="tape mono">
-		{#each [0, 1] as rep (rep)}
+		{#each [0, 1, 2, 3, 4, 5] as rep (rep)}
 			{#each tape as t, i (i)}<span>{t}</span><span>★</span>{/each}
 		{/each}
 	</div>
@@ -101,11 +105,11 @@
 	.how { display: inline-block; margin-left: 4px; color: var(--paper); text-decoration: none; border-bottom: 1.5px solid var(--pink); }
 	.how:hover { color: var(--pink); }
 	.sub { color: var(--dim); margin: 0 0 18px; max-width: 32em; }
-	.tape-wrap { overflow: hidden; margin: 4px -16px 22px; padding: 10px 0; }
+	.tape-wrap { overflow: hidden; margin: 0 calc(50% - 50vw) 12px; padding: max(12px, 2vw) 0; }
 	.tape {
 		display: flex; gap: 18px; white-space: nowrap; width: max-content;
 		background: var(--paper); color: var(--ink); padding: 9px 20px; font-size: 0.75rem;
-		transform-origin: 0 50%;
+		transform-origin: 50vw 50%;
 		transform: rotate(2deg) translateX(-10px);
 		animation: scroll 40s linear infinite;
 	}
@@ -118,4 +122,16 @@
 	.sortbar label { margin: 0; color: var(--muted); }
 	.sortbar select { width: auto; padding: 8px 12px; font-family: var(--mono); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 	.big { font-size: 2.2rem; margin: 0 0 8px; }
+
+	@media (min-width: 720px) {
+		.list { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+	}
+	@media (min-width: 1080px) {
+		.list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+		.promoted .list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+		.hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; padding-top: 32px; }
+		.hero .sub { margin-bottom: 12px; }
+		.hero .headline { margin-bottom: 0; }
+		.hero-aside { max-width: 380px; text-align: right; }
+	}
 </style>

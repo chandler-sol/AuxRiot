@@ -67,7 +67,7 @@
 
 	/** Largest size (rem cap) at which a single-line name still fits the column; Anton glyphs ≈ 0.5em wide. */
 	function fitSize(name: string, maxRem: number) {
-		return `min(${maxRem}rem, calc((min(100vw, 760px) - 34px) / ${(Math.max(4, name.length) * 0.5).toFixed(2)}))`;
+		return `min(${maxRem}rem, calc(var(--namecol) / ${(Math.max(4, name.length) * 0.5).toFixed(2)}))`;
 	}
 
 	let winnerSlot = $derived(b.winnerId === null ? null : b.winnerId === b.creatorId ? 0 : 1);
@@ -152,6 +152,7 @@
 	{#if b.status === 'closed' && b.result}
 		{@const r = b.result}
 		<!-- RESULTS -->
+		<div class="results-top">
 		<section class="winner">
 			<p class="mono kicker">Battle {tag} — Final — {r.countedVotes} counted vote{r.countedVotes === 1 ? '' : 's'}</p>
 			{#if winnerSlot !== null}
@@ -197,6 +198,7 @@
 				</div>
 			{/each}
 		</section>
+		</div>
 
 		<section class="replay">
 			<h2>Run it back</h2>
@@ -221,13 +223,15 @@
 		<!-- LIVE / OPEN / EXPIRED -->
 		<section class="poster">
 			<p class="mono kicker">Battle {tag} — {b.title} — {data.views} view{data.views === 1 ? '' : 's'}</p>
-			<a class="pname display" href="/u/{b.creator}" style:color={COLORS[0]} style:font-size={fitSize(b.creator, 6)}>{b.creator}</a>
-			<span class="vs display">— vs —</span>
-			{#if b.challenger}
-				<a class="pname display" href="/u/{b.challenger}" style:color={COLORS[1]} style:font-size={fitSize(b.challenger, 6)}>{b.challenger}</a>
-			{:else}
-				<span class="pname display tbd">???</span>
-			{/if}
+			<div class="faceoff">
+				<a class="pname display na" href="/u/{b.creator}" style:color={COLORS[0]} style:font-size={fitSize(b.creator, 6)}>{b.creator}</a>
+				<span class="vs display">— vs —</span>
+				{#if b.challenger}
+					<a class="pname display nb" href="/u/{b.challenger}" style:color={COLORS[1]} style:font-size={fitSize(b.challenger, 6)}>{b.challenger}</a>
+				{:else}
+					<span class="pname display nb tbd">???</span>
+				{/if}
+			</div>
 		</section>
 
 		{#if b.status === 'voting' && b.votingEndsAt}
@@ -324,6 +328,9 @@
 			{/each}
 		</section>
 
+	{/if}
+
+	<div class="lower" class:solo={b.status !== 'voting'}>
 		{#if b.status === 'voting'}
 			<section class="scorecard">
 				<div class="sc-head">
@@ -369,7 +376,6 @@
 				{/if}
 			</section>
 		{/if}
-	{/if}
 
 	<section class="comments-sec">
 		<h2>Crowd noise · {data.comments.length}</h2>
@@ -413,6 +419,7 @@
 			{/each}
 		</ul>
 	</section>
+	</div>
 
 	{#if data.user}
 		<div class="report-battle"><ReportForm targetType="battle" targetId={b.id} label="Report this battle (fake votes, stolen beat…)" /></div>
@@ -420,11 +427,13 @@
 </article>
 
 <style>
-	article > section, article > .ticket { margin-bottom: 24px; }
+	article { --namecol: calc(min(100vw, 760px) - 34px); }
+	article > section, article > .ticket, .results-top > section, .lower > section { margin-bottom: 24px; }
 	.kicker { color: var(--muted); margin: 0 0 10px; overflow-wrap: anywhere; }
 
 	/* Poster header */
 	.poster { display: flex; flex-direction: column; padding-top: 8px; }
+	.faceoff { display: flex; flex-direction: column; }
 	.pname { line-height: 0.9; text-decoration: none; overflow-wrap: anywhere; }
 	.tbd { color: var(--muted); }
 	.vs { color: var(--muted); font-size: 1.35rem; letter-spacing: 0.15em; margin: 6px 0; }
@@ -484,6 +493,23 @@
 	.val { color: var(--paper); }
 	.val.lose { color: var(--muted); opacity: 1; }
 	.replay { display: grid; gap: 8px; }
+
+	@media (min-width: 960px) {
+		article { --namecol: calc((min(100vw, 1200px) - 64px - 140px) / 2); }
+		.poster { padding-top: 24px; }
+		.faceoff { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 20px; }
+		.faceoff .nb { text-align: right; }
+		.faceoff .vs { margin: 0; text-align: center; }
+		.players { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 16px; }
+		.lower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+		.lower.solo { grid-template-columns: minmax(0, 720px); }
+		.scorecard { position: sticky; top: 84px; }
+		.results-top { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px; align-items: center; --namecol: calc((min(100vw, 1200px) - 64px) * 0.5); }
+		.replay { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+		.final { margin-top: 10px; }
+		.stamp { margin-left: 32px; }
+		.replay h2 { grid-column: 1 / -1; }
+	}
 
 	/* Comments */
 	.comments { list-style: none; padding: 0; margin: 16px 0 0; }
