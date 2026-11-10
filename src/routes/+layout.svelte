@@ -20,7 +20,7 @@
 			(page.data.og as { description?: string } | undefined)?.description ??
 			'Post a beat. Get called out. A crowd that actually listened decides who hit harder. No likes, no algorithm.',
 		url: SITE + page.url.pathname,
-		image: SITE + '/og.png'
+		image: SITE + '/og-v2.png'
 	});
 	let menuEl = $state<HTMLDetailsElement>();
 
