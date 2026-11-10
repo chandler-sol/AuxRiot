@@ -1,5 +1,7 @@
 <script lang="ts">
+	import Avatar from '#lib/components/Avatar.svelte';
 	import BattleCard from '#lib/components/BattleCard.svelte';
+	import SocialLinks from '#lib/components/SocialLinks.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -11,8 +13,16 @@
 <svelte:head><title>{p.username} · AuxRiot</title></svelte:head>
 
 <section class="head">
-	<p class="mono muted">Producer — joined {new Date(p.created_at).toLocaleDateString()}</p>
+	<div class="id">
+		<Avatar username={p.username} avatarKey={p.avatar_key} size={88} />
+		<div class="idtext">
+			<p class="mono muted">Producer — joined {new Date(p.created_at).toLocaleDateString()}</p>
+			{#if data.isMe}<a class="mono edit" href="/settings/profile">Edit profile</a>{/if}
+		</div>
+	</div>
 	<h1 class="name">{p.username}</h1>
+	{#if p.bio}<p class="bio">{p.bio}</p>{/if}
+	<div class="soc"><SocialLinks socials={p.socials} username={p.username} /></div>
 	<div class="ticket">
 		<div><span class="display v">{p.wins}</span><span class="mono l">Wins</span></div>
 		<div><span class="display v">{p.losses}</span><span class="mono l">Losses</span></div>
@@ -34,7 +44,13 @@
 
 <style>
 	.head { padding: 8px 0 24px; }
-	.head p { margin: 0 0 8px; }
+	.id { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+	.idtext { display: flex; flex-direction: column; gap: 6px; }
+	.idtext p { margin: 0; }
+	.edit { color: var(--pink); text-decoration: none; }
+	.edit:hover { color: var(--paper); }
+	.bio { color: var(--dim); margin: 0 0 14px; white-space: pre-line; overflow-wrap: anywhere; }
+	.soc { margin-bottom: 16px; }
 	.name { font-size: clamp(3rem, 16vw, 5.5rem); line-height: 0.9; color: var(--pink); overflow-wrap: anywhere; }
 	.ticket {
 		display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import Avatar from '#lib/components/Avatar.svelte';
 	import Player from '#lib/components/Player.svelte';
 	import Scorecard from '#lib/components/Scorecard.svelte';
 	import Uploader from '#lib/components/Uploader.svelte';
@@ -315,7 +316,7 @@
 			{#each data.comments as c (c.id)}
 				<li>
 					<div class="cmeta">
-						<a class="mono" href="/u/{c.username}">@{c.username}</a>
+						<a class="mono who" href="/u/{c.username}"><Avatar username={c.username} avatarKey={c.avatar_key} size={28} />@{c.username}</a>
 						<span class="mono muted actions">
 							{ago(c.created_at, now)}
 							{#if data.user && (data.user.id === c.user_id || data.user.isAdmin)}
@@ -408,6 +409,8 @@
 	.comments li { border-top: 1px solid var(--line); padding: 12px 0; }
 	.cmeta { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 	.cmeta a { color: var(--paper); text-decoration: none; }
+	.who { display: inline-flex; align-items: center; gap: 8px; }
+	.who:hover { color: var(--pink); }
 	.actions { display: flex; gap: 10px; align-items: center; font-weight: 400; }
 	.comments .body { margin: 6px 0; color: var(--dim); white-space: pre-wrap; overflow-wrap: anywhere; }
 	.report-battle { margin-top: 8px; }

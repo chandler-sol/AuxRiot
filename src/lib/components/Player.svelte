@@ -238,7 +238,11 @@
 		flex: none; padding: 0; border-radius: 50%; min-height: 0;
 		background: var(--c); border: none; color: var(--ink);
 	}
-	.play:hover { background: var(--c); filter: brightness(1.12); }
+	.play { transition: transform 0.12s, box-shadow 0.15s; }
+	@media (hover: hover) {
+		.play:hover { background: var(--c); transform: scale(1.07); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 30%, transparent); }
+		.wave:hover rect:not(.done) { opacity: 0.45; }
+	}
 	.play svg { fill: currentColor; }
 	.wave { flex: 1; min-width: 0; height: 56px; cursor: pointer; touch-action: none; user-select: none; }
 	.wave svg { display: block; width: 100%; height: 100%; }

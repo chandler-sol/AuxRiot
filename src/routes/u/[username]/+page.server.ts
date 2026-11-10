@@ -1,13 +1,24 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
+import { parseSocials } from '#lib/server/profile.ts';
 
-export const load: PageServerLoad = async ({ params, platform }) => {
+export const load: PageServerLoad = async ({ params, platform, locals }) => {
 	const db = getEnv(platform).DB;
 	const profile = await db
-		.prepare('SELECT id, username, created_at, wins, losses, ties FROM users WHERE username = ?')
+		.prepare('SELECT id, username, created_at, wins, losses, ties, avatar_key, bio, socials FROM users WHERE username = ?')
 		.bind(params.username)
-		.first<{ id: string; username: string; created_at: number; wins: number; losses: number; ties: number }>();
+		.first<{
+			id: string;
+			username: string;
+			created_at: number;
+			wins: number;
+			losses: number;
+			ties: number;
+			avatar_key: string | null;
+			bio: string;
+			socials: string;
+		}>();
 	if (!profile) error(404, 'User not found');
 
 	const battles = await db
@@ -38,12 +49,14 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			comments: number;
 		}>();
 
+	const { socials, ...rest } = profile;
 	return {
-		profile,
+		profile: { ...rest, socials: parseSocials(socials) },
 		battles: battles.results.map(({ result_json, ...b }) => {
 			const r = result_json ? (JSON.parse(result_json) as { slots: { total: number }[] }) : null;
 			return { ...b, score: r ? ([r.slots[0].total, r.slots[1].total] as [number, number]) : null };
 		}),
+		isMe: locals.user?.id === profile.id,
 		now: Date.now()
 	};
 };

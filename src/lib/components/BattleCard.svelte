@@ -83,7 +83,12 @@
 		text-decoration: none;
 		transition: transform 0.12s, background 0.15s;
 	}
-	.bcard:hover { background: #201d19; }
+	@media (hover: hover) {
+		.bcard:hover { background: #201d19; box-shadow: 0 0 0 1.5px var(--a); transform: translateY(-2px); }
+		.bcard:hover .na, .bcard:hover .nb { letter-spacing: 0.01em; }
+	}
+	.bcard:focus-visible { outline: 2px solid var(--paper); outline-offset: 2px; }
+	.na, .nb { transition: letter-spacing 0.2s; }
 	.bcard:active { transform: scale(0.99); }
 	.edge { display: flex; flex-direction: column; width: 8px; flex: none; }
 	.edge i { flex: 1; }

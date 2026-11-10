@@ -57,6 +57,12 @@
 	}
 	.pip.on { background: var(--c); border-color: var(--c); }
 	.pip:active { transform: scale(0.85); }
+	@media (hover: hover) {
+		/* Preview the score you're about to give: hovered pip and every pip before it. */
+		.pips:hover .pip { background: transparent; border-color: #4a443b; }
+		.pips:hover .pip:hover,
+		.pips:hover .pip:has(~ .pip:hover) { background: color-mix(in srgb, var(--c) 55%, transparent); border-color: var(--c); }
+	}
 	.pip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
 	.pip:has(input:focus-visible) { outline: 2px solid var(--paper); outline-offset: 1px; }
 	.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
