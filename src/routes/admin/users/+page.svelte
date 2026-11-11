@@ -8,6 +8,7 @@
 	let { data, form }: PageProps = $props();
 	let openGrant = $state<string | null>(null);
 	let openSuspend = $state<string | null>(null);
+	let openMenu = $state<string | null>(null);
 	// Keep the current search/filter/sort on form actions (a bare "?/grant" would drop them).
 	const act = (name: string) => {
 		const qs = new URLSearchParams();
@@ -17,6 +18,10 @@
 		const base = qs.toString();
 		return `?${base ? base + '&' : ''}/${name}`;
 	};
+	const keepClose = () => async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) => {
+		openMenu = null;
+		await update({ reset: false });
+	};
 	const keep = () => async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) => update({ reset: false });
 
 	function nav(e: Event) {
@@ -25,6 +30,11 @@
 		goto(`/admin/users?${p}`, { reset: false });
 	}
 </script>
+
+<svelte:window
+	onclick={(e) => { if (openMenu && !(e.target as HTMLElement).closest('.more')) openMenu = null; }}
+	onkeydown={(e) => { if (e.key === 'Escape') openMenu = null; }}
+/>
 
 <svelte:head><title>Users · AuxRiot admin</title></svelte:head>
 
@@ -94,6 +104,42 @@
 					{#if u.email}<span class="small muted email">{u.email}</span>{/if}
 				</div>
 				<span class="display credits">{u.credits.toLocaleString()}<span class="mono"> cr</span></span>
+				{#if canAct || data.isAdmin}
+					<details class="more" open={openMenu === u.id} ontoggle={(e) => { const o = (e.currentTarget as HTMLDetailsElement).open; if (o) openMenu = u.id; else if (openMenu === u.id) openMenu = null; }}>
+						<summary aria-label="Actions for {u.username}">
+							<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="5" cy="12" r="2" fill="currentColor" /><circle cx="12" cy="12" r="2" fill="currentColor" /><circle cx="19" cy="12" r="2" fill="currentColor" /></svg>
+						</summary>
+						<div class="pop">
+							{#if data.isAdmin}
+								<button type="button" onclick={() => { openGrant = u.id; openSuspend = null; openMenu = null; }}>Give credits</button>
+							{/if}
+							{#if canAct}
+								<form method="POST" action={act('shadowban')} use:enhance={keepClose}>
+									<input type="hidden" name="user_id" value={u.id} />
+									<input type="hidden" name="on" value={u.shadowbanned ? '0' : '1'} />
+									<button>{u.shadowbanned ? 'Lift shadowban' : 'Shadowban'}</button>
+								</form>
+								{#if u.suspended_at}
+									<form method="POST" action={act('suspend')} use:enhance={keepClose}>
+										<input type="hidden" name="user_id" value={u.id} />
+										<input type="hidden" name="on" value="0" />
+										<button>Lift suspension</button>
+									</form>
+								{:else}
+									<button type="button" class="bad" onclick={() => { openSuspend = u.id; openGrant = null; openMenu = null; }}>Suspend…</button>
+								{/if}
+							{/if}
+							{#if data.isAdmin && !u.is_admin}
+								<form method="POST" action={act('role')} use:enhance={keepClose}>
+									<input type="hidden" name="user_id" value={u.id} />
+									<input type="hidden" name="on" value={u.is_mod ? '0' : '1'} />
+									<button>{u.is_mod ? 'Remove moderator' : 'Make moderator'}</button>
+								</form>
+							{/if}
+							<a href="/u/{u.username}">View profile</a>
+						</div>
+					</details>
+				{/if}
 			</div>
 			<div class="tags mono">
 				{#if u.is_admin}<span class="tag pink">Admin</span>{:else if u.is_mod}<span class="tag pink">Moderator</span>{/if}
@@ -110,38 +156,6 @@
 				<span>Joined {ago(u.created_at, data.now)}</span>
 				{#if u.last_seen}<span>Seen {ago(u.last_seen, data.now)}</span>{/if}
 			</div>
-			{#if canAct || data.isAdmin}
-				<div class="actions">
-					{#if data.isAdmin}
-						<button class="small-btn" onclick={() => (openGrant = openGrant === u.id ? null : u.id)}>
-							{openGrant === u.id ? 'Close' : 'Give credits'}
-						</button>
-					{/if}
-					{#if canAct}
-						<form method="POST" action={act('shadowban')} use:enhance={keep}>
-							<input type="hidden" name="user_id" value={u.id} />
-							<input type="hidden" name="on" value={u.shadowbanned ? '0' : '1'} />
-							<button class="small-btn ghost">{u.shadowbanned ? 'Lift shadowban' : 'Shadowban'}</button>
-						</form>
-						{#if u.suspended_at}
-							<form method="POST" action={act('suspend')} use:enhance={keep}>
-								<input type="hidden" name="user_id" value={u.id} />
-								<input type="hidden" name="on" value="0" />
-								<button class="small-btn ghost">Lift suspension</button>
-							</form>
-						{:else}
-							<button class="small-btn ghost" onclick={() => (openSuspend = openSuspend === u.id ? null : u.id)}>{openSuspend === u.id ? 'Cancel' : 'Suspend…'}</button>
-						{/if}
-					{/if}
-					{#if data.isAdmin && !u.is_admin}
-						<form method="POST" action={act('role')} use:enhance={keep}>
-							<input type="hidden" name="user_id" value={u.id} />
-							<input type="hidden" name="on" value={u.is_mod ? '0' : '1'} />
-							<button class="small-btn ghost">{u.is_mod ? 'Remove moderator' : 'Make moderator'}</button>
-						</form>
-					{/if}
-				</div>
-			{/if}
 			{#if openSuspend === u.id}
 				<form
 					method="POST"
@@ -157,7 +171,7 @@
 					<input type="hidden" name="on" value="1" />
 					<p class="small muted">Logs them out everywhere and blocks logging back in. They'll see this reason on the login page.</p>
 					<input name="reason" type="text" maxlength="300" required placeholder="Reason — e.g. Vote rigging with alt accounts" />
-					<div><button class="small-btn danger">Suspend {u.username}</button></div>
+					<div class="row"><button class="small-btn danger">Suspend {u.username}</button><button type="button" class="small-btn ghost" onclick={() => (openSuspend = null)}>Cancel</button></div>
 				</form>
 			{/if}
 			{#if openGrant === u.id}
@@ -180,6 +194,7 @@
 					<div class="row">
 						<input name="amount" type="number" placeholder="Custom (−500 takes back)" style="flex:1;min-width:140px" />
 						<button class="small-btn primary">Apply</button>
+						<button type="button" class="small-btn ghost" onclick={() => (openGrant = null)}>Cancel</button>
 					</div>
 					<input name="note" type="text" maxlength="200" placeholder="Note in their history (optional)" />
 				</form>
@@ -222,7 +237,26 @@
 	.tag.warn { border-color: var(--warn); color: var(--warn); }
 	.tag.bad { border-color: #ff5a4e; color: #ff5a4e; }
 	.stats { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--dim); font-weight: 400; }
-	.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+	.more { position: relative; flex: none; }
+	.more summary {
+		list-style: none; cursor: pointer; width: 40px; height: 40px; display: grid; place-items: center;
+		border: 1.5px solid var(--line-2); border-radius: var(--radius); color: var(--dim);
+	}
+	.more summary::-webkit-details-marker { display: none; }
+	.more summary:hover, .more[open] summary { border-color: var(--paper); color: var(--paper); }
+	.pop {
+		position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 220px; padding: 6px 0;
+		background: var(--ink-3, #222); border: 1.5px solid var(--line-2); border-radius: var(--radius);
+		box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55); display: flex; flex-direction: column;
+	}
+	.pop button, .pop a {
+		display: flex; align-items: center; width: 100%; min-height: 46px; padding: 0 16px; text-align: left;
+		background: none; border: 0; border-radius: 0; color: var(--paper); text-decoration: none;
+		font-family: var(--display); font-size: 1.15rem; letter-spacing: 0.04em; text-transform: uppercase; justify-content: flex-start;
+	}
+	.pop button:hover, .pop a:hover { background: var(--ink-2); color: var(--pink); }
+	.pop .bad { color: #ff5a4e; }
+	.pop a { color: var(--dim); border-top: 1.5px dashed var(--line-2); margin-top: 4px; }
 	.small-btn { min-height: 40px; padding: 2px 14px 0; font-size: 1rem; }
 	.ghost { color: var(--dim); }
 	.danger { border-color: #ff5a4e; color: #ff5a4e; }
