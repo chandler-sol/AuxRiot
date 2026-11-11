@@ -273,36 +273,6 @@
 			<p class="mono muted">Expired — nobody answered in time · posted {ago(b.createdAt, now)}</p>
 		{/if}
 
-		{#if data.credits?.canPromote && !data.promo}
-			{@const cr = data.credits}
-			<section class="promote" id="promote">
-				<div class="pr-head">
-					<h2>Promote this battle</h2>
-					<span class="mono muted">{cr.balance.toLocaleString()} credits</span>
-				</div>
-				<p class="muted small">
-					Top of the feed for everyone — {cr.hours} hours for {cr.price} credits.
-					{#if cr.nextSlot}
-						{cr.nextSlot.start <= now + 60_000 ? 'A slot is open right now.' : `Next opening: ${clockTime(cr.nextSlot.start)} (in ${untilText(cr.nextSlot.start)}).`}
-					{/if}
-				</p>
-				<form
-					method="POST"
-					action="?/promote"
-					class="pr-form"
-					use:enhance={() =>
-						async ({ update }) => {
-							await update({ reset: false });
-						}}
-				>
-					<button class="primary" disabled={cr.price > cr.balance}>
-						{cr.price > cr.balance ? `Need ${cr.price - cr.balance} more credits` : `Promote — ${cr.hours}h for ${cr.price} cr`}
-					</button>
-				</form>
-				{#if form?.promoError}<p class="error small">{form.promoError}</p>{/if}
-				{#if cr.balance < cr.price}<p class="muted small">Earn credits by finishing battles. <a href="/credits">How it works</a></p>{/if}
-			</section>
-		{/if}
 		{#if form?.promoted}
 			{@const pd = form.promoted}
 			<p class="promo-status mono">
@@ -377,6 +347,29 @@
 				{/if}
 			{/each}
 		</section>
+
+		{#if data.credits?.canPromote && !data.promo}
+			{@const cr = data.credits}
+			<form
+				method="POST"
+				action="?/promote"
+				class="promote"
+				id="promote"
+				use:enhance={() =>
+					async ({ update }) => {
+						await update({ reset: false });
+					}}
+			>
+				<span class="pr-text">
+					<span class="mono pr-k">★ Promote to the top of the feed</span>
+					<span class="small muted">{cr.hours}h for {cr.price} cr · you have {cr.balance.toLocaleString()} · <a href="/credits">how credits work</a></span>
+				</span>
+				<button class="pr-btn" class:primary={cr.price <= cr.balance} disabled={cr.price > cr.balance}>
+					{cr.price > cr.balance ? `${cr.price - cr.balance} cr short` : 'Promote'}
+				</button>
+			</form>
+			{#if form?.promoError}<p class="error small">{form.promoError}</p>{/if}
+		{/if}
 
 	{/if}
 
@@ -483,7 +476,7 @@
 
 <style>
 	article { --namecol: calc(min(100vw, 760px) - 34px); --namemax: 6rem; --winmax: 7.5rem; }
-	article > section, article > .ticket, .results-top > section, .lower > section { margin-bottom: 24px; }
+	article > section, article > .ticket, article > .promote, .results-top > section, .lower > section { margin-bottom: 24px; }
 	.kicker { color: var(--muted); margin: 0 0 10px; overflow-wrap: anywhere; }
 
 	/* Poster header */
@@ -506,10 +499,13 @@
 	.tv.sm { font-size: 1.6rem; }
 
 	.players { display: grid; gap: 12px; }
-	.promote { background: var(--ink-2); border: 1.5px dashed var(--line-2); border-radius: var(--radius); padding: 14px 16px; }
-	.pr-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-	.pr-head h2 { margin: 0; font-size: 1.5rem; }
-	.pr-form { display: flex; gap: 8px; flex-wrap: wrap; }
+	.promote {
+		display: flex; align-items: center; justify-content: space-between; gap: 12px;
+		border: 1.5px dashed var(--line-2); border-radius: var(--radius); padding: 10px 12px;
+	}
+	.pr-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+	.pr-k { color: var(--paper); }
+	.pr-btn { flex: none; min-height: 40px; padding: 2px 16px 0; font-size: 1rem; }
 	.earned { background: var(--paper); color: var(--ink); padding: 10px 14px 9px; border-radius: var(--radius); margin: 0 0 18px; font-weight: 400; }
 	.earned .display { font-size: 1.5rem; color: var(--pink); margin-right: 4px; }
 	.earned a { color: var(--ink); }
@@ -559,7 +555,7 @@
 	/* Phones: tighter vertical rhythm so the countdown and both players fit on one screen. */
 	@media (max-width: 959px) {
 		article { --namemax: 3.4rem; --winmax: 5rem; }
-		article > section, article > .ticket, .results-top > section, .lower > section { margin-bottom: 14px; }
+		article > section, article > .ticket, article > .promote, .results-top > section, .lower > section { margin-bottom: 14px; }
 		.kicker { margin-bottom: 6px; }
 		.poster { padding-top: 0; }
 		.vs { font-size: 1.05rem; margin: 2px 0; }
