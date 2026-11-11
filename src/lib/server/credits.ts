@@ -12,7 +12,8 @@ export const CREDITS = {
 	win: 100,
 	loss: 25,
 	tie: 50,
-	promoPerHour: 500,
+	promoPrice: 250, // one promo slot booking
+	promoHours: 3,
 	dailyCap: 5
 } as const;
 export const MIN_VOTES_KEY = 'credits_min_votes';
@@ -115,8 +116,9 @@ export async function backfillCredits(db: D1Database) {
 }
 
 /** Spend credits on a promo slot; refunds automatically if no slot can be booked. */
-export async function buyPromotion(db: D1Database, userId: string, battleId: string, hours: number) {
-	const cost = CREDITS.promoPerHour * hours;
+export async function buyPromotion(db: D1Database, userId: string, battleId: string) {
+	const hours = CREDITS.promoHours;
+	const cost = CREDITS.promoPrice;
 	const attempt = newId();
 	if (!(await spendCredits(db, userId, cost, 'promo_spend', attempt, `${hours}h promo for battle ${battleId}`))) {
 		return { ok: false as const, error: `That costs ${cost.toLocaleString()} credits — you don't have enough yet.` };

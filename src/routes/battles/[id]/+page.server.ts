@@ -67,7 +67,8 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 		reason: string | null;
 		minVotes: number;
 		balance: number;
-		perHour: number;
+		price: number;
+		hours: number;
 		canPromote: boolean;
 		nextSlot: { start: number; slot: number } | null;
 	} = null;
@@ -90,9 +91,10 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			reason,
 			minVotes,
 			balance: bal?.credits ?? 0,
-			perHour: CREDITS.promoPerHour,
+			price: CREDITS.promoPrice,
+			hours: CREDITS.promoHours,
 			canPromote,
-			nextSlot: canPromote ? await previewSlot(env.DB, battle.id, 1) : null
+			nextSlot: canPromote ? await previewSlot(env.DB, battle.id, CREDITS.promoHours) : null
 		};
 	}
 	const [entries, comments, voteCount, myVote, listens] = await Promise.all([
@@ -298,9 +300,7 @@ export const actions: Actions = {
 		if (!battle || (user.id !== battle.creator_id && user.id !== battle.challenger_id)) {
 			return fail(403, { promoError: 'Only the producers in this battle can promote it.' });
 		}
-		const hours = Number((await request.formData()).get('hours'));
-		if (!Number.isInteger(hours) || hours < 1 || hours > 6) return fail(400, { promoError: 'Pick 1–6 hours.' });
-		const res = await buyPromotion(env.DB, user.id, battle.id, hours);
+		const res = await buyPromotion(env.DB, user.id, battle.id);
 		if (!res.ok) return fail(400, { promoError: res.error });
 		return { promoted: { slot: res.slot, startsAt: res.startsAt, endsAt: res.endsAt, startsNow: res.startsNow, cost: res.cost } };
 	},

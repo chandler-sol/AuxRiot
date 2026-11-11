@@ -12,7 +12,7 @@
 		admin_grant: 'Bonus from AuxRiot',
 		admin_clawback: 'Adjustment'
 	};
-	const hours = $derived(Math.floor(data.balance / r.promoPerHour));
+	const slots = $derived(Math.floor(data.balance / r.promoPrice));
 </script>
 
 <svelte:head><title>Credits · AuxRiot</title></svelte:head>
@@ -21,7 +21,7 @@
 <div class="wallet">
 	<span class="display bal">{data.balance.toLocaleString()}</span>
 	<span class="mono">credits</span>
-	<span class="mono worth">{hours > 0 ? `= ${hours} hour${hours === 1 ? '' : 's'} of promo at the top of the feed` : `${(r.promoPerHour - data.balance).toLocaleString()} more for your first hour of promo`}</span>
+	<span class="mono worth">{slots > 0 ? `= ${slots} promo slot${slots === 1 ? '' : 's'} (${slots * r.promoHours} hours at the top of the feed)` : `${(r.promoPrice - data.balance).toLocaleString()} more for your first promo slot`}</span>
 </div>
 
 <section class="block">
@@ -42,7 +42,7 @@
 <section class="block">
 	<h2>Spend them</h2>
 	<p class="muted">
-		<strong class="pink">{r.promoPerHour} credits = 1 hour</strong> in a promo slot at the very top of the feed. Open the battle and hit
+		<strong class="pink">{r.promoPrice} credits = {r.promoHours} hours</strong> in a promo slot at the very top of the feed. Open the battle and hit
 		<em>Promote this battle</em>. It slots in at the next opening automatically.
 	</p>
 	{#if data.promotable.length}

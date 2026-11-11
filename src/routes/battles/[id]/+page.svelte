@@ -125,7 +125,6 @@
 	}
 	const clockTime = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 
-	let promoHours = $state(1);
 	let prepared = $state<PreparedAudio | null>(null);
 	let responding = $state(false);
 	let voting = $state(false);
@@ -282,7 +281,7 @@
 					<span class="mono muted">{cr.balance.toLocaleString()} credits</span>
 				</div>
 				<p class="muted small">
-					Top of the feed for everyone. {cr.perHour} credits an hour.
+					Top of the feed for everyone — {cr.hours} hours for {cr.price} credits.
 					{#if cr.nextSlot}
 						{cr.nextSlot.start <= now + 60_000 ? 'A slot is open right now.' : `Next opening: ${clockTime(cr.nextSlot.start)} (in ${untilText(cr.nextSlot.start)}).`}
 					{/if}
@@ -296,17 +295,12 @@
 							await update({ reset: false });
 						}}
 				>
-					<select name="hours" bind:value={promoHours}>
-						{#each [1, 2, 3, 4, 5, 6] as h (h)}
-							<option value={h} disabled={h * cr.perHour > cr.balance}>{h} hour{h > 1 ? 's' : ''} — {(h * cr.perHour).toLocaleString()} cr</option>
-						{/each}
-					</select>
-					<button class="primary" disabled={promoHours * cr.perHour > cr.balance}>
-						{promoHours * cr.perHour > cr.balance ? 'Not enough credits' : 'Promote'}
+					<button class="primary" disabled={cr.price > cr.balance}>
+						{cr.price > cr.balance ? `Need ${cr.price - cr.balance} more credits` : `Promote — ${cr.hours}h for ${cr.price} cr`}
 					</button>
 				</form>
 				{#if form?.promoError}<p class="error small">{form.promoError}</p>{/if}
-				{#if cr.balance < cr.perHour}<p class="muted small">Earn credits by finishing battles. <a href="/credits">How it works</a></p>{/if}
+				{#if cr.balance < cr.price}<p class="muted small">Earn credits by finishing battles. <a href="/credits">How it works</a></p>{/if}
 			</section>
 		{/if}
 		{#if form?.promoted}
@@ -516,7 +510,6 @@
 	.pr-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 	.pr-head h2 { margin: 0; font-size: 1.5rem; }
 	.pr-form { display: flex; gap: 8px; flex-wrap: wrap; }
-	.pr-form select { width: auto; flex: 1; min-width: 180px; }
 	.earned { background: var(--paper); color: var(--ink); padding: 10px 14px 9px; border-radius: var(--radius); margin: 0 0 18px; font-weight: 400; }
 	.earned .display { font-size: 1.5rem; color: var(--pink); margin-right: 4px; }
 	.earned a { color: var(--ink); }

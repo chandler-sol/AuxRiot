@@ -17,7 +17,7 @@ Ideas and decisions captured so far. Nothing below is built unless it's under **
 - Live-ticking countdowns on cards, unique view counts, feed sorting (ending soonest/last, newest/oldest, most votes/comments/views).
 - **Email (Resend)**: mail.auxriot.com verified; sign-up confirmation (required to vote), forgot/reset password. Sender: AuxRiot <admin@mail.auxriot.com>.
 - Landing page for visitors with 30-second previews; desktop layout.
-- **Battle Credits (earned)**: +100 win / +50 tie / +25 loss on close, ledger-backed balances, min counted votes (admin setting, default 3), linked-account and 5-a-day guards, backfill of past battles, Credits page, spend 500/hr on promo slots from the battle page (auto-refund if booking fails), admin grant/claw back.
+- **Battle Credits (earned)**: +100 win / +50 tie / +25 loss on close, ledger-backed balances, min counted votes (admin setting, default 3), linked-account and 5-a-day guards, backfill of past battles, Credits page, spend 250 credits for a 3-hour promo slot from the battle page (auto-refund if booking fails), admin grant/claw back.
 - Winner reveal animation when a battle's clock runs out (and once for first-time visitors to recently finished battles).
 
 ## Next up (small to medium)
