@@ -120,6 +120,19 @@ export async function bookPromotion(
 	return { ok: true, id, startsAt: start, endsAt: end, slot, startsNow: start <= now + 1000 };
 }
 
+/** Where a new promo of `hours` would land right now, without booking it. */
+export async function previewSlot(db: D1Database, battleId: string, hours: number) {
+	const now = Date.now();
+	const bookings = await upcomingBookings(db, now);
+	const own = (
+		await db
+			.prepare('SELECT starts_at, ends_at FROM promotions WHERE battle_id = ? AND cancelled = 0 AND ends_at > ?')
+			.bind(battleId, now)
+			.all<{ starts_at: number; ends_at: number }>()
+	).results;
+	return findSlot(bookings, now, hours * HOUR, own);
+}
+
 /** Battles promoted right now (still open or live), in slot order. */
 export async function activePromotedIds(db: D1Database, now: number): Promise<string[]> {
 	const rows = await db

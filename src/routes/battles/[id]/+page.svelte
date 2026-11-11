@@ -125,6 +125,7 @@
 	}
 	const clockTime = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 
+	let promoHours = $state(1);
 	let prepared = $state<PreparedAudio | null>(null);
 	let responding = $state(false);
 	let voting = $state(false);
@@ -200,6 +201,19 @@
 		</section>
 		</div>
 
+		{#if data.credits}
+			{@const cr = data.credits}
+			<p class="earned mono">
+				{#if cr.earned !== null}
+					<span class="display">+{cr.earned}</span> credits earned · <a href="/credits">Your credits</a>
+				{:else if cr.reason === 'votes'}
+					No credits this time — battles pay out with at least {cr.minVotes} counted votes.
+				{:else}
+					No credits for this battle under the fair-play rules. <a href="/credits">How credits work</a>
+				{/if}
+			</p>
+		{/if}
+
 		<section class="replay">
 			<h2>Run it back</h2>
 			{#each [winnerSlot ?? 0, 1 - (winnerSlot ?? 0)] as slot (slot)}
@@ -258,6 +272,48 @@
 			</div>
 		{:else}
 			<p class="mono muted">Expired — nobody answered in time · posted {ago(b.createdAt, now)}</p>
+		{/if}
+
+		{#if data.credits?.canPromote && !data.promo}
+			{@const cr = data.credits}
+			<section class="promote" id="promote">
+				<div class="pr-head">
+					<h2>Promote this battle</h2>
+					<span class="mono muted">{cr.balance.toLocaleString()} credits</span>
+				</div>
+				<p class="muted small">
+					Top of the feed for everyone. {cr.perHour} credits an hour.
+					{#if cr.nextSlot}
+						{cr.nextSlot.start <= now + 60_000 ? 'A slot is open right now.' : `Next opening: ${clockTime(cr.nextSlot.start)} (in ${untilText(cr.nextSlot.start)}).`}
+					{/if}
+				</p>
+				<form
+					method="POST"
+					action="?/promote"
+					class="pr-form"
+					use:enhance={() =>
+						async ({ update }) => {
+							await update({ reset: false });
+						}}
+				>
+					<select name="hours" bind:value={promoHours}>
+						{#each [1, 2, 3, 4, 5, 6] as h (h)}
+							<option value={h} disabled={h * cr.perHour > cr.balance}>{h} hour{h > 1 ? 's' : ''} — {(h * cr.perHour).toLocaleString()} cr</option>
+						{/each}
+					</select>
+					<button class="primary" disabled={promoHours * cr.perHour > cr.balance}>
+						{promoHours * cr.perHour > cr.balance ? 'Not enough credits' : 'Promote'}
+					</button>
+				</form>
+				{#if form?.promoError}<p class="error small">{form.promoError}</p>{/if}
+				{#if cr.balance < cr.perHour}<p class="muted small">Earn credits by finishing battles. <a href="/credits">How it works</a></p>{/if}
+			</section>
+		{/if}
+		{#if form?.promoted}
+			{@const pd = form.promoted}
+			<p class="promo-status mono">
+				★ Booked · slot {pd.slot} · {pd.startsNow ? `live now until ${clockTime(pd.endsAt)}` : `starts ${clockTime(pd.startsAt)}, runs until ${clockTime(pd.endsAt)}`} · −{pd.cost.toLocaleString()} cr
+			</p>
 		{/if}
 
 		{#if data.promo}
@@ -456,6 +512,14 @@
 	.tv.sm { font-size: 1.6rem; }
 
 	.players { display: grid; gap: 12px; }
+	.promote { background: var(--ink-2); border: 1.5px dashed var(--line-2); border-radius: var(--radius); padding: 14px 16px; }
+	.pr-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+	.pr-head h2 { margin: 0; font-size: 1.5rem; }
+	.pr-form { display: flex; gap: 8px; flex-wrap: wrap; }
+	.pr-form select { width: auto; flex: 1; min-width: 180px; }
+	.earned { background: var(--paper); color: var(--ink); padding: 10px 14px 9px; border-radius: var(--radius); margin: 0 0 18px; font-weight: 400; }
+	.earned .display { font-size: 1.5rem; color: var(--pink); margin-right: 4px; }
+	.earned a { color: var(--ink); }
 	.promo-status { background: var(--paper); color: var(--ink); padding: 8px 12px 7px; border-radius: var(--radius); margin: -10px 0 24px; }
 	.slot { background: var(--ink-2); border-left: 6px solid var(--c); border-radius: var(--radius); padding: 16px; }
 	.open-cta { font-size: 1.8rem; color: var(--c); margin: 0 0 6px; }

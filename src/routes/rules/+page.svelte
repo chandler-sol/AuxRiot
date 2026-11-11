@@ -67,6 +67,16 @@
 </section>
 
 <section class="block">
+	<h2>Battle credits</h2>
+	<ul>
+		<li>Finish a battle and earn credits: <strong>+100</strong> for a win, <strong>+50</strong> for a tie, <strong>+25</strong> for a loss.</li>
+		<li>A battle pays out only with enough counted votes (votes the fair-play checks discount don't count), from up to 5 battles a day, and never between accounts on the same device.</li>
+		<li>Spend <strong>500 credits per hour</strong> to put your battle in a promo slot at the top of the feed.</li>
+		<li>Credits have no cash value and can't be transferred. Cheating forfeits them. <a href="/credits">Your credits</a></li>
+	</ul>
+</section>
+
+<section class="block">
 	<h2>Fair play</h2>
 	<p>
 		We run automatic checks for alt accounts and vote rigging. Votes that look suspicious are quietly discounted, and

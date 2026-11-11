@@ -64,9 +64,10 @@
 		<nav>
 			{#if data.user}
 				<details class="account" bind:open={menuOpen} bind:this={menuEl}>
-					<summary class="mono navlink">{data.user.username} ▾</summary>
+					<summary class="mono navlink">{data.user.username} <span class="cr">{data.user.credits.toLocaleString()} cr</span> ▾</summary>
 					<div class="menu">
 						<a class="mono" href="/u/{data.user.username}" onclick={() => (menuOpen = false)}>My profile</a>
+						<a class="mono" href="/credits" onclick={() => (menuOpen = false)}>Credits · {data.user.credits.toLocaleString()}</a>
 						<a class="mono" href="/settings/profile" onclick={() => (menuOpen = false)}>Edit profile</a>
 						{#if data.user.isAdmin}<a class="mono" href="/admin" onclick={() => (menuOpen = false)}>Admin</a>{/if}
 						<form method="POST" action="/logout"><button class="mono logout">Log out</button></form>
@@ -128,6 +129,8 @@
 	.navlink { color: var(--dim); text-decoration: none; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.navlink:hover { color: var(--paper); }
 	.account { position: relative; }
+	.cr { color: var(--pink); margin-left: 6px; }
+	@media (max-width: 420px) { .cr { display: none; } }
 	.account summary { list-style: none; cursor: pointer; padding: 8px 0; }
 	.account summary::-webkit-details-marker { display: none; }
 	.account[open] summary { color: var(--paper); }

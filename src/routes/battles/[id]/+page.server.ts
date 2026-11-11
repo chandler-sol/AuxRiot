@@ -12,7 +12,8 @@ import {
 } from '#lib/server/battles.ts';
 import { getEnv, newId, sha256, HOUR } from '#lib/server/util.ts';
 import { getVoterMinAgeHours } from '#lib/server/settings.ts';
-import { promoStatus } from '#lib/server/promos.ts';
+import { previewSlot, promoStatus } from '#lib/server/promos.ts';
+import { CREDITS, buyPromotion, getMinVotes } from '#lib/server/credits.ts';
 import { challengerColor, creatorColor } from '#lib/colors.ts';
 
 interface BattleRow {
@@ -57,8 +58,43 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 
 	const user = locals.user;
 	const newView = await countView(env, battle.id, locals.deviceId);
-	const isCreator = !!user && user.id === battle.creator_id;
-	const promo = isCreator || user?.isAdmin ? await promoStatus(env.DB, battle.id, Date.now()) : null;
+	const isBattler = !!user && (user.id === battle.creator_id || user.id === battle.challenger_id);
+	const promo = isBattler || user?.isAdmin ? await promoStatus(env.DB, battle.id, Date.now()) : null;
+
+	// Credits: what this battler earned here, and promo options while the battle is open or live.
+	let credits: null | {
+		earned: number | null;
+		reason: string | null;
+		minVotes: number;
+		balance: number;
+		perHour: number;
+		canPromote: boolean;
+		nextSlot: { start: number; slot: number } | null;
+	} = null;
+	if (isBattler) {
+		const minVotes = await getMinVotes(env.DB);
+		const award = await env.DB.prepare(
+			"SELECT amount FROM credit_ledger WHERE user_id = ? AND ref = ? AND reason LIKE 'battle_%'"
+		)
+			.bind(user!.id, battle.id)
+			.first<{ amount: number }>();
+		let reason: string | null = null;
+		if (battle.status === 'closed' && !award) {
+			const o = await env.DB.prepare('SELECT counted_votes FROM battle_outcomes WHERE battle_id = ? LIMIT 1').bind(battle.id).first<{ counted_votes: number }>();
+			reason = o && o.counted_votes < minVotes ? 'votes' : 'rules';
+		}
+		const bal = await env.DB.prepare('SELECT credits FROM users WHERE id = ?').bind(user!.id).first<{ credits: number }>();
+		const canPromote = battle.status === 'open' || battle.status === 'voting';
+		credits = {
+			earned: award?.amount ?? null,
+			reason,
+			minVotes,
+			balance: bal?.credits ?? 0,
+			perHour: CREDITS.promoPerHour,
+			canPromote,
+			nextSlot: canPromote ? await previewSlot(env.DB, battle.id, 1) : null
+		};
+	}
 	const [entries, comments, voteCount, myVote, listens] = await Promise.all([
 		env.DB.prepare(`SELECT id, user_id, slot, audio_key, duration_ms, peaks, removed FROM entries WHERE battle_id = ? ORDER BY slot`)
 			.bind(battle.id)
@@ -132,6 +168,7 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 		canRespond: battle.status === 'open' && !!user && user.id !== battle.creator_id,
 		threshold: LISTEN_THRESHOLD,
 		og: battleOg(battle),
+		credits,
 		promo,
 		views: battle.views + (newView ? 1 : 0),
 		now: Date.now()
@@ -252,6 +289,20 @@ export const actions: Actions = {
 
 		await castVote(env.DB, user, { id: battle.id, creator_id: battle.creator_id, challenger_id: battle.challenger_id! }, scores);
 		return { voted: true };
+	},
+
+	promote: async ({ request, params, locals, platform, url }) => {
+		const user = requireUser(locals, url.pathname);
+		const env = getEnv(platform);
+		const battle = await getBattle(env.DB, params.id);
+		if (!battle || (user.id !== battle.creator_id && user.id !== battle.challenger_id)) {
+			return fail(403, { promoError: 'Only the producers in this battle can promote it.' });
+		}
+		const hours = Number((await request.formData()).get('hours'));
+		if (!Number.isInteger(hours) || hours < 1 || hours > 6) return fail(400, { promoError: 'Pick 1–6 hours.' });
+		const res = await buyPromotion(env.DB, user.id, battle.id, hours);
+		if (!res.ok) return fail(400, { promoError: res.error });
+		return { promoted: { slot: res.slot, startsAt: res.startsAt, endsAt: res.endsAt, startsNow: res.startsNow, cost: res.cost } };
 	},
 
 	comment: async ({ request, params, locals, platform, url }) => {

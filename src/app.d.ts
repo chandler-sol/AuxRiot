@@ -35,6 +35,7 @@ declare global {
 		shadowbanned: boolean;
 		createdAt: number;
 		emailVerified: boolean;
+		credits: number;
 	}
 
 	type D1Database = import('@cloudflare/workers-types').D1Database;

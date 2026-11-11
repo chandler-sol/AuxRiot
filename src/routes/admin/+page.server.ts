@@ -1,8 +1,9 @@
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getEnv } from '#lib/server/util.ts';
+import { getEnv, newId } from '#lib/server/util.ts';
 import { VOTER_AGE_KEY, getVoterMinAgeHours, setSetting } from '#lib/server/settings.ts';
 import { PROMO_MAX_HOURS, PROMO_SLOTS, bookPromotion } from '#lib/server/promos.ts';
+import { MIN_VOTES_KEY, addCredits, backfillCredits, getMinVotes } from '#lib/server/credits.ts';
 
 function requireAdmin(locals: App.Locals) {
 	if (!locals.user?.isAdmin) error(404);
@@ -61,7 +62,18 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 		.bind(now - DAY_MS, now - 7 * DAY_MS)
 		.first<{ total: number; confirmed: number; today: number; week: number; news: number; battlers: number; voters: number }>();
 
+	const creditStats = await db
+		.prepare(
+			`SELECT (SELECT COALESCE(SUM(credits), 0) FROM users) AS outstanding,
+			        (SELECT COALESCE(SUM(amount), 0) FROM credit_ledger WHERE reason LIKE 'battle_%') AS earned,
+			        (SELECT COALESCE(-SUM(amount), 0) FROM credit_ledger WHERE reason = 'promo_spend') - (SELECT COALESCE(SUM(amount), 0) FROM credit_ledger WHERE reason = 'promo_refund') AS spent,
+			        (SELECT COUNT(DISTINCT o.battle_id) FROM battle_outcomes o WHERE NOT EXISTS (SELECT 1 FROM credit_ledger l WHERE l.ref = o.battle_id AND l.reason LIKE 'battle_%')) AS unpaid`
+		)
+		.first<{ outstanding: number; earned: number; spent: number; unpaid: number }>();
+
 	return {
+		creditStats: creditStats ?? { outstanding: 0, earned: 0, spent: 0, unpaid: 0 },
+		creditsMinVotes: await getMinVotes(db),
 		promos: promos.results,
 		promoSlots: PROMO_SLOTS,
 		promoMaxHours: PROMO_MAX_HOURS,
@@ -78,6 +90,34 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 };
 
 export const actions: Actions = {
+	creditsMinVotes: async ({ request, locals, platform }) => {
+		const admin = requireAdmin(locals);
+		const n = Number((await request.formData()).get('n'));
+		if (!Number.isInteger(n) || n < 0 || n > 100) return fail(400, { error: 'Enter a whole number from 0 to 100.' });
+		await setSetting(getEnv(platform).DB, MIN_VOTES_KEY, String(n), admin.username);
+		return { ok: `Battles now pay out with at least ${n} counted vote${n === 1 ? '' : 's'}.` };
+	},
+
+	creditsBackfill: async ({ locals, platform }) => {
+		requireAdmin(locals);
+		const r = await backfillCredits(getEnv(platform).DB);
+		return { ok: `Checked ${r.checked} past battle${r.checked === 1 ? '' : 's'}: ${r.paidBattles} paid out, ${r.credits.toLocaleString()} credits awarded.` };
+	},
+
+	creditsAdjust: async ({ request, locals, platform }) => {
+		const admin = requireAdmin(locals);
+		const f = await request.formData();
+		const username = String(f.get('username') ?? '').trim();
+		const amount = Number(f.get('amount'));
+		const note = String(f.get('note') ?? '').trim();
+		if (!Number.isInteger(amount) || amount === 0 || Math.abs(amount) > 100000) return fail(400, { error: 'Amount must be a whole number (negative to claw back).' });
+		const db = getEnv(platform).DB;
+		const u = await db.prepare('SELECT id FROM users WHERE username = ?').bind(username).first<{ id: string }>();
+		if (!u) return fail(404, { error: `No user "${username}".` });
+		await addCredits(db, u.id, amount, amount > 0 ? 'admin_grant' : 'admin_clawback', newId(), note || `by ${admin.username}`);
+		return { ok: `${amount > 0 ? 'Gave' : 'Took'} ${Math.abs(amount).toLocaleString()} credits ${amount > 0 ? 'to' : 'from'} ${username}.` };
+	},
+
 	promote: async ({ request, locals, platform }) => {
 		const admin = requireAdmin(locals);
 		const f = await request.formData();

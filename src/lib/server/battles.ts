@@ -1,5 +1,6 @@
 import { newId, DAY, HOUR } from './util';
 import { parseMp3 } from './mp3';
+import { awardBattle } from './credits.ts';
 
 export const MAX_DURATION_MS = 120_000;
 const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
@@ -157,6 +158,9 @@ export async function finalizeBattle(db: D1Database, battleId: string) {
 		db.prepare(`UPDATE promotions SET ends_at = ? WHERE battle_id = ? AND cancelled = 0 AND starts_at <= ? AND ends_at > ?`).bind(closedAt, battleId, closedAt, closedAt),
 		db.prepare(`UPDATE promotions SET cancelled = 1 WHERE battle_id = ? AND cancelled = 0 AND starts_at > ?`).bind(battleId, closedAt)
 	]);
+
+	// Battle Credits payout (rules and anti-farming checks live in credits.ts).
+	await awardBattle(db, battleId);
 }
 
 // ---------------------------------------------------------------------------

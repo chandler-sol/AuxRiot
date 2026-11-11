@@ -37,6 +37,35 @@
 {/if}
 
 <p><a class="btn primary" href="/admin/news">Compose AuxRiot news →</a></p>
+
+<section class="card stack">
+	<h2>Battle credits</h2>
+	<div class="cstats">
+		<div><span class="display">{data.creditStats.outstanding.toLocaleString()}</span><span class="mono">Held by users</span></div>
+		<div><span class="display">{data.creditStats.earned.toLocaleString()}</span><span class="mono">Earned all-time</span></div>
+		<div><span class="display">{data.creditStats.spent.toLocaleString()}</span><span class="mono">Spent on promos</span></div>
+	</div>
+	<form method="POST" action="?/creditsMinVotes" class="row" use:enhance={keep}>
+		<label for="mv" style="margin:0">Pays out at</label>
+		<input id="mv" name="n" type="number" min="0" max="100" value={data.creditsMinVotes} style="width:90px" />
+		<span class="small muted">counted votes</span>
+		<button>Save</button>
+	</form>
+	<form method="POST" action="?/creditsBackfill" use:enhance={keep}>
+		<button disabled={data.creditStats.unpaid === 0}>
+			{data.creditStats.unpaid ? `Pay out ${data.creditStats.unpaid} past battle${data.creditStats.unpaid === 1 ? '' : 's'}` : 'All past battles checked'}
+		</button>
+		<p class="small muted">Applies the same rules (counted votes, linked accounts, daily cap) to battles that finished before credits existed. Safe to run again — nothing pays twice.</p>
+	</form>
+	<form method="POST" action="?/creditsAdjust" class="stack" use:enhance={keep}>
+		<div class="row">
+			<input name="username" type="text" placeholder="username" required style="flex:1;min-width:140px" />
+			<input name="amount" type="number" placeholder="+500 or -500" required style="width:150px" />
+		</div>
+		<input name="note" type="text" maxlength="200" placeholder="Note (shown in their history) — e.g. Giveaway winner" />
+		<button>Grant / claw back</button>
+	</form>
+</section>
 <h2 class="mod-h">Moderation</h2>
 {#if form?.ok}<p class="success">{form.ok}</p>{/if}
 {#if form?.error}<p class="error">{form.error}</p>{/if}
@@ -206,6 +235,10 @@
 	.users .big .display { font-size: 4rem; color: var(--pink); }
 	.users .mono { color: #5a544b; font-size: 0.58rem; margin-top: 4px; }
 	.mod-h { margin-top: 24px; }
+	.cstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+	.cstats div { display: flex; flex-direction: column; align-items: center; background: var(--ink); padding: 12px 4px 10px; }
+	.cstats .display { font-size: 1.8rem; line-height: 1; color: var(--pink); }
+	.cstats .mono { color: var(--dim); margin-top: 4px; font-size: 0.58rem; }
 	.item { border-top: 1px solid var(--border); padding-top: 10px; }
 	.booked { display: flex; gap: 12px; align-items: center; background: var(--paper); color: var(--ink); padding: 10px 14px; border-radius: var(--radius); }
 	.booked .display { font-size: 1.6rem; }
