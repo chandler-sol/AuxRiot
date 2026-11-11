@@ -36,6 +36,8 @@ declare global {
 		createdAt: number;
 		emailVerified: boolean;
 		credits: number;
+		avatarKey: string | null;
+		color: string | null;
 	}
 
 	type D1Database = import('@cloudflare/workers-types').D1Database;

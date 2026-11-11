@@ -4,6 +4,7 @@
 	import type { LayoutProps } from './$types';
 	import { page } from '$app/state';
 	import { enhance } from '$app/forms';
+	import Avatar from '#lib/components/Avatar.svelte';
 
 	let { children, data }: LayoutProps = $props();
 	let menuOpen = $state(false);
@@ -64,13 +65,25 @@
 		<nav>
 			{#if data.user}
 				<details class="account" bind:open={menuOpen} bind:this={menuEl}>
-					<summary class="mono navlink">{data.user.username} <span class="cr">{data.user.credits.toLocaleString()} cr</span> ▾</summary>
+					<summary class="acct" aria-label="Account menu for {data.user.username}">
+						<Avatar username={data.user.username} avatarKey={data.user.avatarKey} color={data.user.color} size={30} />
+						<span class="mono uname">{data.user.username}</span>
+						<span class="mono chip">{data.user.credits.toLocaleString()} cr</span>
+						<svg class="chev" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+					</summary>
 					<div class="menu">
-						<a class="mono" href="/u/{data.user.username}" onclick={() => (menuOpen = false)}>My profile</a>
-						<a class="mono" href="/credits" onclick={() => (menuOpen = false)}>Credits · {data.user.credits.toLocaleString()}</a>
-						<a class="mono" href="/settings/profile" onclick={() => (menuOpen = false)}>Edit profile</a>
-						{#if data.user.isAdmin}<a class="mono" href="/admin" onclick={() => (menuOpen = false)}>Admin</a>{/if}
-						<form method="POST" action="/logout"><button class="mono logout">Log out</button></form>
+						<div class="menu-head">
+							<span class="display mh-name">{data.user.username}</span>
+							<a class="mono mh-cr" href="/credits" onclick={() => (menuOpen = false)}>{data.user.credits.toLocaleString()} credits →</a>
+						</div>
+						<a href="/u/{data.user.username}" onclick={() => (menuOpen = false)}>My profile</a>
+						<a href="/credits" onclick={() => (menuOpen = false)}>Credits</a>
+						<a href="/settings/profile" onclick={() => (menuOpen = false)}>Edit profile</a>
+						{#if data.user.isAdmin}
+							<a href="/admin" onclick={() => (menuOpen = false)}>Admin</a>
+							<a href="/admin/users" onclick={() => (menuOpen = false)}>Users</a>
+						{/if}
+						<form method="POST" action="/logout"><button class="logout">Log out</button></form>
 					</div>
 				</details>
 				<a class="btn primary beat" href="/battles/new">+ Beat</a>
@@ -129,24 +142,38 @@
 	.navlink { color: var(--dim); text-decoration: none; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.navlink:hover { color: var(--paper); }
 	.account { position: relative; }
-	.cr { color: var(--pink); margin-left: 6px; }
-	@media (max-width: 420px) { .cr { display: none; } }
-	.account summary { list-style: none; cursor: pointer; padding: 8px 0; }
-	.account summary::-webkit-details-marker { display: none; }
-	.account[open] summary { color: var(--paper); }
+	.acct {
+		list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+		min-height: 44px; padding: 4px 10px 4px 4px; border: 1.5px solid var(--line-2); border-radius: var(--radius);
+		color: var(--paper); transition: border-color 0.15s, background 0.15s;
+	}
+	.acct::-webkit-details-marker { display: none; }
+	.acct:hover, .account[open] .acct { border-color: var(--paper); background: var(--ink-2); }
+	.uname { color: var(--paper); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.chip { color: var(--pink); white-space: nowrap; }
+	.chev { flex: none; transition: transform 0.15s; }
+	.account[open] .chev { transform: rotate(180deg); }
+	@media (max-width: 560px) { .uname { display: none; } }
 	.menu {
-		position: absolute; right: 0; top: calc(100% + 8px); min-width: 180px;
+		position: absolute; right: 0; top: calc(100% + 10px); width: 280px;
 		display: flex; flex-direction: column;
-		background: var(--ink-2); border: 1px solid var(--line-2); border-radius: var(--radius);
-		box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); padding: 6px 0; z-index: 20;
+		background: var(--ink-2); border: 1.5px solid var(--line-2); border-radius: var(--radius);
+		box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6); padding: 6px 0; z-index: 30;
 	}
-	.menu a, .menu .logout {
-		display: block; width: 100%; text-align: left; padding: 12px 16px; min-height: 0;
-		color: var(--dim); text-decoration: none; background: none; border: 0; border-radius: 0;
-		font-family: var(--mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+	@media (max-width: 560px) {
+		.menu { position: fixed; left: 12px; right: 12px; top: 64px; width: auto; }
 	}
-	.menu a:hover, .menu .logout:hover { background: var(--ink-3); color: var(--paper); }
-	.menu form { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
+	.menu-head { display: flex; flex-direction: column; gap: 4px; padding: 14px 20px 14px; border-bottom: 1.5px dashed var(--line-2); margin-bottom: 4px; }
+	.mh-name { font-size: 1.8rem; line-height: 1; color: var(--paper); overflow-wrap: anywhere; }
+	.mh-cr { color: var(--pink); text-decoration: none; font-size: 0.75rem; }
+	.menu a:not(.mh-cr), .menu .logout {
+		display: flex; align-items: center; justify-content: flex-start; width: 100%; min-height: 52px; padding: 0 20px; text-align: left;
+		color: var(--paper); text-decoration: none; background: none; border: 0; border-radius: 0;
+		font-family: var(--display); font-size: 1.3rem; font-weight: 400; letter-spacing: 0.04em; text-transform: uppercase;
+	}
+	.menu a:not(.mh-cr):hover, .menu .logout:hover { background: var(--ink-3); color: var(--pink); }
+	.menu form { border-top: 1.5px dashed var(--line-2); margin-top: 4px; padding-top: 4px; }
+	.menu .logout { color: var(--dim); }
 	.verify-bar { background: var(--paper); color: var(--ink); }
 	.vb { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; padding-bottom: 9px; flex-wrap: wrap; }
 	.vb .mono { color: var(--ink); }

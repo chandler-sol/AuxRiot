@@ -26,7 +26,7 @@
 {#if data.userStats}
 	{@const u = data.userStats}
 	<section class="users" aria-label="User counts">
-		<div class="big"><span class="display">{u.total}</span><span class="mono">Registered users</span></div>
+		<a class="big" href="/admin/users"><span class="display">{u.total}</span><span class="mono">Registered users — see all →</span></a>
 		<div><span class="display">{u.today}</span><span class="mono">New today</span></div>
 		<div><span class="display">{u.week}</span><span class="mono">New this week</span></div>
 		<div><span class="display">{u.confirmed}</span><span class="mono">Confirmed email</span></div>
@@ -36,7 +36,7 @@
 	</section>
 {/if}
 
-<p><a class="btn primary" href="/admin/news">Compose AuxRiot news →</a></p>
+<p class="row"><a class="btn primary" href="/admin/users">Registered users →</a> <a class="btn primary" href="/admin/news">Compose AuxRiot news →</a></p>
 
 <section class="card stack">
 	<h2>Battle credits</h2>
@@ -229,8 +229,8 @@
 		display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin: 8px 0 20px;
 		background: var(--paper); color: var(--ink); border-radius: var(--radius); padding: 4px;
 	}
-	.users div { display: flex; flex-direction: column; align-items: center; padding: 12px 4px 10px; text-align: center; }
-	.users .big { grid-column: 1 / -1; border-bottom: 1.5px dashed rgba(14, 13, 11, 0.25); padding-bottom: 14px; }
+	.users div, .users .big { display: flex; flex-direction: column; align-items: center; padding: 12px 4px 10px; text-align: center; }
+	.users .big { display: flex; flex-direction: column; align-items: center; text-decoration: none; color: inherit; grid-column: 1 / -1; border-bottom: 1.5px dashed rgba(14, 13, 11, 0.25); padding-bottom: 14px; }
 	.users .display { font-size: 2.2rem; line-height: 1; }
 	.users .big .display { font-size: 4rem; color: var(--pink); }
 	.users .mono { color: #5a544b; font-size: 0.58rem; margin-top: 4px; }

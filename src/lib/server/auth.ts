@@ -64,7 +64,7 @@ export async function getSessionUser(
 ): Promise<SessionUser | null> {
 	const row = await db
 		.prepare(
-			`SELECT u.id, u.username, u.is_admin, u.shadowbanned, u.created_at, u.email_verified_at, u.credits, s.expires_at
+			`SELECT u.id, u.username, u.is_admin, u.shadowbanned, u.created_at, u.email_verified_at, u.credits, u.avatar_key, u.color, s.expires_at
 			 FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id_hash = ?`
 		)
 		.bind(await sha256(token))
@@ -76,6 +76,8 @@ export async function getSessionUser(
 			created_at: number;
 			email_verified_at: number | null;
 			credits: number;
+			avatar_key: string | null;
+			color: string | null;
 			expires_at: number;
 		}>();
 	if (!row || row.expires_at < Date.now()) return null;
@@ -86,7 +88,9 @@ export async function getSessionUser(
 		shadowbanned: !!row.shadowbanned,
 		createdAt: row.created_at,
 		emailVerified: row.email_verified_at !== null,
-		credits: row.credits ?? 0
+		credits: row.credits ?? 0,
+		avatarKey: row.avatar_key,
+		color: row.color
 	};
 }
 
