@@ -19,6 +19,14 @@ Ideas and decisions captured so far. Nothing below is built unless it's under **
 - Landing page for visitors with 30-second previews; desktop layout.
 - **Battle Credits (earned)**: +100 win / +50 tie / +25 loss on close, ledger-backed balances, min counted votes (admin setting, default 3), linked-account and 5-a-day guards, backfill of past battles, Credits page, spend 250 credits for a 3-hour promo slot from the battle page (auto-refund if booking fails), admin grant/claw back.
 - Winner reveal animation when a battle's clock runs out (and once for first-time visitors to recently finished battles).
+- **Moderation suite**:
+  - **Moderator role**: admins assign it from Users. Mods get battles, ballots, comments, reports, bans and suspensions, but no credits, settings, promos, news, DMCA or emails, and they can't act on other staff.
+  - **Battle panel**: end voting now; extend or shorten the clock; recount; remove or restore a battle (reverses W-L and credits); delete a beat.
+  - **Ballot overrides**: count fully, half, don't count, or delete. These stick even if the voter re-votes, and they auto-recount finished battles.
+  - **Comments**: feed with search and filters, hide/unhide, bulk actions, and a blocked-words list. Matching comments are held; only the author sees them until a mod approves.
+  - **Reports**: grouped by target, with the content inline and one-tap hide, remove, shadowban, suspend, handled or dismiss.
+  - **Suspensions**: hard block, logged out everywhere, with the reason shown at login.
+  - **Mod log**: an append-only record of every staff action, including credits and settings.
 
 ## Next up (small to medium)
 

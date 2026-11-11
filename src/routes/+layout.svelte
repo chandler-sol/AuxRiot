@@ -79,8 +79,9 @@
 						<a href="/u/{data.user.username}" onclick={() => (menuOpen = false)}>My profile</a>
 						<a href="/credits" onclick={() => (menuOpen = false)}>Credits</a>
 						<a href="/settings/profile" onclick={() => (menuOpen = false)}>Edit profile</a>
-						{#if data.user.isAdmin}
-							<a href="/admin" onclick={() => (menuOpen = false)}>Admin</a>
+						{#if data.user.isMod}
+							<a href="/admin" onclick={() => (menuOpen = false)}>{data.user.isAdmin ? 'Admin' : 'Mod tools'}</a>
+							<a href="/admin/reports" onclick={() => (menuOpen = false)}>Reports</a>
 							<a href="/admin/users" onclick={() => (menuOpen = false)}>Users</a>
 						{/if}
 						<form method="POST" action="/logout"><button class="logout">Log out</button></form>

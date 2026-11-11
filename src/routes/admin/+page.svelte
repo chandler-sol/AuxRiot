@@ -11,20 +11,32 @@
 	const fmt = (t: number) =>
 		new Date(t).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 	const keep = () => async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) => update({ reset: false });
-
-	function targetLink(type: string, id: string) {
-		if (type === 'battle') return `/battles/${id}`;
-		if (type === 'user') return `/u/${id}`;
-		return null;
-	}
 </script>
 
 <svelte:head><title>Admin · AuxRiot</title></svelte:head>
 
-<h1>Admin</h1>
+<h1>{data.isAdmin ? 'Admin' : 'Mod tools'}</h1>
 
-{#if data.userStats}
-	{@const u = data.userStats}
+{#if form?.ok}<p class="success">{form.ok}</p>{/if}
+{#if form?.error}<p class="error">{form.error}</p>{/if}
+
+<nav class="tiles" aria-label="Moderation tools">
+	<a href="/admin/reports" class:hot={data.counts.reports > 0}><span class="display">{data.counts.reports}</span><span class="mono">Open reports</span></a>
+	<a href="/admin/comments?status=held" class:hot={data.counts.held > 0}><span class="display">{data.counts.held}</span><span class="mono">Held comments</span></a>
+	<a href="/admin/battles"><span class="display">{data.counts.live}</span><span class="mono">Live battles</span></a>
+	<a href="/admin/users?filter=suspended"><span class="display">{data.counts.suspended}</span><span class="mono">Suspended</span></a>
+	<a href="/admin/comments"><span class="display">Comments</span><span class="mono">Search &amp; blocked words</span></a>
+	<a href="/admin/users"><span class="display">Users</span><span class="mono">{data.isAdmin ? 'Credits, roles, bans' : 'Bans &amp; suspensions'}</span></a>
+	<a href="/admin/log"><span class="display">{data.counts.actionsToday}</span><span class="mono">Mod log · last 24h</span></a>
+	{#if data.isAdmin}<a href="/admin/news"><span class="display">News</span><span class="mono">Compose a send</span></a>{/if}
+</nav>
+
+{#if data.admin}
+	{@const a = data.admin}
+
+
+{#if a.userStats}
+	{@const u = a.userStats}
 	<section class="users" aria-label="User counts">
 		<a class="big" href="/admin/users"><span class="display">{u.total}</span><span class="mono">Registered users — see all →</span></a>
 		<div><span class="display">{u.today}</span><span class="mono">New today</span></div>
@@ -36,24 +48,24 @@
 	</section>
 {/if}
 
-<p class="row"><a class="btn primary" href="/admin/users">Registered users →</a> <a class="btn primary" href="/admin/news">Compose AuxRiot news →</a></p>
+
 
 <section class="card stack">
 	<h2>Battle credits</h2>
 	<div class="cstats">
-		<div><span class="display">{data.creditStats.outstanding.toLocaleString()}</span><span class="mono">Held by users</span></div>
-		<div><span class="display">{data.creditStats.earned.toLocaleString()}</span><span class="mono">Earned all-time</span></div>
-		<div><span class="display">{data.creditStats.spent.toLocaleString()}</span><span class="mono">Spent on promos</span></div>
+		<div><span class="display">{a.creditStats.outstanding.toLocaleString()}</span><span class="mono">Held by users</span></div>
+		<div><span class="display">{a.creditStats.earned.toLocaleString()}</span><span class="mono">Earned all-time</span></div>
+		<div><span class="display">{a.creditStats.spent.toLocaleString()}</span><span class="mono">Spent on promos</span></div>
 	</div>
 	<form method="POST" action="?/creditsMinVotes" class="row" use:enhance={keep}>
 		<label for="mv" style="margin:0">Pays out at</label>
-		<input id="mv" name="n" type="number" min="0" max="100" value={data.creditsMinVotes} style="width:90px" />
+		<input id="mv" name="n" type="number" min="0" max="100" value={a.creditsMinVotes} style="width:90px" />
 		<span class="small muted">counted votes</span>
 		<button>Save</button>
 	</form>
 	<form method="POST" action="?/creditsBackfill" use:enhance={keep}>
-		<button disabled={data.creditStats.unpaid === 0}>
-			{data.creditStats.unpaid ? `Pay out ${data.creditStats.unpaid} past battle${data.creditStats.unpaid === 1 ? '' : 's'}` : 'All past battles checked'}
+		<button disabled={a.creditStats.unpaid === 0}>
+			{a.creditStats.unpaid ? `Pay out ${a.creditStats.unpaid} past battle${a.creditStats.unpaid === 1 ? '' : 's'}` : 'All past battles checked'}
 		</button>
 		<p class="small muted">Applies the same rules (counted votes, linked accounts, daily cap) to battles that finished before credits existed. Safe to run again — nothing pays twice.</p>
 	</form>
@@ -66,14 +78,15 @@
 		<button>Grant / claw back</button>
 	</form>
 </section>
-<h2 class="mod-h">Moderation</h2>
-{#if form?.ok}<p class="success">{form.ok}</p>{/if}
-{#if form?.error}<p class="error">{form.error}</p>{/if}
+{/if}
 
+
+{#if data.admin}
+	{@const a = data.admin}
 <section class="card stack">
 	<h2>Promoted battles</h2>
 	<p class="muted small">
-		{data.promoSlots} slots run at once above the feed. Each booking automatically takes the earliest opening in either slot,
+		{a.promoSlots} slots run at once above the feed. Each booking automatically takes the earliest opening in either slot,
 		starts and stops on its own, and ends early if the battle closes. Times are in your local time.
 	</p>
 	{#if form?.booked}
@@ -90,7 +103,7 @@
 		<input name="battle" type="text" placeholder="Battle URL or ID" required />
 		<div class="row">
 			<select name="hours" style="flex:1;min-width:120px">
-				{#each Array.from({ length: data.promoMaxHours }, (_, i) => i + 1) as h (h)}
+				{#each Array.from({ length: a.promoMaxHours }, (_, i) => i + 1) as h (h)}
 					<option value={h}>{h} hour{h > 1 ? 's' : ''}</option>
 				{/each}
 			</select>
@@ -98,8 +111,8 @@
 		</div>
 	</form>
 
-	{#each data.promos as p (p.id)}
-		{@const live = p.starts_at <= data.now}
+	{#each a.promos as p (p.id)}
+		{@const live = p.starts_at <= a.now}
 		<div class="row spread item small">
 			<span>
 				<span class="pill" class:voting={live}>{p.slot ? `Slot ${p.slot} · ` : ''}{live ? 'running' : `starts in ${until(p.starts_at)}`}</span>
@@ -114,7 +127,7 @@
 	{:else}
 		<p class="muted small">No promos running or scheduled.</p>
 	{/each}
-	<p class="muted small">Battle results on record for future credit awards: {data.outcomesRecorded}</p>
+	<p class="muted small">Battle results on record for future credit awards: {a.outcomesRecorded}</p>
 </section>
 
 <section class="card stack">
@@ -124,12 +137,12 @@
 		raise it when the crowd is big enough that fresh alt accounts are the bigger risk. Changes apply instantly.
 	</p>
 	<p>
-		Current: <strong>{data.voterMinAgeHours === 0 ? 'no waiting period' : `${data.voterMinAgeHours} hours`}</strong>
-		{#if data.voterMinAgeHours >= 48}<span class="muted small">({+(data.voterMinAgeHours / 24).toFixed(1)} days)</span>{/if}
+		Current: <strong>{a.voterMinAgeHours === 0 ? 'no waiting period' : `${a.voterMinAgeHours} hours`}</strong>
+		{#if a.voterMinAgeHours >= 48}<span class="muted small">({+(a.voterMinAgeHours / 24).toFixed(1)} days)</span>{/if}
 	</p>
 	<form method="POST" action="?/voterAge" class="row" use:enhance={keep}>
 		{#each [[0, 'None'], [24, '24 hours'], [72, '3 days'], [168, '7 days']] as [h, label] (h)}
-			<button name="hours" value={h} class:primary={data.voterMinAgeHours === h}>{label}</button>
+			<button name="hours" value={h} class:primary={a.voterMinAgeHours === h}>{label}</button>
 		{/each}
 	</form>
 	<form method="POST" action="?/voterAge" class="row" use:enhance={keep}>
@@ -137,6 +150,8 @@
 		<button>Set</button>
 	</form>
 </section>
+
+{/if}
 
 <section class="card stack">
 	<h2>Shadowban</h2>
@@ -147,30 +162,6 @@
 		<button name="on" value="0">Restore</button>
 	</form>
 	{#if data.banned.length}<p class="small muted">Currently shadowbanned: {data.banned.join(', ')}</p>{/if}
-</section>
-
-<section class="card stack">
-	<h2>Open reports ({data.reports.length})</h2>
-	{#each data.reports as r (r.id)}
-		{@const link = targetLink(String(r.target_type), String(r.target_id))}
-		<div class="item">
-			<div class="row spread small">
-				<strong>{String(r.reason).replace('_', ' ')}</strong>
-				<span class="muted">by {r.reporter} · {ago(Number(r.created_at))}</span>
-			</div>
-			<div class="small">
-				{r.target_type}: {#if link}<a href={link}>{r.target_id}</a>{:else}{r.target_id}{/if}
-			</div>
-			{#if r.details}<p class="small">{r.details}</p>{/if}
-			<form method="POST" action="?/report" class="row" use:enhance={keep}>
-				<input type="hidden" name="id" value={r.id} />
-				<button name="status" value="actioned">Mark actioned</button>
-				<button name="status" value="dismissed">Dismiss</button>
-			</form>
-		</div>
-	{:else}
-		<p class="muted">Nothing to review.</p>
-	{/each}
 </section>
 
 <section class="card stack">
@@ -190,7 +181,7 @@
 	<h2>Discounted votes</h2>
 	{#each data.discounted as v (v.battle_id + v.voter)}
 		<div class="row spread item small">
-			<span><strong>{v.voter}</strong> on <a href="/battles/{v.battle_id}">{v.title}</a></span>
+			<span><strong>{v.voter}</strong> on <a href="/admin/battles/{v.battle_id}">{v.title}</a></span>
 			<span class="muted">weight {v.weight} · {v.flags || 'manual'}</span>
 		</div>
 	{:else}
@@ -198,9 +189,11 @@
 	{/each}
 </section>
 
+{#if data.admin}
+	{@const a = data.admin}
 <section class="card stack">
-	<h2>DMCA notices ({data.dmca.length})</h2>
-	{#each data.dmca as d (d.id)}
+	<h2>DMCA notices ({a.dmca.length})</h2>
+	{#each a.dmca as d (d.id)}
 		<div class="item stack">
 			<div class="row spread small">
 				<a href="/battles/{d.battle_id}">Battle {d.battle_id}</a>
@@ -222,6 +215,7 @@
 		<p class="muted">No open notices.</p>
 	{/each}
 </section>
+{/if}
 
 <style>
 	section { margin-bottom: 16px; }
@@ -234,7 +228,14 @@
 	.users .display { font-size: 2.2rem; line-height: 1; }
 	.users .big .display { font-size: 4rem; color: var(--pink); }
 	.users .mono { color: #5a544b; font-size: 0.58rem; margin-top: 4px; }
-	.mod-h { margin-top: 24px; }
+	.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 8px 0 20px; }
+	@media (min-width: 640px) { .tiles { grid-template-columns: repeat(4, 1fr); } }
+	.tiles a { display: flex; flex-direction: column; gap: 4px; padding: 14px; background: var(--ink-2); border: 1.5px solid var(--line-2); border-radius: var(--radius); color: var(--paper); text-decoration: none; min-height: 84px; justify-content: flex-end; }
+	.tiles a:hover { border-color: var(--paper); }
+	.tiles .display { font-size: 2rem; line-height: 0.95; }
+	.tiles .mono { color: var(--dim); font-size: 0.62rem; }
+	.tiles a.hot { border-color: var(--pink); }
+	.tiles a.hot .display { color: var(--pink); }
 	.cstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
 	.cstats div { display: flex; flex-direction: column; align-items: center; background: var(--ink); padding: 12px 4px 10px; }
 	.cstats .display { font-size: 1.8rem; line-height: 1; color: var(--pink); }

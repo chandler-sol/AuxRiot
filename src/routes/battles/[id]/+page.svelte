@@ -453,15 +453,16 @@
 						<a class="mono who" href="/u/{c.username}"><Avatar username={c.username} avatarKey={c.avatar_key} color={c.color} size={28} />@{c.username}</a>
 						<span class="mono muted actions">
 							{ago(c.created_at, now)}
-							{#if data.user && (data.user.id === c.user_id || data.user.isAdmin)}
+							{#if data.user && (data.user.id === c.user_id || data.user.isMod)}
 								<form method="POST" action="?/deleteComment" use:enhance>
 									<input type="hidden" name="id" value={c.id} />
-									<button class="link-btn">Delete</button>
+									<button class="link-btn">{data.user.id === c.user_id ? 'Delete' : 'Hide'}</button>
 								</form>
 							{/if}
 						</span>
 					</div>
 					<p class="body">{c.body}</p>
+					{#if c.held}<p class="mono small held">Only you can see this until a moderator reviews it.</p>{/if}
 					{#if data.user && data.user.id !== c.user_id}<ReportForm targetType="comment" targetId={c.id} />{/if}
 				</li>
 			{/each}
@@ -470,11 +471,16 @@
 	</div>
 
 	{#if data.user}
-		<div class="report-battle"><ReportForm targetType="battle" targetId={b.id} label="Report this battle (fake votes, stolen beat…)" /></div>
+		<div class="report-battle">
+			<ReportForm targetType="battle" targetId={b.id} label="Report this battle (fake votes, stolen beat…)" />
+			{#if data.user.isMod}<a class="mono modlink" href="/admin/battles/{b.id}">Mod panel →</a>{/if}
+		</div>
 	{/if}
 </article>
 
 <style>
+	.held { color: var(--warn); margin: 4px 0 0; font-weight: 400; }
+	.modlink { display: inline-block; margin-top: 10px; color: var(--pink); }
 	article { --namecol: calc(min(100vw, 760px) - 34px); --namemax: 6rem; --winmax: 7.5rem; }
 	article > section, article > .ticket, article > .promote, .results-top > section, .lower > section { margin-bottom: 24px; }
 	.kicker { color: var(--muted); margin: 0 0 10px; overflow-wrap: anywhere; }

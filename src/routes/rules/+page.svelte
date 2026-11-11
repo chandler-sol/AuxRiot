@@ -82,6 +82,11 @@
 		We run automatic checks for alt accounts and vote rigging. Votes that look suspicious are quietly discounted, and
 		accounts caught cheating may be restricted without notice. Spot something? Hit the report link on the battle.
 	</p>
+	<p>
+		AuxRiot moderators review reports. They can hide comments, discount rigged votes, remove stolen beats and suspend
+		accounts. A suspended account can't log in, post, vote or comment. Some comments are held for review before anyone
+		else sees them.
+	</p>
 	<p class="muted small">Copyright: beats are taken down on valid DMCA notices. <a href="/dmca">How takedowns work</a>.</p>
 </section>
 

@@ -7,6 +7,7 @@
 
 	let { data, form }: PageProps = $props();
 	let openGrant = $state<string | null>(null);
+	let openSuspend = $state<string | null>(null);
 	// Keep the current search/filter/sort on form actions (a bare "?/grant" would drop them).
 	const act = (name: string) => {
 		const qs = new URLSearchParams();
@@ -27,13 +28,14 @@
 
 <svelte:head><title>Users · AuxRiot admin</title></svelte:head>
 
-<p class="mono muted kicker"><a href="/admin">Admin</a> — Users</p>
+<p class="mono muted kicker"><a href="/admin">{data.isAdmin ? 'Admin' : 'Mod tools'}</a> — Users</p>
 <h1 class="headline">{data.total.toLocaleString()} <span>registered.</span></h1>
 
 {#if form?.ok}<p class="success">{form.ok}</p>{/if}
 {#if form?.winners}<p class="small">Winners: <strong>{form.winners.join(', ')}</strong></p>{/if}
 {#if form?.error}<p class="error">{form.error}</p>{/if}
 
+{#if data.isAdmin}
 <details class="drop">
 	<summary class="display">Random credit drop</summary>
 	<form method="POST" action={act('drop')} class="stack" use:enhance={keep}>
@@ -55,15 +57,18 @@
 		<button class="primary">Drop credits</button>
 	</form>
 </details>
+{/if}
 
 <form class="filters" method="GET" action="/admin/users">
-	<input name="q" type="search" placeholder="Search username or email" value={data.q} onchange={nav} />
+	<input name="q" type="search" placeholder={data.isAdmin ? 'Search username or email' : 'Search username'} value={data.q} onchange={nav} />
 	<select name="filter" value={data.filter} onchange={nav} aria-label="Filter">
 		<option value="all">Everyone</option>
 		<option value="confirmed">Confirmed email</option>
 		<option value="unconfirmed">Unconfirmed</option>
 		<option value="news">News opt-ins</option>
 		<option value="shadowbanned">Shadowbanned</option>
+		<option value="suspended">Suspended</option>
+		<option value="staff">Mods &amp; admins</option>
 	</select>
 	<select name="sort" value={data.sort} onchange={nav} aria-label="Sort">
 		<option value="newest">Newest</option>
@@ -80,17 +85,19 @@
 
 <ul class="list">
 	{#each data.users as u (u.id)}
+		{@const canAct = u.id !== data.meId && (data.isAdmin || (!u.is_admin && !u.is_mod))}
 		<li class="user">
 			<div class="top">
 				<Avatar username={u.username} avatarKey={u.avatar_key} color={u.color} size={44} />
 				<div class="who">
 					<a class="display name" href="/u/{u.username}">{u.username}</a>
-					<span class="small muted email">{u.email}</span>
+					{#if u.email}<span class="small muted email">{u.email}</span>{/if}
 				</div>
 				<span class="display credits">{u.credits.toLocaleString()}<span class="mono"> cr</span></span>
 			</div>
 			<div class="tags mono">
-				{#if u.is_admin}<span class="tag pink">Admin</span>{/if}
+				{#if u.is_admin}<span class="tag pink">Admin</span>{:else if u.is_mod}<span class="tag pink">Moderator</span>{/if}
+				{#if u.suspended_at}<span class="tag bad">Suspended {ago(u.suspended_at, data.now)}{u.suspended_reason ? ` — ${u.suspended_reason}` : ''}</span>{/if}
 				{#if !u.email_verified_at}<span class="tag warn">Unconfirmed</span>{/if}
 				{#if u.shadowbanned}<span class="tag bad">Shadowbanned</span>{/if}
 				{#if u.news_opt_in}<span class="tag">News</span>{/if}
@@ -103,16 +110,56 @@
 				<span>Joined {ago(u.created_at, data.now)}</span>
 				{#if u.last_seen}<span>Seen {ago(u.last_seen, data.now)}</span>{/if}
 			</div>
-			<div class="actions">
-				<button class="small-btn" onclick={() => (openGrant = openGrant === u.id ? null : u.id)}>
-					{openGrant === u.id ? 'Close' : 'Give credits'}
-				</button>
-				<form method="POST" action={act('shadowban')} use:enhance={keep}>
+			{#if canAct || data.isAdmin}
+				<div class="actions">
+					{#if data.isAdmin}
+						<button class="small-btn" onclick={() => (openGrant = openGrant === u.id ? null : u.id)}>
+							{openGrant === u.id ? 'Close' : 'Give credits'}
+						</button>
+					{/if}
+					{#if canAct}
+						<form method="POST" action={act('shadowban')} use:enhance={keep}>
+							<input type="hidden" name="user_id" value={u.id} />
+							<input type="hidden" name="on" value={u.shadowbanned ? '0' : '1'} />
+							<button class="small-btn ghost">{u.shadowbanned ? 'Lift shadowban' : 'Shadowban'}</button>
+						</form>
+						{#if u.suspended_at}
+							<form method="POST" action={act('suspend')} use:enhance={keep}>
+								<input type="hidden" name="user_id" value={u.id} />
+								<input type="hidden" name="on" value="0" />
+								<button class="small-btn ghost">Lift suspension</button>
+							</form>
+						{:else}
+							<button class="small-btn ghost" onclick={() => (openSuspend = openSuspend === u.id ? null : u.id)}>{openSuspend === u.id ? 'Cancel' : 'Suspend…'}</button>
+						{/if}
+					{/if}
+					{#if data.isAdmin && !u.is_admin}
+						<form method="POST" action={act('role')} use:enhance={keep}>
+							<input type="hidden" name="user_id" value={u.id} />
+							<input type="hidden" name="on" value={u.is_mod ? '0' : '1'} />
+							<button class="small-btn ghost">{u.is_mod ? 'Remove moderator' : 'Make moderator'}</button>
+						</form>
+					{/if}
+				</div>
+			{/if}
+			{#if openSuspend === u.id}
+				<form
+					method="POST"
+					action={act('suspend')}
+					class="grant"
+					use:enhance={() =>
+						async ({ result, update }) => {
+							await update({ reset: false });
+							if (result.type === 'success') openSuspend = null;
+						}}
+				>
 					<input type="hidden" name="user_id" value={u.id} />
-					<input type="hidden" name="on" value={u.shadowbanned ? '0' : '1'} />
-					<button class="small-btn ghost">{u.shadowbanned ? 'Restore' : 'Shadowban'}</button>
+					<input type="hidden" name="on" value="1" />
+					<p class="small muted">Logs them out everywhere and blocks logging back in. They'll see this reason on the login page.</p>
+					<input name="reason" type="text" maxlength="300" required placeholder="Reason — e.g. Vote rigging with alt accounts" />
+					<div><button class="small-btn danger">Suspend {u.username}</button></div>
 				</form>
-			</div>
+			{/if}
 			{#if openGrant === u.id}
 				<form
 					method="POST"
@@ -178,6 +225,8 @@
 	.actions { display: flex; gap: 8px; flex-wrap: wrap; }
 	.small-btn { min-height: 40px; padding: 2px 14px 0; font-size: 1rem; }
 	.ghost { color: var(--dim); }
+	.danger { border-color: #ff5a4e; color: #ff5a4e; }
+	.danger:hover { background: #ff5a4e; color: var(--ink); }
 	.grant { display: grid; gap: 8px; border-top: 1.5px dashed var(--line-2); padding-top: 10px; }
 	.quick { display: flex; gap: 6px; flex-wrap: wrap; }
 </style>

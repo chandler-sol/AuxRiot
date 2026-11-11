@@ -281,7 +281,10 @@ export async function castVote(
 			 ON CONFLICT (battle_id, voter_id) DO UPDATE SET
 			   s0_drums = excluded.s0_drums, s0_melody = excluded.s0_melody, s0_mix = excluded.s0_mix, s0_overall = excluded.s0_overall,
 			   s1_drums = excluded.s1_drums, s1_melody = excluded.s1_melody, s1_mix = excluded.s1_mix, s1_overall = excluded.s1_overall,
-			   favored_user_id = excluded.favored_user_id, weight = excluded.weight, flags = excluded.flags,
+			   favored_user_id = excluded.favored_user_id,
+			   -- A moderator's override sticks even if the voter changes their scores.
+			   weight = CASE WHEN instr(votes.flags, 'mod_') > 0 THEN votes.weight ELSE excluded.weight END,
+			   flags = CASE WHEN instr(votes.flags, 'mod_') > 0 THEN votes.flags ELSE excluded.flags END,
 			   updated_at = excluded.updated_at`
 		)
 		.bind(battle.id, voter.id, a.drums, a.melody, a.mix, a.overall, b.drums, b.melody, b.mix, b.overall, favored, weight, flags.join(','), now, now)

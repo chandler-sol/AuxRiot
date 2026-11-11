@@ -32,6 +32,8 @@ declare global {
 		id: string;
 		username: string;
 		isAdmin: boolean;
+		/** Moderator or admin. */
+		isMod: boolean;
 		shadowbanned: boolean;
 		createdAt: number;
 		emailVerified: boolean;

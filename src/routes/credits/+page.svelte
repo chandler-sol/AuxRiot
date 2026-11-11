@@ -10,7 +10,8 @@
 		promo_spend: 'Promo',
 		promo_refund: 'Promo refund',
 		admin_grant: 'Bonus from AuxRiot',
-		admin_clawback: 'Adjustment'
+		admin_clawback: 'Adjustment',
+		battle_void: 'Battle result reversed'
 	};
 	const slots = $derived(Math.floor(data.balance / r.promoPrice));
 </script>

@@ -15,6 +15,7 @@ import { getVoterMinAgeHours } from '#lib/server/settings.ts';
 import { previewSlot, promoStatus } from '#lib/server/promos.ts';
 import { CREDITS, buyPromotion, getMinVotes } from '#lib/server/credits.ts';
 import { challengerColor, creatorColor } from '#lib/colors.ts';
+import { getBlockedWords, logAction, matchesBlocked } from '#lib/server/mod.ts';
 
 interface BattleRow {
 	id: string;
@@ -102,13 +103,14 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			.bind(battle.id)
 			.all<{ id: string; user_id: string; slot: number; audio_key: string; duration_ms: number; peaks: string; removed: number }>(),
 		env.DB.prepare(
-			`SELECT m.id, m.body, m.created_at, m.user_id, u.username, u.avatar_key, u.color
+			// Held comments (blocked words) and shadowbanned authors are only visible to the author.
+			`SELECT m.id, m.body, m.created_at, m.user_id, m.held, u.username, u.avatar_key, u.color
 			 FROM comments m JOIN users u ON u.id = m.user_id
-			 WHERE m.battle_id = ? AND m.hidden = 0 AND (u.shadowbanned = 0 OR m.user_id = ?)
+			 WHERE m.battle_id = ? AND m.hidden = 0 AND ((u.shadowbanned = 0 AND m.held = 0) OR m.user_id = ?)
 			 ORDER BY m.created_at ASC LIMIT 500`
 		)
 			.bind(battle.id, user?.id ?? '')
-			.all<{ id: string; body: string; created_at: number; user_id: string; username: string; avatar_key: string | null; color: string | null }>(),
+			.all<{ id: string; body: string; created_at: number; user_id: string; held: number; username: string; avatar_key: string | null; color: string | null }>(),
 		env.DB.prepare('SELECT COUNT(*) AS n FROM votes WHERE battle_id = ?').bind(battle.id).first<{ n: number }>(),
 		user
 			? env.DB.prepare('SELECT * FROM votes WHERE battle_id = ? AND voter_id = ?').bind(battle.id, user.id).first<Record<string, number>>()
@@ -319,18 +321,24 @@ export const actions: Actions = {
 		const battle = await env.DB.prepare(`SELECT status FROM battles WHERE id = ?`).bind(params.id).first<{ status: string }>();
 		if (!battle || battle.status === 'removed') return fail(404, { commentError: 'Battle not found.' });
 
-		await env.DB.prepare('INSERT INTO comments (id, battle_id, user_id, body, created_at) VALUES (?, ?, ?, ?, ?)')
-			.bind(newId(), params.id, user.id, body, Date.now())
+		const held = matchesBlocked(body, await getBlockedWords(env.DB)) ? 1 : 0;
+		await env.DB.prepare('INSERT INTO comments (id, battle_id, user_id, body, created_at, held) VALUES (?, ?, ?, ?, ?, ?)')
+			.bind(newId(), params.id, user.id, body, Date.now(), held)
 			.run();
-		return { commented: true };
+		return { commented: true, held: !!held };
 	},
 
 	deleteComment: async ({ request, locals, platform, url }) => {
 		const user = requireUser(locals, url.pathname);
 		const id = String((await request.formData()).get('id') ?? '');
 		const db = getEnv(platform).DB;
-		if (user.isAdmin) await db.prepare('UPDATE comments SET hidden = 1 WHERE id = ?').bind(id).run();
-		else await db.prepare('UPDATE comments SET hidden = 1 WHERE id = ? AND user_id = ?').bind(id, user.id).run();
+		const c = await db.prepare('SELECT user_id, body FROM comments WHERE id = ?').bind(id).first<{ user_id: string; body: string }>();
+		if (!c) return { deleted: true };
+		if (c.user_id === user.id) await db.prepare('UPDATE comments SET hidden = 1 WHERE id = ?').bind(id).run();
+		else if (user.isMod) {
+			await db.prepare('UPDATE comments SET hidden = 1 WHERE id = ?').bind(id).run();
+			await logAction(db, user, 'comment.hide', 'comment', id, c.body.slice(0, 120));
+		}
 		return { deleted: true };
 	},
 

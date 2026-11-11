@@ -1,12 +1,8 @@
-import { error, fail } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getEnv, newId, DAY } from '#lib/server/util.ts';
 import { addCredits } from '#lib/server/credits.ts';
-
-function requireAdmin(locals: App.Locals) {
-	if (!locals.user?.isAdmin) error(404);
-	return locals.user;
-}
+import { logAction, requireAdmin, requireMod, setModerator, setShadowban, setSuspended } from '#lib/server/mod.ts';
 
 const SORTS = {
 	newest: 'u.created_at DESC',
@@ -19,7 +15,7 @@ const SORTS = {
 type Sort = keyof typeof SORTS;
 
 export const load: PageServerLoad = async ({ locals, platform, url }) => {
-	requireAdmin(locals);
+	const me = requireMod(locals);
 	const db = getEnv(platform).DB;
 	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
 	const sortParam = url.searchParams.get('sort') as Sort | null;
@@ -28,18 +24,26 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 	const where: string[] = [];
 	const binds: unknown[] = [];
 	if (q) {
-		where.push('(u.username LIKE ? OR u.email LIKE ?)');
-		binds.push(`%${q}%`, `%${q}%`);
+		// Only admins can see or search by email.
+		if (me.isAdmin) {
+			where.push('(u.username LIKE ? OR u.email LIKE ?)');
+			binds.push(`%${q}%`, `%${q}%`);
+		} else {
+			where.push('u.username LIKE ?');
+			binds.push(`%${q}%`);
+		}
 	}
 	if (filter === 'confirmed') where.push('u.email_verified_at IS NOT NULL');
 	if (filter === 'unconfirmed') where.push('u.email_verified_at IS NULL');
 	if (filter === 'shadowbanned') where.push('u.shadowbanned = 1');
 	if (filter === 'news') where.push('u.news_opt_in = 1');
+	if (filter === 'suspended') where.push('u.suspended_at IS NOT NULL');
+	if (filter === 'staff') where.push('(u.is_mod = 1 OR u.is_admin = 1)');
 
 	const rows = await db
 		.prepare(
 			`SELECT u.id, u.username, u.email, u.created_at, u.email_verified_at, u.credits, u.wins, u.losses, u.ties,
-			        u.shadowbanned, u.is_admin, u.news_opt_in, u.avatar_key, u.color,
+			        u.shadowbanned, u.is_admin, u.is_mod, u.suspended_at, u.suspended_reason, u.news_opt_in, u.avatar_key, u.color,
 			        (SELECT COUNT(*) FROM entries e WHERE e.user_id = u.id) AS battles,
 			        (SELECT COUNT(*) FROM votes v WHERE v.voter_id = u.id) AS votes,
 			        (SELECT MAX(last_seen) FROM user_signals s WHERE s.user_id = u.id) AS last_seen,
@@ -52,11 +56,13 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 		.bind(...binds)
 		.all<{
 			id: string; username: string; email: string; created_at: number; email_verified_at: number | null; credits: number;
-			wins: number; losses: number; ties: number; shadowbanned: number; is_admin: number; news_opt_in: number;
+			wins: number; losses: number; ties: number; shadowbanned: number; is_admin: number; is_mod: number;
+			suspended_at: number | null; suspended_reason: string | null; news_opt_in: number;
 			avatar_key: string | null; color: string | null; battles: number; votes: number; last_seen: number | null; linked: number;
 		}>();
 	const total = await db.prepare('SELECT COUNT(*) AS n FROM users').first<{ n: number }>();
-	return { users: rows.results, total: total?.n ?? 0, q, sort, filter, now: Date.now() };
+	const users = me.isAdmin ? rows.results : rows.results.map((u) => ({ ...u, email: '' }));
+	return { users, total: total?.n ?? 0, q, sort, filter, isAdmin: me.isAdmin, meId: me.id, now: Date.now() };
 };
 
 export const actions: Actions = {
@@ -73,15 +79,37 @@ export const actions: Actions = {
 		const u = await db.prepare('SELECT username FROM users WHERE id = ?').bind(userId).first<{ username: string }>();
 		if (!u) return fail(404, { error: 'User not found.' });
 		await addCredits(db, userId, amount, amount > 0 ? 'admin_grant' : 'admin_clawback', newId(), note || `From ${admin.username}`);
+		await logAction(db, admin, amount > 0 ? 'credits.grant' : 'credits.clawback', 'user', userId, `${u.username} ${amount > 0 ? '+' : ''}${amount}${note ? ' — ' + note : ''}`);
 		return { ok: `${amount > 0 ? 'Gave' : 'Took'} ${Math.abs(amount).toLocaleString()} credits ${amount > 0 ? 'to' : 'from'} ${u.username}.` };
 	},
 
 	shadowban: async ({ request, locals, platform }) => {
-		requireAdmin(locals);
+		const me = requireMod(locals);
 		const f = await request.formData();
-		const on = f.get('on') === '1' ? 1 : 0;
-		await getEnv(platform).DB.prepare('UPDATE users SET shadowbanned = ? WHERE id = ?').bind(on, String(f.get('user_id'))).run();
-		return { ok: on ? 'Shadowbanned.' : 'Restored.' };
+		const on = f.get('on') === '1';
+		const err = await setShadowban(getEnv(platform).DB, me, String(f.get('user_id')), on);
+		if (err) return fail(403, { error: err });
+		return { ok: on ? 'Shadowbanned.' : 'Shadowban lifted.' };
+	},
+
+	suspend: async ({ request, locals, platform }) => {
+		const me = requireMod(locals);
+		const f = await request.formData();
+		const on = f.get('on') === '1';
+		const reason = String(f.get('reason') ?? '').trim();
+		if (on && !reason) return fail(400, { error: "Add a reason — they'll see it when they try to log in." });
+		const err = await setSuspended(getEnv(platform).DB, me, String(f.get('user_id')), on, reason);
+		if (err) return fail(403, { error: err });
+		return { ok: on ? 'Suspended and logged out everywhere.' : 'Suspension lifted.' };
+	},
+
+	role: async ({ request, locals, platform }) => {
+		const admin = requireAdmin(locals);
+		const f = await request.formData();
+		const on = f.get('on') === '1';
+		const err = await setModerator(getEnv(platform).DB, admin, String(f.get('user_id')), on);
+		if (err) return fail(403, { error: err });
+		return { ok: on ? 'Now a moderator. They\'ll see Mod tools in their menu.' : 'Moderator role removed.' };
 	},
 
 	/** Give credits to N randomly picked members (giveaways). */
@@ -113,6 +141,7 @@ export const actions: Actions = {
 		if (!winners.results.length) return fail(400, { error: 'Nobody matches that pool yet (members need a confirmed email).' });
 		const dropId = newId(8);
 		for (const w of winners.results) await addCredits(db, w.id, amount, 'admin_grant', `drop-${dropId}`, note);
+		await logAction(db, admin, 'credits.drop', 'credits', `drop-${dropId}`, `${amount} each to ${winners.results.map((w) => w.username).join(', ')}`);
 		return {
 			ok: `Dropped ${amount.toLocaleString()} credits on ${winners.results.length} member${winners.results.length === 1 ? '' : 's'}.`,
 			winners: winners.results.map((w) => w.username)

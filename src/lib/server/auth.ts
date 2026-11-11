@@ -64,7 +64,7 @@ export async function getSessionUser(
 ): Promise<SessionUser | null> {
 	const row = await db
 		.prepare(
-			`SELECT u.id, u.username, u.is_admin, u.shadowbanned, u.created_at, u.email_verified_at, u.credits, u.avatar_key, u.color, s.expires_at
+			`SELECT u.id, u.username, u.is_admin, u.is_mod, u.suspended_at, u.shadowbanned, u.created_at, u.email_verified_at, u.credits, u.avatar_key, u.color, s.expires_at
 			 FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id_hash = ?`
 		)
 		.bind(await sha256(token))
@@ -72,6 +72,8 @@ export async function getSessionUser(
 			id: string;
 			username: string;
 			is_admin: number;
+			is_mod: number;
+			suspended_at: number | null;
 			shadowbanned: number;
 			created_at: number;
 			email_verified_at: number | null;
@@ -80,11 +82,14 @@ export async function getSessionUser(
 			color: string | null;
 			expires_at: number;
 		}>();
-	if (!row || row.expires_at < Date.now()) return null;
+	// Suspended accounts are logged out everywhere.
+	if (!row || row.expires_at < Date.now() || row.suspended_at) return null;
+	const isAdmin = !!row.is_admin || adminNames.includes(row.username.toLowerCase());
 	return {
 		id: row.id,
 		username: row.username,
-		isAdmin: !!row.is_admin || adminNames.includes(row.username.toLowerCase()),
+		isAdmin,
+		isMod: isAdmin || !!row.is_mod,
 		shadowbanned: !!row.shadowbanned,
 		createdAt: row.created_at,
 		emailVerified: row.email_verified_at !== null,
