@@ -6,6 +6,7 @@
 	import Uploader from '#lib/components/Uploader.svelte';
 	import CopyrightNotice from '#lib/components/CopyrightNotice.svelte';
 	import ReportForm from '#lib/components/ReportForm.svelte';
+	import Flair from '#lib/components/Flair.svelte';
 	import type { PreparedAudio } from '#lib/audio-prep.ts';
 	import WinnerReveal from '#lib/components/WinnerReveal.svelte';
 	import { invalidateAll } from '$app/navigation';
@@ -129,7 +130,20 @@
 	let responding = $state(false);
 	let voting = $state(false);
 	let commentBody = $state('');
+	// Comment upvotes: optimistic while the request runs.
+	let pending = $state<Record<string, { mine: boolean; score: number }>>({});
+	let commentSort = $state<'oldest' | 'top'>('oldest');
+	const voteOf = (c: { id: string; mine: boolean; score: number }) => pending[c.id] ?? { mine: c.mine, score: c.score };
+	let sortedComments = $derived(
+		commentSort === 'top'
+			? [...data.comments].sort((x, y) => voteOf(y).score - voteOf(x).score || x.created_at - y.created_at)
+			: data.comments
+	);
 </script>
+
+{#snippet arrow()}
+	<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 4 4 13h5v7h6v-7h5z" fill="currentColor" /></svg>
+{/snippet}
 
 <svelte:head><title>{b.creator} vs {b.challenger ?? '???'} · AuxRiot</title></svelte:head>
 
@@ -426,7 +440,15 @@
 		{/if}
 
 	<section class="comments-sec">
-		<h2>Crowd noise · {data.comments.length}</h2>
+		<div class="chead">
+			<h2>Crowd noise · {data.comments.length}</h2>
+			{#if data.comments.length > 1}
+				<div class="csort mono" role="group" aria-label="Sort comments">
+					<button class="link-btn" class:on={commentSort === 'oldest'} onclick={() => (commentSort = 'oldest')}>Oldest</button>
+					<button class="link-btn" class:on={commentSort === 'top'} onclick={() => (commentSort = 'top')}>Top</button>
+				</div>
+			{/if}
+		</div>
 		{#if data.user}
 			<form
 				method="POST"
@@ -447,10 +469,14 @@
 		{/if}
 
 		<ul class="comments">
-			{#each data.comments as c (c.id)}
+			{#each sortedComments as c (c.id)}
+				{@const v = voteOf(c)}
 				<li>
 					<div class="cmeta">
-						<a class="mono who" href="/u/{c.username}"><Avatar username={c.username} avatarKey={c.avatar_key} color={c.color} size={28} />@{c.username}</a>
+						<span class="whowrap">
+							<a class="mono who" href="/u/{c.username}"><Avatar username={c.username} avatarKey={c.avatar_key} color={c.color} size={28} />@{c.username}</a>
+							<Flair respect={c.respect} />
+						</span>
 						<span class="mono muted actions">
 							{ago(c.created_at, now)}
 							{#if data.user && (data.user.id === c.user_id || data.user.isMod)}
@@ -463,7 +489,33 @@
 					</div>
 					<p class="body">{c.body}</p>
 					{#if c.held}<p class="mono small held">Only you can see this until a moderator reviews it.</p>{/if}
-					{#if data.user && data.user.id !== c.user_id}<ReportForm targetType="comment" targetId={c.id} />{/if}
+					<div class="cfoot">
+						{#if c.held}
+							<!-- held comments can't be upvoted -->
+						{:else if !data.user}
+							<a class="up mono" href="/login?next=/battles/{b.id}" aria-label="Log in to upvote">{@render arrow()}<span>{v.score}</span></a>
+						{:else if data.user.id === c.user_id}
+							<span class="up mono own" title="Upvotes on your comment">{@render arrow()}<span>{v.score}</span></span>
+						{:else}
+							<form
+								method="POST"
+								action="?/upvote"
+								use:enhance={() => {
+									const cur = voteOf(c);
+									pending[c.id] = { mine: !cur.mine, score: cur.score + (cur.mine ? -1 : 1) };
+									return async ({ update }) => {
+										await update({ reset: false, invalidateAll: true });
+										delete pending[c.id];
+									};
+								}}
+							>
+								<input type="hidden" name="id" value={c.id} />
+								<button class="up mono" class:on={v.mine} aria-pressed={v.mine} aria-label="{v.mine ? 'Remove upvote' : 'Upvote'} ({v.score})">{@render arrow()}<span>{v.score}</span></button>
+							</form>
+						{/if}
+						{#if form?.upvoteError && form.upvoteId === c.id}<span class="error small">{form.upvoteError}</span>{/if}
+						{#if data.user && data.user.id !== c.user_id}<ReportForm targetType="comment" targetId={c.id} />{/if}
+					</div>
 				</li>
 			{/each}
 		</ul>
@@ -597,6 +649,21 @@
 	.who { display: inline-flex; align-items: center; gap: 8px; }
 	.who:hover { color: var(--pink); }
 	.actions { display: flex; gap: 10px; align-items: center; font-weight: 400; }
+	.chead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+	.csort { display: flex; gap: 12px; }
+	.csort .link-btn { color: var(--dim); text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; }
+	.csort .link-btn.on { color: var(--paper); border-color: var(--pink); }
+	.whowrap { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+	.cfoot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+	.up {
+		display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px 0 8px;
+		background: none; border: 1.5px solid var(--line-2); border-radius: 999px; color: var(--dim);
+		font-size: 0.8rem; font-weight: 700; text-decoration: none; cursor: pointer; letter-spacing: 0;
+	}
+	.up:hover { border-color: var(--paper); color: var(--paper); }
+	.up.on { border-color: var(--pink); background: var(--pink); color: var(--ink); }
+	.up.own { cursor: default; border-style: dashed; }
+	.up.own:hover { border-color: var(--line-2); color: var(--dim); }
 	.comments .body { margin: 6px 0; color: var(--dim); white-space: pre-wrap; overflow-wrap: anywhere; }
 	.report-battle { margin-top: 8px; }
 </style>

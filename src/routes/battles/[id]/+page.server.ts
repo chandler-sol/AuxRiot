@@ -16,6 +16,7 @@ import { previewSlot, promoStatus } from '#lib/server/promos.ts';
 import { CREDITS, buyPromotion, getMinVotes } from '#lib/server/credits.ts';
 import { challengerColor, creatorColor } from '#lib/colors.ts';
 import { getBlockedWords, logAction, matchesBlocked } from '#lib/server/mod.ts';
+import { refreshComment, toggleUpvote } from '#lib/server/respect.ts';
 
 interface BattleRow {
 	id: string;
@@ -104,13 +105,14 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			.all<{ id: string; user_id: string; slot: number; audio_key: string; duration_ms: number; peaks: string; removed: number }>(),
 		env.DB.prepare(
 			// Held comments (blocked words) and shadowbanned authors are only visible to the author.
-			`SELECT m.id, m.body, m.created_at, m.user_id, m.held, u.username, u.avatar_key, u.color
+			`SELECT m.id, m.body, m.created_at, m.user_id, m.held, m.upvotes, u.username, u.avatar_key, u.color, u.respect,
+			        COALESCE((SELECT cv.counted + 1 FROM comment_votes cv WHERE cv.comment_id = m.id AND cv.user_id = ?), 0) AS upvoted
 			 FROM comments m JOIN users u ON u.id = m.user_id
 			 WHERE m.battle_id = ? AND m.hidden = 0 AND ((u.shadowbanned = 0 AND m.held = 0) OR m.user_id = ?)
 			 ORDER BY m.created_at ASC LIMIT 500`
 		)
-			.bind(battle.id, user?.id ?? '')
-			.all<{ id: string; body: string; created_at: number; user_id: string; held: number; username: string; avatar_key: string | null; color: string | null }>(),
+			.bind(user?.id ?? '', battle.id, user?.id ?? '')
+			.all<{ id: string; body: string; created_at: number; user_id: string; held: number; upvotes: number; username: string; avatar_key: string | null; color: string | null; respect: number; upvoted: number }>(),
 		env.DB.prepare('SELECT COUNT(*) AS n FROM votes WHERE battle_id = ?').bind(battle.id).first<{ n: number }>(),
 		user
 			? env.DB.prepare('SELECT * FROM votes WHERE battle_id = ? AND voter_id = ?').bind(battle.id, user.id).first<Record<string, number>>()
@@ -162,7 +164,12 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			peaks: JSON.parse(e.peaks) as number[],
 			listenedMs: listenMap[e.id] ?? 0
 		})),
-		comments: comments.results,
+		// The voter always sees their own upvote in the count, even when it silently doesn't count.
+		comments: comments.results.map(({ upvoted, ...c }) => ({
+			...c,
+			mine: upvoted > 0,
+			score: c.upvotes + (upvoted === 1 || (upvoted === 2 && user?.shadowbanned) ? 1 : 0)
+		})),
 		voteCount: voteCount?.n ?? 0,
 		myVote: myVote
 			? ([0, 1].map((s) => Object.fromEntries(CATEGORIES.map((c) => [c, myVote[`s${s}_${c}`]]))) as Scores)
@@ -339,7 +346,16 @@ export const actions: Actions = {
 			await db.prepare('UPDATE comments SET hidden = 1 WHERE id = ?').bind(id).run();
 			await logAction(db, user, 'comment.hide', 'comment', id, c.body.slice(0, 120));
 		}
+		await refreshComment(db, id);
 		return { deleted: true };
+	},
+
+	upvote: async ({ request, locals, platform, url }) => {
+		const user = requireUser(locals, url.pathname);
+		const id = String((await request.formData()).get('id') ?? '');
+		const res = await toggleUpvote(getEnv(platform).DB, user, id);
+		if ('error' in res) return fail(400, { upvoteError: res.error, upvoteId: id });
+		return { upvoted: res.on, upvoteId: id };
 	},
 
 	report: async ({ request, locals, platform, url }) => {

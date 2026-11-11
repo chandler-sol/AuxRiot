@@ -1,5 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { newId } from './util.ts';
+import { refreshComment } from './respect.ts';
 
 /** Moderators and admins. */
 export function requireMod(locals: App.Locals) {
@@ -99,6 +100,9 @@ export async function setShadowban(db: D1Database, actor: SessionUser, userId: s
 	if (t.id === actor.id) return "You can't shadowban yourself.";
 	if (!canActOn(actor, t)) return 'Only an admin can act on moderators and admins.';
 	await db.prepare('UPDATE users SET shadowbanned = ? WHERE id = ?').bind(on ? 1 : 0, userId).run();
+	// Their comment upvotes stop (or start) counting toward other people's respect.
+	const upvoted = await db.prepare('SELECT comment_id FROM comment_votes WHERE user_id = ? LIMIT 500').bind(userId).all<{ comment_id: string }>();
+	for (const r of upvoted.results) await refreshComment(db, r.comment_id);
 	await logAction(db, actor, on ? 'user.shadowban' : 'user.unshadowban', 'user', userId, t.username);
 	return null;
 }

@@ -27,6 +27,7 @@ Ideas and decisions captured so far. Nothing below is built unless it's under **
   - **Reports**: grouped by target, with the content inline and one-tap hide, remove, shadowban, suspend, handled or dismiss.
   - **Suspensions**: hard block, logged out everywhere, with the reason shown at login.
   - **Mod log**: an append-only record of every staff action, including credits and settings.
+- **Comment upvotes and flair**: one upvote per person per comment (toggle; confirmed email; not your own); Top/Oldest sort. Upvotes earn **respect**, capped at 3 from any one person. Flair: ★ Sharp ear (15), ★★ Trusted ear (75), ★★★ Tastemaker (250), shown on comments and profiles. Same-device upvotes are silently ignored; hidden/held comments and shadowbanned voters don't count.
 
 ## Next up (small to medium)
 

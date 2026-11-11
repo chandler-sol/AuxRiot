@@ -2,6 +2,7 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
 import { setSetting } from '#lib/server/settings.ts';
+import { refreshComment } from '#lib/server/respect.ts';
 import { BLOCKED_WORDS_KEY, getBlockedWords, logAction, matchesBlocked, requireMod } from '#lib/server/mod.ts';
 
 export const load: PageServerLoad = async ({ locals, platform, url }) => {
@@ -75,7 +76,10 @@ export const actions: Actions = {
 		await db.batch(ids.map((id) => db.prepare(sql).bind(id)));
 		// Resolve open reports on the comments we hid.
 		if (op === 'hide') await db.batch(ids.map((id) => db.prepare(`UPDATE reports SET status = 'actioned' WHERE target_type = 'comment' AND target_id = ? AND status = 'open'`).bind(id)));
-		for (const id of ids) await logAction(db, me, `comment.${op}`, 'comment', id);
+		for (const id of ids) {
+			await refreshComment(db, id);
+			await logAction(db, me, `comment.${op}`, 'comment', id);
+		}
 		const verb = { hide: 'Hidden', unhide: 'Visible again', approve: 'Approved' }[op];
 		return { ok: `${verb}: ${ids.length} comment${ids.length === 1 ? '' : 's'}.` };
 	},

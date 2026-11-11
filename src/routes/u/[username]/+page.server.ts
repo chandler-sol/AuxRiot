@@ -6,7 +6,7 @@ import { parseSocials } from '#lib/server/profile.ts';
 export const load: PageServerLoad = async ({ params, platform, locals }) => {
 	const db = getEnv(platform).DB;
 	const profile = await db
-		.prepare('SELECT id, username, created_at, wins, losses, ties, avatar_key, bio, socials, color FROM users WHERE username = ?')
+		.prepare('SELECT id, username, created_at, wins, losses, ties, avatar_key, bio, socials, color, respect FROM users WHERE username = ?')
 		.bind(params.username)
 		.first<{
 			id: string;
@@ -19,6 +19,7 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			bio: string;
 			socials: string;
 			color: string | null;
+			respect: number;
 		}>();
 	if (!profile) error(404, 'User not found');
 

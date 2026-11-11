@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
 import { logAction, requireMod, setShadowban, setSuspended } from '#lib/server/mod.ts';
 import { voidBattle } from '#lib/server/modtools.ts';
+import { refreshComment } from '#lib/server/respect.ts';
 
 type Report = { id: string; target_type: string; target_id: string; reason: string; details: string; created_at: number; status: string; reporter: string };
 type Person = { id: string; username: string; shadowbanned: number; suspended_at: number | null; is_mod: number; is_admin: number };
@@ -122,6 +123,7 @@ export const actions: Actions = {
 		if (!c) return fail(404, { error: 'Comment not found.' });
 		await db.prepare('UPDATE comments SET hidden = 1 WHERE id = ?').bind(id).run();
 		await resolve(db, 'comment', id, 'actioned');
+		await refreshComment(db, id);
 		await logAction(db, me, 'comment.hide', 'comment', id, c.body.slice(0, 120));
 		return { ok: 'Comment hidden.' };
 	},

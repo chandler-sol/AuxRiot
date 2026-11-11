@@ -1,6 +1,8 @@
 <script lang="ts">
 	import Avatar from '#lib/components/Avatar.svelte';
 	import BattleCard from '#lib/components/BattleCard.svelte';
+	import Flair from '#lib/components/Flair.svelte';
+	import { nextFlair } from '#lib/flair.ts';
 	import SocialLinks from '#lib/components/SocialLinks.svelte';
 	import { hexFor } from '#lib/colors.ts';
 	import type { PageProps } from './$types';
@@ -29,6 +31,14 @@
 		</div>
 	</div>
 	<h1 class="name">{p.username}</h1>
+	{#if p.respect > 0 || data.isMe}
+		{@const nx = nextFlair(p.respect)}
+		<p class="respect mono">
+			<Flair respect={p.respect} size="lg" />
+			<span>{p.respect.toLocaleString()} respect</span>
+			{#if data.isMe && nx}<span class="muted">· {nx.need} to {nx.label}</span>{/if}
+		</p>
+	{/if}
 	{#if p.bio}<p class="bio">{p.bio}</p>{/if}
 	<div class="soc"><SocialLinks socials={p.socials} username={p.username} /></div>
 	<div class="ticket">
@@ -54,6 +64,7 @@
 </div>
 
 <style>
+	.respect { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0 10px; font-weight: 400; color: var(--dim); }
 	.head { padding: 8px 0 24px; }
 	.id { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
 	.idtext { display: flex; flex-direction: column; gap: 6px; }

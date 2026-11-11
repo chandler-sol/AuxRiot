@@ -77,6 +77,16 @@
 </section>
 
 <section class="block">
+	<h2>Respect &amp; flair</h2>
+	<ul>
+		<li>Upvote comments that say something real. You can't upvote yourself, and you need a confirmed email.</li>
+		<li>Upvotes on your comments earn <strong>respect</strong>. Any one person counts for at most 3, so it takes a crowd, not one fan.</li>
+		<li>Respect earns flair next to your name: <strong>★ Sharp ear</strong> at 15, <strong>★★ Trusted ear</strong> at 75, <strong>★★★ Tastemaker</strong> at 250.</li>
+		<li>Hidden comments stop counting, and upvotes from alt accounts never do.</li>
+	</ul>
+</section>
+
+<section class="block">
 	<h2>Fair play</h2>
 	<p>
 		We run automatic checks for alt accounts and vote rigging. Votes that look suspicious are quietly discounted, and
