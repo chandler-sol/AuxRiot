@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { PageProps } from './$types';
+	import OAuthButtons from '#lib/components/OAuthButtons.svelte';
 
 	let { data, form }: PageProps = $props();
 	let busy = $state(false);
@@ -15,6 +16,7 @@
 
 <div class="auth card stack">
 	<h1>Create your account</h1>
+	<OAuthButtons providers={data.providers} next={data.next} verb="Sign up" />
 	<form
 		method="POST"
 		class="stack"
@@ -51,7 +53,7 @@
 	<p class="muted small">
 		New accounts can battle right away.{#if data.voterWait}{' '}Voting unlocks once your account is {data.voterWait} old — that keeps battles fair.{/if}
 	</p>
-	<p class="small">Already have an account? <a href="/login">Log in</a></p>
+	<p class="small">Already have an account? <a href="/login{data.next ? `?next=${encodeURIComponent(data.next)}` : ''}">Log in</a></p>
 </div>
 
 <style>

@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { USERNAME_RE, createSession, hashPassword, recordSignals, verifyTurnstile } from '#lib/server/auth.ts';
 import { getEnv, newId } from '#lib/server/util.ts';
 import { overLimit, recordAttempt } from '#lib/server/ratelimit.ts';
+import { enabledProviders } from '#lib/server/oauth.ts';
 import { describeHours, getVoterMinAgeHours } from '#lib/server/settings.ts';
 import { createEmailToken, sendEmail, verifyEmail } from '#lib/server/email.ts';
 
@@ -15,6 +16,8 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 	const env = getEnv(platform);
 	return {
 		turnstileSiteKey: env.TURNSTILE_SITE_KEY || '',
+		providers: enabledProviders(env),
+		next: url.searchParams.get('next') ?? '',
 		voterWait: describeHours(await getVoterMinAgeHours(env.DB, env))
 	};
 };

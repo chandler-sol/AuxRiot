@@ -2,7 +2,8 @@
 	import { enhance } from '$app/forms';
 	import type { PageProps } from './$types';
 
-	let { form }: PageProps = $props();
+	import OAuthButtons from '#lib/components/OAuthButtons.svelte';
+	let { data, form }: PageProps = $props();
 	let busy = $state(false);
 </script>
 
@@ -10,6 +11,8 @@
 
 <div class="auth card stack">
 	<h1>Log in</h1>
+	{#if data.oauthError}<p class="error">{data.oauthError}</p>{/if}
+	<OAuthButtons providers={data.providers} next={data.next} />
 	<form
 		method="POST"
 		class="stack"
@@ -39,7 +42,7 @@
 		{/if}
 		<button class="primary" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
 	</form>
-	<p class="small"><a href="/forgot">Forgot password?</a> · New here? <a href="/signup">Create an account</a></p>
+	<p class="small"><a href="/forgot">Forgot password?</a> · New here? <a href="/signup{data.next ? `?next=${encodeURIComponent(data.next)}` : ''}">Create an account</a></p>
 </div>
 
 <style>

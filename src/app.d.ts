@@ -26,6 +26,10 @@ declare global {
 		RESEND_API_KEY?: string;
 		RESEND_ADMIN_KEY?: string;
 		NEWS_SEGMENT_ID: string;
+		GOOGLE_CLIENT_ID?: string;
+		GOOGLE_CLIENT_SECRET?: string;
+		DISCORD_CLIENT_ID?: string;
+		DISCORD_CLIENT_SECRET?: string;
 	}
 
 	interface SessionUser {

@@ -2,10 +2,12 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createSession, recordSignals, verifyPassword } from '#lib/server/auth.ts';
 import { getEnv } from '#lib/server/util.ts';
+import { enabledProviders } from '#lib/server/oauth.ts';
 import { overLimit, recordAttempt } from '#lib/server/ratelimit.ts';
 
 export const load: PageServerLoad = ({ locals, url }) => {
 	if (locals.user) redirect(303, safeNext(url.searchParams.get('next')));
+	return { providers: enabledProviders(getEnv()), next: url.searchParams.get('next') ?? '', oauthError: url.searchParams.get('oauth_error') ?? '' };
 };
 
 function safeNext(next: string | null) {

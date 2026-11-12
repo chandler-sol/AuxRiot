@@ -3,7 +3,7 @@ import { sha256 } from './util.ts';
 /** Per-IP limits on auth endpoints (stored as salted hashes, pruned after a day). */
 export const LIMITS = {
 	login_fail: { max: 10, windowMs: 15 * 60_000, message: 'Too many failed logins. Wait 15 minutes and try again.' },
-	signup: { max: 5, windowMs: 60 * 60_000, message: 'Too many new accounts from this network. Try again in an hour.' },
+	signup: { max: 20, windowMs: 60 * 60_000, message: 'Too many new accounts from this network. Try again in an hour.' },
 	forgot: { max: 5, windowMs: 60 * 60_000, message: 'Too many reset requests. Try again in an hour.' },
 	oauth: { max: 30, windowMs: 15 * 60_000, message: 'Too many sign-in attempts. Wait a few minutes.' }
 } as const;
