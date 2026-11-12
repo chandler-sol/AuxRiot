@@ -59,6 +59,7 @@
 	</section>
 {/if}
 
+<div class="controls">
 <nav class="tabs" data-sveltekit-noscroll>
 	<a href="/battles?tab=voting" class:active={data.tab === 'voting'}>Live · {c.live}</a>
 	<a href="/battles?tab=open" class:active={data.tab === 'open'}>Open · {c.open}</a>
@@ -73,6 +74,7 @@
 	</select>
 	<noscript><button>Go</button></noscript>
 </form>
+</div>
 
 {#if data.battles.length === 0}
 	<div class="empty">
@@ -122,6 +124,28 @@
 	.sortbar label { margin: 0; color: var(--muted); }
 	.sortbar select { width: auto; padding: 8px 12px; font-family: var(--mono); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 	.big { font-size: 2.2rem; margin: 0 0 8px; }
+	.controls { margin-bottom: 4px; }
+
+	/* Phones: same tightening as the battle page — less air, more battles above the fold. */
+	@media (max-width: 719px) {
+		.hero { padding: 2px 0 6px; }
+		.kicker { margin-bottom: 6px; font-size: 0.66rem; }
+		.headline { font-size: clamp(2.4rem, 11.2vw, 3.4rem); margin-bottom: 8px; white-space: nowrap; }
+		.sub { margin-bottom: 4px; font-size: 0.95rem; }
+		.hero-aside .btn { margin-top: 8px; }
+		.tape-wrap { padding: 8px 0; margin-bottom: 8px; }
+		.tape { padding: 7px 16px; font-size: 0.66rem; gap: 14px; }
+		.promoted { margin-bottom: 14px; }
+		.controls :global(.tabs) { margin-bottom: 8px; gap: 6px; }
+		.controls :global(.tabs a) { padding: 6px 11px 4px; font-size: 0.98rem; }
+		.sortbar { margin: 0 0 12px; }
+		.sortbar select { padding: 6px 10px; font-size: 0.68rem; }
+		.list { gap: 12px; }
+	}
+	@media (min-width: 720px) {
+		.controls { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+		.controls :global(.tabs), .controls .sortbar { margin: 0; }
+	}
 
 	@media (min-width: 720px) {
 		.list { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }

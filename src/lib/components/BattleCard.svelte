@@ -116,6 +116,11 @@
 	.tbd { color: var(--muted); }
 	.lost { opacity: 0.4; }
 	.vs { font-size: 1.1rem; color: var(--muted); letter-spacing: 0.12em; margin: 2px 0; }
+	@media (max-width: 719px) {
+		.body { gap: 6px; padding: 12px 14px; }
+		.names { font-size: clamp(2rem, 9.6vw, 3rem); }
+		.vs { font-size: 0.95rem; margin: 0; }
+	}
 	.title { color: var(--dim); font-size: 0.95rem; }
 	.perf { border-top: 1.5px dashed var(--line-2); margin: 2px 0; }
 	.stub { display: flex; justify-content: space-between; gap: 8px; color: var(--dim); font-weight: 400; }
