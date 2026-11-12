@@ -14,6 +14,8 @@ interface Message {
 	text: string;
 	/** Same key within 24h = Resend sends once, even if we retry or the user double-clicks. */
 	idempotencyKey: string;
+	/** One-click unsubscribe link (adds List-Unsubscribe headers). */
+	unsubscribeUrl?: string;
 }
 
 /**
@@ -30,7 +32,16 @@ export async function sendEmail(env: Env, msg: Message): Promise<{ ok: true; id:
 	let lastError = 'unknown error';
 	for (let attempt = 0; attempt < 3; attempt++) {
 		const { data, error } = await resend.emails.send(
-			{ from: FROM, to: msg.to, subject: msg.subject, html: msg.html, text: msg.text },
+			{
+				from: FROM,
+				to: msg.to,
+				subject: msg.subject,
+				html: msg.html,
+				text: msg.text,
+				headers: msg.unsubscribeUrl
+					? { 'List-Unsubscribe': `<${msg.unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }
+					: undefined
+			},
 			{ idempotencyKey: msg.idempotencyKey }
 		);
 		if (data) return { ok: true, id: data.id };
@@ -92,7 +103,7 @@ export async function consumeEmailToken(db: D1Database, token: string, purpose: 
 // ---------------------------------------------------------------------------
 // Templates (flyer style; inline CSS because email clients ignore stylesheets)
 
-function layout(opts: { kicker: string; headline: string; body: string; button: string; url: string; footer: string }) {
+export function layout(opts: { kicker: string; headline: string; body: string; button: string; url: string; footer: string; unsubscribeUrl?: string }) {
 	const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 	return `<!doctype html><html><head><meta charset="utf-8"><style>@import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');</style></head><body style="margin:0;background:#0e0d0b;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;color:#ede6d6">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
@@ -102,7 +113,7 @@ function layout(opts: { kicker: string; headline: string; body: string; button: 
 <tr><td style="font-family:Anton,Impact,'Arial Narrow Bold','Arial Black',sans-serif;font-size:44px;line-height:1;text-transform:uppercase;color:#ede6d6;padding-bottom:18px">${opts.headline}</td></tr>
 <tr><td style="font-size:16px;line-height:1.5;color:#bdb5a3;padding-bottom:26px">${esc(opts.body)}</td></tr>
 <tr><td style="padding-bottom:26px"><a href="${esc(opts.url)}" style="display:inline-block;background:#ede6d6;color:#0e0d0b;text-decoration:none;font-family:Anton,Impact,'Arial Narrow Bold','Arial Black',sans-serif;font-size:20px;letter-spacing:1px;text-transform:uppercase;padding:14px 26px;border-radius:2px">${esc(opts.button)}</a></td></tr>
-<tr><td style="font-size:13px;line-height:1.5;color:#8a8274;border-top:1px dashed #3a352e;padding-top:16px">${esc(opts.footer)}<br>Button not working? Paste this link into your browser:<br><a href="${esc(opts.url)}" style="color:#ede6d6;word-break:break-all">${esc(opts.url)}</a></td></tr>
+<tr><td style="font-size:13px;line-height:1.5;color:#8a8274;border-top:1px dashed #3a352e;padding-top:16px">${esc(opts.footer)}<br>Button not working? Paste this link into your browser:<br><a href="${esc(opts.url)}" style="color:#ede6d6;word-break:break-all">${esc(opts.url)}</a>${opts.unsubscribeUrl ? `<br><br><a href="${esc(opts.unsubscribeUrl)}" style="color:#8a8274">Stop battle emails</a>` : ''}</td></tr>
 </table></td></tr></table></body></html>`;
 }
 

@@ -7,6 +7,7 @@
 	import CopyrightNotice from '#lib/components/CopyrightNotice.svelte';
 	import ReportForm from '#lib/components/ReportForm.svelte';
 	import Flair from '#lib/components/Flair.svelte';
+	import ShareChallenge from '#lib/components/ShareChallenge.svelte';
 	import type { PreparedAudio } from '#lib/audio-prep.ts';
 	import WinnerReveal from '#lib/components/WinnerReveal.svelte';
 	import { invalidateAll } from '$app/navigation';
@@ -327,6 +328,7 @@
 						method="POST"
 						action="?/respond"
 						enctype="multipart/form-data"
+						id="answer"
 						class="slot stack"
 						style:--c={COLORS[1]}
 						use:enhance={({ formData, cancel }) => {
@@ -351,12 +353,17 @@
 				{:else if b.status === 'open' && !data.user}
 					<div class="slot" style:--c={COLORS[1]}>
 						<p class="display open-cta">Corner B is open.</p>
-						<p class="muted"><a href="/login?next=/battles/{b.id}">Log in</a> to answer this battle.</p>
+						<p class="muted"><a href="/signup?next=/battles/{b.id}%23answer">Sign up</a> or <a href="/login?next=/battles/{b.id}%23answer">log in</a> to answer this battle.</p>
 					</div>
 				{:else if b.status === 'open'}
 					<div class="slot" style:--c={COLORS[1]}>
 						<p class="display open-cta">Waiting for a challenger.</p>
-						<p class="muted small">Share the link — first producer to answer takes the slot.</p>
+						{#if data.user && data.user.id === b.creatorId}
+							<p class="muted small">Call someone out. Your challenge link plays them 30 seconds and lets them sign up and answer in one go.</p>
+							<ShareChallenge id={b.id} title={b.title} username={b.creator} />
+						{:else}
+							<p class="muted small">Share the link — first producer to answer takes the slot.</p>
+						{/if}
 					</div>
 				{/if}
 			{/each}

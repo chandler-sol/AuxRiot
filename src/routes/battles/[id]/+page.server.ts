@@ -17,6 +17,7 @@ import { CREDITS, buyPromotion, getMinVotes } from '#lib/server/credits.ts';
 import { challengerColor, creatorColor } from '#lib/colors.ts';
 import { getBlockedWords, logAction, matchesBlocked } from '#lib/server/mod.ts';
 import { refreshComment, toggleUpvote } from '#lib/server/respect.ts';
+import { notifyAnswered } from '#lib/server/notify.ts';
 
 interface BattleRow {
 	id: string;
@@ -187,6 +188,10 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 };
 
 function battleOg(b: BattleRow) {
+	return { ...battleOgText(b), image: `/og/battle/${b.id}.png` };
+}
+
+function battleOgText(b: BattleRow) {
 	const vs = `${b.creator} vs ${b.challenger ?? '???'}`;
 	if (b.status === 'open') {
 		return { title: `${b.creator} wants smoke — who's answering? · AuxRiot`, description: `"${b.title}" — open 1v1 beat battle. First producer to answer takes corner B.` };
@@ -256,6 +261,7 @@ export const actions: Actions = {
 			await env.AUDIO.delete(audio.key);
 			return fail(409, { respondError: 'Too slow — someone else answered this battle first.' });
 		}
+		notifyAnswered(env.DB, battle.id);
 		return { responded: true };
 	},
 

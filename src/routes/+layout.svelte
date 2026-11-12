@@ -21,7 +21,7 @@
 			(page.data.og as { description?: string } | undefined)?.description ??
 			'Post a beat. Get called out. A crowd that actually listened decides who hit harder. No likes, no algorithm.',
 		url: SITE + page.url.pathname,
-		image: SITE + '/og-v2.png'
+		image: SITE + ((page.data.og as { image?: string } | undefined)?.image ?? '/og-v2.png')
 	});
 	let menuEl = $state<HTMLDetailsElement>();
 
@@ -57,6 +57,10 @@
 	<meta name="twitter:description" content={og.description} />
 	<meta name="twitter:image" content={og.image} />
 	<link rel="canonical" href={og.url} />
+	<!-- Cloudflare Web Analytics: cookieless, no personal data. Production only. -->
+	{#if page.url.hostname === 'auxriot.com'}
+		<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon={'{"token": "474e3f7ccd374aa288d4407a913e5e74"}'}></script>
+	{/if}
 </svelte:head>
 
 <header>

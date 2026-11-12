@@ -37,11 +37,13 @@
 	let busy = $state(false);
 	let saving = $state(false);
 	let newsOn = $state(false);
+	let battleOn = $state(true);
 	let newsSeeded = false;
 	$effect.pre(() => {
 		if (newsSeeded) return;
 		newsSeeded = true;
 		newsOn = data.newsOptIn;
+		battleOn = data.notifyBattles;
 	});
 
 	async function pickAvatar(e: Event) {
@@ -168,6 +170,16 @@
 
 <section class="block">
 	<h2>Email preferences</h2>
+	<form method="POST" action="?/battleEmails" use:enhance={() => async ({ update }) => update({ reset: false })}>
+		<label class="optin">
+			<input type="checkbox" name="on" bind:checked={battleOn} onchange={(e) => (e.currentTarget as HTMLInputElement).form?.requestSubmit()} />
+			<span>
+				<strong>Battle alerts</strong> — when someone answers your battle, when results are in, and a nudge if your open battle is still waiting.
+			</span>
+		</label>
+		<noscript><button>Save</button></noscript>
+	</form>
+	{#if form?.battleEmailsSaved}<p class="success small">{form.battleEmailsSaved === 'on' ? 'Battle alerts on.' : 'Battle alerts off.'}</p>{/if}
 	<form method="POST" action="?/news" use:enhance={() => async ({ update }) => update({ reset: false })}>
 		<label class="optin">
 			<input type="checkbox" name="news" bind:checked={newsOn} onchange={(e) => (e.currentTarget as HTMLInputElement).form?.requestSubmit()} />

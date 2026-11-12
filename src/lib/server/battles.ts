@@ -1,4 +1,5 @@
 import { newId, DAY, HOUR } from './util';
+import { notifyResult, remindWaiting } from './notify.ts';
 import { parseMp3 } from './mp3';
 import { awardBattle } from './credits.ts';
 
@@ -76,6 +77,7 @@ export async function finalizeDue(db: D1Database, openExpiryDays: number) {
 		.bind(now)
 		.all<{ id: string }>();
 	for (const { id } of due.results) await finalizeBattle(db, id);
+	await remindWaiting(db, openExpiryDays);
 }
 
 export async function computeResult(db: D1Database, battleId: string): Promise<BattleResult> {
@@ -161,6 +163,7 @@ export async function finalizeBattle(db: D1Database, battleId: string) {
 
 	// Battle Credits payout (rules and anti-farming checks live in credits.ts).
 	await awardBattle(db, battleId);
+	notifyResult(db, battleId);
 }
 
 // ---------------------------------------------------------------------------
