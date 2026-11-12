@@ -28,13 +28,17 @@ Ideas and decisions captured so far. Nothing below is built unless it's under **
   - **Suspensions**: hard block, logged out everywhere, with the reason shown at login.
   - **Mod log**: an append-only record of every staff action, including credits and settings.
 - **Comment upvotes and flair**: one upvote per person per comment (toggle; confirmed email; not your own); Top/Oldest sort. Upvotes earn **respect**, capped at 3 from any one person. Flair: ★ Sharp ear (15), ★★ Trusted ear (75), ★★★ Tastemaker (250), shown on comments and profiles. Same-device upvotes are silently ignored; hidden/held comments and shadowbanned voters don't count.
+- **Growth batch**:
+  - **Battle alerts by email**: answered, results, and a 3-day "still waiting" nudge. Settings toggle plus one-click unsubscribe.
+  - **Challenge links** (`/c/[id]`): 30-second preview with "Sign up & answer".
+  - **Per-battle share images**.
+  - **Per-IP limits** on failed logins, sign-ups and reset requests.
+  - **Cloudflare Web Analytics**.
+  - **Google/Discord sign-in**: on once the keys are added.
 
 ## Next up (small to medium)
 
-- **Google / Discord login** alongside email (the `oauth_accounts` table already exists).
 - **Bounce/complaint webhooks** from Resend so bad addresses stop getting mail.
-- **Notifications**: "someone answered your battle", "voting closed — you won".
-- **Login and sign-up rate limiting** with a Cloudflare rate-limit rule.
 - **Pool battles**: one beat, many challengers, one winner.
 - **David vs Goliath**: challenge mode unlocked after N wins at a minimum win rate (e.g. 5–10 wins, ≥60%).
 - **Phone verification** for tournaments or money battles only.
