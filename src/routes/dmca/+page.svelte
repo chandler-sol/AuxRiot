@@ -22,6 +22,16 @@
 			<li>The uploader may send a counter-notice if they believe the removal was a mistake.</li>
 			<li>Accounts with repeated valid takedowns are terminated.</li>
 		</ol>
+		<h2>Designated agent</h2>
+		<p>You can file below, or send a notice or counter-notice to our designated agent (registered with the U.S. Copyright Office, DMCA-1086058):</p>
+		<address class="agent">
+			Chandler Solomon, AuxRiot<br />
+			8304 Waxhaw Hwy<br />
+			Waxhaw, NC 28173<br />
+			(336) 307-9911<br />
+			<a href="mailto:dmca@auxriot.com">dmca@auxriot.com</a>
+		</address>
+		<p class="small">What a valid notice must include, and how counter-notices work, is in our <a href="/terms">Terms of Service</a> (section 7).</p>
 		<p class="muted small">
 			Knowingly misrepresenting that material is infringing can make you liable for damages (17 U.S.C. § 512(f)).
 		</p>
@@ -71,6 +81,7 @@
 </article>
 
 <style>
+	.agent { font-style: normal; background: var(--ink); border-left: 4px solid var(--pink); padding: 12px 14px; line-height: 1.7; font-weight: 400; font-size: 0.8rem; }
 	ol { padding-left: 1.2em; }
 	.check { display: flex; gap: 10px; align-items: flex-start; font-weight: 500; }
 	.check input { width: 20px; height: 20px; flex: none; margin-top: 2px; accent-color: var(--accent); }

@@ -41,6 +41,10 @@
 			<input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required />
 		</div>
 		<label class="optin">
+			<input type="checkbox" name="agree" required />
+			<span>I'm 18 or older and agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a>.</span>
+		</label>
+		<label class="optin">
 			<input type="checkbox" name="news" />
 			<span>Send me AuxRiot news — battles of the week, events, new features. Unsubscribe anytime.</span>
 		</label>

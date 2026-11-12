@@ -26,10 +26,10 @@
 				<p class="small muted">We'll send a link to confirm it (needed to vote).</p>
 			{/if}
 		</div>
+		<label class="optin"><input type="checkbox" name="agree" required /> <span>I'm 18 or older and agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a>.</span></label>
 		<label class="optin"><input type="checkbox" name="news" /> <span>Send me AuxRiot news (a few emails a month at most)</span></label>
 		{#if form?.error}<p class="error">{form.error}</p>{/if}
 		<button class="primary" disabled={busy}>{busy ? 'Creating…' : 'Start battling'}</button>
-		<p class="small muted">By joining you agree to the <a href="/rules">rules</a>.</p>
 	</form>
 </div>
 

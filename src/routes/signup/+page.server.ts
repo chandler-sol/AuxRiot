@@ -35,6 +35,7 @@ export const actions: Actions = {
 		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return fail(400, { ...values, error: 'Enter a valid email.' });
 		if (password.length < 8 || password.length > 200) return fail(400, { ...values, error: 'Password must be at least 8 characters.' });
 
+		if (form.get('agree') !== 'on') return fail(400, { ...values, error: 'Please confirm you are 18+ and agree to the Terms and Privacy Policy.' });
 		const salt = env.SIGNAL_SALT ?? 'dev-salt';
 		const limited = await overLimit(env.DB, locals.ip, salt, 'signup');
 		if (limited) return fail(429, { ...values, error: limited });
@@ -55,9 +56,9 @@ export const actions: Actions = {
 		const id = newId();
 		const news = form.get('news') === 'on';
 		await env.DB.prepare(
-			'INSERT INTO users (id, username, email, password_hash, created_at, news_opt_in, news_opt_in_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+			'INSERT INTO users (id, username, email, password_hash, created_at, news_opt_in, news_opt_in_at, terms_accepted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
 		)
-			.bind(id, username, email, await hashPassword(password), Date.now(), news ? 1 : 0, news ? Date.now() : null)
+			.bind(id, username, email, await hashPassword(password), Date.now(), news ? 1 : 0, news ? Date.now() : null, Date.now())
 			.run();
 		await recordSignals(env.DB, id, locals.ip, locals.deviceId, env.SIGNAL_SALT ?? 'dev-salt');
 		await recordAttempt(env.DB, locals.ip, salt, 'signup');

@@ -38,6 +38,7 @@ export const actions: Actions = {
 		const values = { username, email };
 		if (!USERNAME_RE.test(username)) return fail(400, { ...values, error: 'Username: 3–20 letters, numbers or underscores.' });
 		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return fail(400, { ...values, error: 'Enter a valid email.' });
+		if (f.get('agree') !== 'on') return fail(400, { ...values, error: 'Please confirm you are 18+ and agree to the Terms and Privacy Policy.' });
 		const salt = env.SIGNAL_SALT ?? 'dev-salt';
 		const limited = await overLimit(env.DB, locals.ip, salt, 'signup');
 		if (limited) return fail(429, { ...values, error: limited });
@@ -56,8 +57,8 @@ export const actions: Actions = {
 		const news = f.get('news') === 'on';
 		await env.DB.batch([
 			env.DB.prepare(
-				'INSERT INTO users (id, username, email, password_hash, created_at, email_verified_at, news_opt_in, news_opt_in_at) VALUES (?, ?, ?, NULL, ?, ?, ?, ?)'
-			).bind(id, username, email, now, verified ? now : null, news ? 1 : 0, news ? now : null),
+				'INSERT INTO users (id, username, email, password_hash, created_at, email_verified_at, news_opt_in, news_opt_in_at, terms_accepted_at) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)'
+			).bind(id, username, email, now, verified ? now : null, news ? 1 : 0, news ? now : null, now),
 			env.DB.prepare('INSERT INTO oauth_accounts (provider, provider_user_id, user_id) VALUES (?, ?, ?)').bind(p.provider, p.provider_user_id, id),
 			env.DB.prepare('DELETE FROM oauth_pending WHERE token_hash = ? OR created_at < ?').bind(p.token_hash, now - TTL)
 		]);

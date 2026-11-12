@@ -129,6 +129,10 @@
 	<a href="/rules">Rules &amp; voting</a>
 	<span>·</span>
 	<a href="/dmca">DMCA / copyright</a>
+	<span>·</span>
+	<a href="/terms">Terms</a>
+	<span>·</span>
+	<a href="/privacy">Privacy</a>
 </footer>
 
 <style>
@@ -185,7 +189,7 @@
 	.vb .link-btn { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 	.vb .link-btn:hover { color: var(--pink); }
 	.beat { min-height: 38px; padding: 2px 14px 0; font-size: 1.05rem; }
-	footer { display: flex; gap: 10px; justify-content: center; padding-top: 40px; padding-bottom: 40px; color: var(--muted); }
+	footer { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; padding-top: 40px; padding-bottom: 40px; color: var(--muted); }
 	footer a { color: var(--muted); text-decoration: none; }
 	footer a:hover { color: var(--paper); }
 </style>
