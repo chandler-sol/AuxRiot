@@ -15,7 +15,7 @@ const SORTS = {
 export const load: PageServerLoad = async ({ locals, platform, url }) => {
 	requireMod(locals);
 	const env = getEnv(platform);
-	await finalizeDue(env.DB, Number(env.OPEN_BATTLE_EXPIRY_DAYS || 14));
+	await finalizeDue(env.DB, Number(env.OPEN_BATTLE_EXPIRY_DAYS || 5));
 	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
 	const s = url.searchParams.get('status');
 	const status = (STATUSES as readonly string[]).includes(s ?? '') ? (s as (typeof STATUSES)[number]) : 'voting';

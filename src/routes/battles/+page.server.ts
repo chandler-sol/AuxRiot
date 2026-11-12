@@ -64,7 +64,7 @@ type Row = {
 
 export const load: PageServerLoad = async ({ platform, url }) => {
 	const env = getEnv(platform);
-	await finalizeDue(env.DB, Number(env.OPEN_BATTLE_EXPIRY_DAYS) || 14);
+	await finalizeDue(env.DB, Number(env.OPEN_BATTLE_EXPIRY_DAYS) || 5);
 
 	const tabParam = url.searchParams.get('tab') ?? 'voting';
 	const tab: Tab = tabParam in TABS ? (tabParam as Tab) : 'voting';

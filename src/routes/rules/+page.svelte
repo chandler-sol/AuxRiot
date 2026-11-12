@@ -47,7 +47,7 @@
 	<h2>Battling</h2>
 	<ul>
 		<li>Anyone with an account can post a beat. Up to 3 of yours can wait for a challenger at once.</li>
-		<li>Open battles with no challenger expire after 14 days.</li>
+		<li>Open battles with no challenger expire after 5 days. You get a reminder with your challenge link after 3.</li>
 		<li>You can't answer your own battle.</li>
 	</ul>
 </section>
