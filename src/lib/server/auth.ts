@@ -111,14 +111,32 @@ export async function recordSignals(db: D1Database, userId: string, ip: string, 
 	await db.batch(batch);
 }
 
-export async function verifyTurnstile(secret: string | undefined, token: string | null, ip: string) {
-	if (!secret) return true; // not configured (local dev)
-	if (!token) return false;
-	const body = new FormData();
-	body.append('secret', secret);
-	body.append('response', token);
-	if (ip) body.append('remoteip', ip);
-	const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body });
-	const data = (await res.json()) as { success: boolean };
-	return data.success;
+/** Hostnames a valid Turnstile token may come from. */
+export const TURNSTILE_HOSTNAMES = ['auxriot.com', 'www.auxriot.com'];
+
+/**
+ * Server-side Turnstile check. Passes only if Cloudflare says the token is
+ * valid AND it was issued for this action on our hostname. Any network error
+ * or timeout fails closed. Without a secret (local dev) the check is skipped.
+ */
+export async function verifyTurnstile(secret: string | undefined, token: string | null, ip: string, action = 'signup') {
+	if (!secret) return true;
+	if (typeof token !== 'string' || !token || token.length > 2048) return false;
+	try {
+		const body = new URLSearchParams({ secret, response: token });
+		if (ip) body.set('remoteip', ip);
+		const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+			body,
+			signal: AbortSignal.timeout(10_000)
+		});
+		if (!res.ok) return false;
+		const data = (await res.json()) as { success: boolean; action?: string; hostname?: string; 'error-codes'?: string[] };
+		if (!data.success) console.warn('[turnstile] rejected', data['error-codes']);
+		return data.success === true && data.action === action && TURNSTILE_HOSTNAMES.includes(data.hostname ?? '');
+	} catch (e) {
+		console.error('[turnstile] siteverify failed', e);
+		return false;
+	}
 }

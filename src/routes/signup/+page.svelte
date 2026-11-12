@@ -2,16 +2,15 @@
 	import { enhance } from '$app/forms';
 	import type { PageProps } from './$types';
 	import OAuthButtons from '#lib/components/OAuthButtons.svelte';
+	import Turnstile from '#lib/components/Turnstile.svelte';
 
 	let { data, form }: PageProps = $props();
 	let busy = $state(false);
+	let turnstile = $state<Turnstile>();
 </script>
 
 <svelte:head>
 	<title>Sign up · AuxRiot</title>
-	{#if data.turnstileSiteKey}
-		<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-	{/if}
 </svelte:head>
 
 <div class="auth card stack">
@@ -22,9 +21,11 @@
 		class="stack"
 		use:enhance={() => {
 			busy = true;
-			return async ({ update }) => {
+			return async ({ result, update }) => {
 				await update({ reset: false });
 				busy = false;
+				// Tokens are single-use: get a fresh one before they retry.
+				if (result.type !== 'redirect') turnstile?.reset();
 			};
 		}}
 	>
@@ -49,7 +50,7 @@
 			<span>Send me AuxRiot news — battles of the week, events, new features. Unsubscribe anytime.</span>
 		</label>
 		{#if data.turnstileSiteKey}
-			<div class="cf-turnstile" data-sitekey={data.turnstileSiteKey} data-theme="dark"></div>
+			<Turnstile bind:this={turnstile} siteKey={data.turnstileSiteKey} action="signup" />
 		{/if}
 		{#if form?.error}<p class="error">{form.error}</p>{/if}
 		<button class="primary" disabled={busy}>{busy ? 'Creating…' : 'Sign up'}</button>
