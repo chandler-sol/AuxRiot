@@ -88,7 +88,11 @@ export async function voidBattle(db: D1Database, battleId: string) {
 	if (!b || b.status === 'removed') return false;
 	if (b.status === 'closed') await reverseResult(db, battleId);
 	await cancelPromos(db, battleId);
-	await db.prepare(`UPDATE battles SET status = 'removed' WHERE id = ?`).bind(battleId).run();
+	await db.batch([
+		db.prepare(`UPDATE battles SET status = 'removed' WHERE id = ?`).bind(battleId),
+		// Its beats come off the store too (sold ones stay sold; the buyer keeps their files).
+		db.prepare(`UPDATE listings SET status = 'removed', updated_at = ? WHERE battle_id = ? AND status != 'sold'`).bind(Date.now(), battleId)
+	]);
 	return true;
 }
 
@@ -102,7 +106,11 @@ export async function restoreBattle(db: D1Database, battleId: string) {
 	const removedBeats = await db.prepare('SELECT COUNT(*) AS n FROM entries WHERE battle_id = ? AND removed = 1').bind(battleId).first<{ n: number }>();
 	if (removedBeats?.n) return "A beat in this battle was deleted, so it can't come back.";
 	const status = b.challenger_id ? 'voting' : 'open';
-	await db.prepare('UPDATE battles SET status = ? WHERE id = ?').bind(status, battleId).run();
+	await db.batch([
+		db.prepare('UPDATE battles SET status = ? WHERE id = ?').bind(status, battleId),
+		// Listings come back as "off the store"; the producer chooses whether to relist.
+		db.prepare(`UPDATE listings SET status = 'unlisted', updated_at = ? WHERE battle_id = ? AND status = 'removed'`).bind(Date.now(), battleId)
+	]);
 	// A live battle whose clock ran out while removed closes now with the votes it has.
 	if (status === 'voting' && (b.voting_ends_at ?? 0) <= Date.now()) await finalizeBattle(db, battleId);
 	return null;

@@ -80,21 +80,44 @@ No packs under ~$5: card fees (≈30¢ + 3%) eat small purchases.
 - Stripe Checkout for purchases.
 - The promo queue.
 
-## Marketplace: exclusive beats only
+## Marketplace: exclusive beats only (in progress on beta.auxriot.com)
 
-- **No leases.** One beat, one buyer. Once sold, it's off the market for good.
-- Battles stay up with a **SOLD** stamp on the poster (free advertising for the producer).
-- **What's sold:** the full-length, untagged WAV, uploaded privately. The 2:00 battle preview is never the product.
-- **Producer promise** when listing: never sold or leased anywhere else.
-- **Payments:** Stripe Connect pays producers directly (AuxRiot never holds their money) and handles ID checks and tax forms. Files unlock as soon as payment clears.
-- **Fee:** 10–15% of each sale.
-- **Lawyer needed:** a contract template for what transfers (master rights, publishing split, credit).
-- **Copyright:** require a "no uncleared samples" promise to list; a takedown also pulls the beat from sale.
+**Decided (Nov 2026)**
+- **Exclusive only, no leases.** One buyer, then it's off the market for good. The battle stays up with a **SOLD** stamp.
+- **When producers list:** at upload (a "Sell this beat too" checkbox) or anytime from their battle.
+- **What's delivered:**
+  - The producer's choice of a full-length **WAV or MP3**, tagged or untagged (buyers are told which), uploaded privately. The 2:00 battle preview is never the product.
+  - Optional **stems zip** (up to 4 GB).
+- **Pricing:**
+  - Two prices: **Exclusive** and **Exclusive + Stems**.
+  - **Suggested minimum $20.** Producers may go lower (we advise against it).
+  - No maximum. Admin Store desk flags outliers.
+- **Buy unlocks after the battle ends**, so a purchase can't sway the vote.
+- **Store details:** BPM, key, genre, up to 3 moods.
+- **Samples:** a listing checkbox puts clearance on the producer and buyer. We remove beats only on a valid DMCA notice.
+- **Seller:** one per beat. Whoever lists it gets paid; no splits yet.
+- **Fee:** **20%** of the final sale price. It's an admin setting, so it can change without code.
+- **Card processing** (2.9% + 30¢): comes out of the producer's share, shown explicitly in the earnings preview.
+- **Payouts:** Stripe Connect Express, so AuxRiot never holds producers' money. Proposed schedule: weekly on Fridays as a refund/chargeback buffer (daily is one setting away).
+- **Refunds:** before download only. Watch producer feedback.
+- **Sales tax:** collect where required (Stripe Tax). Accountant check.
+- **Discount codes:**
+  - **Producer codes** come off the sale price, and our 20% shrinks with it.
+  - **Site-wide codes** (Black Friday etc.) are AuxRiot-funded: the producer is paid on full price, capped at our fee %.
+  - Controls: expiry, max uses, which beats, one per buyer.
+- **Buyers need an account.** Auto-generated PDF license; downloads valid 7 days, re-downloadable from "My purchases".
+- **Storefront** on every profile, and a **Store** page with filters and a "Producers selling" list.
+- **Notifications:** "your beat sold", purchase receipt, payout on the way.
 
-**Stems upsell**
-- Two prices per beat: **Exclusive** (WAV) or **Exclusive + Stems** (producer sets the extra, e.g. +$50–$300).
-- Storage is cheap: about 0.5 GB per stem set, well under a cent a month on R2, and downloads are free.
-- Large files upload straight to R2 (presigned or multipart uploads), not through the site, which caps request size at around 100 MB.
+**Phase 1 (built on beta):** listings, private chunked uploads, earnings preview, Store page, storefronts, battle-page sale status, admin fee/minimum and listings monitor, moderation sync.
+**Phase 2 (needs a Stripe account):** Connect onboarding, Checkout, Stripe Tax, webhooks, delivery and downloads, PDF license, refunds, discount codes, sale and payout notifications.
+
+**Later**
+- **Make an offer** (negotiated price).
+- **"Featured in the store"** placement bought with Battle Credits, like promoted battles.
+- **Exclusive license contract:** lawyer-drafted template (what transfers: master rights, publishing split, credit). Owner is arranging it.
+- **Co-producer splits** (Stripe Connect transfers to multiple accounts).
+- **Battle Credits toward purchases:** revisit later. Today they have no cash value per the Terms.
 
 ## AuxRiot Pro
 

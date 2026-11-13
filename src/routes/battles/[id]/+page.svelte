@@ -8,6 +8,7 @@
 	import ReportForm from '#lib/components/ReportForm.svelte';
 	import Flair from '#lib/components/Flair.svelte';
 	import ShareChallenge from '#lib/components/ShareChallenge.svelte';
+	import { money } from '#lib/store.ts';
 	import type { PreparedAudio } from '#lib/audio-prep.ts';
 	import WinnerReveal from '#lib/components/WinnerReveal.svelte';
 	import { invalidateAll } from '$app/navigation';
@@ -369,6 +370,37 @@
 			{/each}
 		</section>
 
+		{@const forSale = data.sale.filter((x) => x.status === 'listed' || x.status === 'sold')}
+		{@const mySlot = data.entries.find((e) => e.userId === data.user?.id)?.slot}
+		{@const mine = data.sale.find((x) => x.mine)}
+		{#if forSale.length || mySlot !== undefined}
+			<section class="forsale" id="buy">
+				{#each forSale as s (s.slot)}
+					<div class="sale" style:--c={COLORS[s.slot]}>
+						<div>
+							<p class="mono small sale-k">{names[s.slot]}'s beat · exclusive</p>
+							<p class="display sale-p">{money(s.priceCents)}{#if s.stemsPriceCents}<span class="mono small"> · {money(s.stemsPriceCents)} with stems</span>{/if}</p>
+							<p class="mono small muted">{s.format?.toUpperCase() ?? ''}{s.tagged ? ' (tagged)' : ''} · one buyer, then it's gone</p>
+						</div>
+						{#if s.status === 'sold'}
+							<span class="display soldtag">Sold</span>
+						{:else if !s.buyOpen}
+							<span class="mono small muted locked">Buy unlocks when voting ends</span>
+						{:else if s.mine}
+							<span class="mono small muted locked">Your listing</span>
+						{:else}
+							<button class="primary" disabled title="Checkout is being built">Checkout opens soon</button>
+						{/if}
+					</div>
+				{/each}
+				{#if mySlot !== undefined && b.status !== 'removed' && mine?.status !== 'sold'}
+					<a class="mono sell-link" href="/battles/{b.id}/sell">
+						{mine?.status === 'listed' ? 'Edit your listing →' : mine ? 'Finish your listing →' : 'Sell this beat →'}
+					</a>
+				{/if}
+			</section>
+		{/if}
+
 		{#if data.credits?.canPromote && !data.promo}
 			{@const cr = data.credits}
 			<form
@@ -538,6 +570,15 @@
 </article>
 
 <style>
+	.forsale { display: grid; gap: 8px; }
+	.sale { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--ink-2); border-left: 6px solid var(--c); border-radius: var(--radius); padding: 12px 14px; }
+	.sale p { margin: 0; }
+	.sale-k { color: var(--dim); }
+	.sale-p { font-size: 1.8rem; line-height: 1.05; }
+	.sale-p .mono { color: var(--dim); font-size: 0.7rem; }
+	.soldtag { background: var(--pink); color: var(--ink); padding: 4px 12px; transform: rotate(-4deg); font-size: 1.3rem; }
+	.locked { text-align: right; max-width: 140px; }
+	.sell-link { justify-self: end; color: var(--pink); text-decoration: none; }
 	.held { color: var(--warn); margin: 4px 0 0; font-weight: 400; }
 	.modlink { display: inline-block; margin-top: 10px; color: var(--pink); }
 	article { --namecol: calc(min(100vw, 760px) - 34px); --namemax: 6rem; --winmax: 7.5rem; }

@@ -46,6 +46,10 @@
 		</div>
 	</div>
 
+	<label class="sell">
+		<input type="checkbox" name="sell" />
+		<span><strong>Sell this beat too</strong> — list it as an exclusive in the store. You'll set the price and upload the full file next. Buyers can check out once the battle ends.</span>
+	</label>
 	<CopyrightNotice />
 
 	{#if form?.error}<p class="error">{form.error}</p>{/if}
@@ -53,6 +57,9 @@
 </form>
 
 <style>
+	.sell { display: flex; gap: 10px; align-items: flex-start; margin: 0; text-transform: none; letter-spacing: 0; font-family: var(--body); font-size: 0.95rem; color: var(--dim); font-weight: 400; cursor: pointer; }
+	.sell strong { color: var(--paper); }
+	.sell input { width: 20px; height: 20px; accent-color: var(--pink); flex: none; margin-top: 2px; }
 	.kicker { margin: 8px 0 10px; }
 	.headline { font-size: clamp(3.2rem, 16vw, 5.5rem); line-height: 0.9; }
 	.headline span { color: var(--pink); }

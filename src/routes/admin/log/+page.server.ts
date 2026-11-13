@@ -2,7 +2,7 @@ import type { PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
 import { requireMod } from '#lib/server/mod.ts';
 
-const KINDS = ['battle', 'entry', 'vote', 'comment', 'user', 'report', 'credits', 'settings', 'promo', 'dmca'];
+const KINDS = ['battle', 'entry', 'vote', 'comment', 'user', 'report', 'credits', 'settings', 'promo', 'dmca', 'listing'];
 
 export const load: PageServerLoad = async ({ locals, platform, url }) => {
 	requireMod(locals);

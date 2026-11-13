@@ -44,6 +44,7 @@ export const actions: Actions = {
 				`INSERT INTO entries (id, battle_id, user_id, slot, audio_key, duration_ms, peaks, created_at) VALUES (?, ?, ?, 0, ?, ?, ?, ?)`
 			).bind(newId(), battleId, locals.user.id, audio.key, audio.durationMs, audio.peaks, now)
 		]);
-		redirect(303, `/battles/${battleId}`);
+		// "Sell this beat" ticked: go straight to the listing page (it can go live now; Buy unlocks after the battle).
+		redirect(303, form.get('sell') === 'on' ? `/battles/${battleId}/sell` : `/battles/${battleId}`);
 	}
 };

@@ -18,6 +18,7 @@ import { challengerColor, creatorColor } from '#lib/colors.ts';
 import { getBlockedWords, logAction, matchesBlocked } from '#lib/server/mod.ts';
 import { refreshComment, toggleUpvote } from '#lib/server/respect.ts';
 import { notifyAnswered } from '#lib/server/notify.ts';
+import { buyOpen } from '#lib/server/store.ts';
 
 interface BattleRow {
 	id: string;
@@ -182,10 +183,35 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 		og: battleOg(battle),
 		credits,
 		promo,
+		sale: await saleInfo(env.DB, battle.id, battle.status, user?.id ?? null),
 		views: battle.views + (newView ? 1 : 0),
 		now: Date.now()
 	};
 };
+
+/** Store status for each beat in this battle (public prices; the battler also sees their own drafts). */
+async function saleInfo(db: D1Database, battleId: string, status: string, userId: string | null) {
+	const rows = await db
+		.prepare(
+			`SELECT l.id, l.status, l.price_cents, l.stems_price_cents, l.stems_key IS NOT NULL AS has_stems, l.file_format, l.tagged, l.seller_id, e.slot
+			 FROM listings l JOIN entries e ON e.id = l.entry_id WHERE l.battle_id = ?`
+		)
+		.bind(battleId)
+		.all<{ id: string; status: string; price_cents: number | null; stems_price_cents: number | null; has_stems: number; file_format: string | null; tagged: number; seller_id: string; slot: number }>();
+	const open = buyOpen(status);
+	return rows.results
+		.filter((r) => r.status === 'listed' || r.status === 'sold' || r.seller_id === userId)
+		.map((r) => ({
+			slot: r.slot,
+			status: r.status,
+			mine: r.seller_id === userId,
+			priceCents: r.price_cents,
+			stemsPriceCents: r.has_stems ? r.stems_price_cents : null,
+			format: r.file_format,
+			tagged: !!r.tagged,
+			buyOpen: open
+		}));
+}
 
 function battleOg(b: BattleRow) {
 	return { ...battleOgText(b), image: `/og/battle/${b.id}.png` };

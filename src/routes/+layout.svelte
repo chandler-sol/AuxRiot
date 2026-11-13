@@ -68,6 +68,7 @@
 	<div class="container wide bar">
 		<a href="/" class="logo display" aria-label="AuxRiot home">AUX<span>RIOT</span></a>
 		<nav>
+			<a class="mono navlink storelink" href="/store">Store</a>
 			{#if data.user}
 				<details class="account" bind:open={menuOpen} bind:this={menuEl}>
 					<summary class="acct" aria-label="Account menu for {data.user.username}">
@@ -83,6 +84,7 @@
 						</div>
 						<a href="/u/{data.user.username}" onclick={() => (menuOpen = false)}>My profile</a>
 						<a href="/credits" onclick={() => (menuOpen = false)}>Credits</a>
+						<a href="/store" onclick={() => (menuOpen = false)}>Beat store</a>
 						<a href="/settings/profile" onclick={() => (menuOpen = false)}>Edit profile</a>
 						{#if data.user.isMod}
 							<a href="/admin" onclick={() => (menuOpen = false)}>{data.user.isAdmin ? 'Admin' : 'Mod tools'}</a>
@@ -152,6 +154,8 @@
 	nav { display: flex; align-items: center; gap: 14px; min-width: 0; }
 	.navlink { color: var(--dim); text-decoration: none; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.navlink:hover { color: var(--paper); }
+	/* Phones with an account menu: Store lives in the menu instead. */
+	@media (max-width: 480px) { nav:has(.account) .storelink { display: none; } }
 	.account { position: relative; }
 	.acct {
 		list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;

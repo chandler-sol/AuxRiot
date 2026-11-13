@@ -28,6 +28,7 @@
 	<a href="/admin/comments"><span class="display">Comments</span><span class="mono">Search &amp; blocked words</span></a>
 	<a href="/admin/users"><span class="display">Users</span><span class="mono">{data.isAdmin ? 'Credits, roles, bans' : 'Bans &amp; suspensions'}</span></a>
 	<a href="/admin/log"><span class="display">{data.counts.actionsToday}</span><span class="mono">Mod log · last 24h</span></a>
+	<a href="/admin/store"><span class="display">Store</span><span class="mono">Listings &amp; fee</span></a>
 	{#if data.isAdmin}<a href="/admin/news"><span class="display">News</span><span class="mono">Compose a send</span></a>{/if}
 </nav>
 

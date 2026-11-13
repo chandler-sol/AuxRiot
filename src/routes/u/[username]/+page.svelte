@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Avatar from '#lib/components/Avatar.svelte';
 	import BattleCard from '#lib/components/BattleCard.svelte';
+	import StoreCard from '#lib/components/StoreCard.svelte';
 	import Flair from '#lib/components/Flair.svelte';
 	import { nextFlair } from '#lib/flair.ts';
 	import SocialLinks from '#lib/components/SocialLinks.svelte';
@@ -49,6 +50,21 @@
 	</div>
 </section>
 
+{#if data.store.length}
+	{@const forSale = data.store.filter((i) => i.status === 'listed').length}
+	<section class="storefront" id="store">
+		<div class="sf-head">
+			<h2>Beats for sale{forSale ? ` · ${forSale}` : ''}</h2>
+			<a class="mono small" href="/store">Whole store →</a>
+		</div>
+		<ul class="sf-grid">
+			{#each data.store as item (item.id)}<li><StoreCard {item} showSeller={false} /></li>{/each}
+		</ul>
+	</section>
+{:else if data.isMe}
+	<p class="muted small sf-empty" id="store">Want to sell a beat? Open one of your battles and hit <strong>Sell this beat</strong>.</p>
+{/if}
+
 <div class="battles">
 <h2>Battles</h2>
 {#if data.battles.length === 0}
@@ -64,6 +80,12 @@
 </div>
 
 <style>
+	.storefront { margin: 26px 0 8px; }
+	.sf-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+	.sf-head a { color: var(--dim); }
+	.sf-grid { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 12px; }
+	@media (min-width: 720px) { .sf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
+	.sf-empty { margin-top: 22px; }
 	.respect { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0 10px; font-weight: 400; color: var(--dim); }
 	.head { padding: 8px 0 24px; }
 	.id { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }

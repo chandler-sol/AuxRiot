@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
 import { parseSocials } from '#lib/server/profile.ts';
+import { ITEM_SELECT, toItem, type ItemRow } from '#lib/server/storequery.ts';
 
 export const load: PageServerLoad = async ({ params, platform, locals }) => {
 	const db = getEnv(platform).DB;
@@ -54,6 +55,13 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			views: number;
 		}>();
 
+	// Storefront: beats on sale first, then recent sales (SOLD stamps are social proof).
+	const store = await db
+		.prepare(`${ITEM_SELECT} WHERE l.seller_id = ? AND l.status IN ('listed', 'sold') AND b.status != 'removed'
+		          ORDER BY l.status = 'sold', l.updated_at DESC LIMIT 30`)
+		.bind(profile.id)
+		.all<ItemRow>();
+
 	const { socials, ...rest } = profile;
 	return {
 		profile: { ...rest, socials: parseSocials(socials) },
@@ -61,6 +69,7 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			const r = result_json ? (JSON.parse(result_json) as { slots: { total: number }[] }) : null;
 			return { ...b, score: r ? ([r.slots[0].total, r.slots[1].total] as [number, number]) : null };
 		}),
+		store: store.results.map(toItem),
 		isMe: locals.user?.id === profile.id,
 		og: {
 			title: `${profile.username} · ${profile.wins}-${profile.losses}${profile.ties ? `-${profile.ties}` : ''} on AuxRiot`,
