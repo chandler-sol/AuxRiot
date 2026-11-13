@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import StoreFileUpload from '#lib/components/StoreFileUpload.svelte';
+	import SellerAgreement from '#lib/components/SellerAgreement.svelte';
 	import { money, money2, splitSale } from '#lib/store.ts';
 	import type { PageProps } from './$types';
 
@@ -38,6 +39,7 @@
 
 <div class="explain">
 	<p><strong>Exclusive only.</strong> One buyer gets the beat, then it's off the market for good. The battle stays up with a SOLD stamp.</p>
+	<p class="small muted"><a href="/store/terms">Store Terms</a> · <a href="/store/license">Exclusive Beat License</a> · <span class="draftnote">drafts pending legal review</span></p>
 	<p class="small muted">
 		{#if data.battle.buyOpen}
 			Buyers can check out as soon as it's listed.
@@ -50,7 +52,9 @@
 {#if form?.ok}<p class="success">{form.ok}</p>{/if}
 {#if form?.error}<p class="error">{form.error}</p>{/if}
 
-{#if locked}
+{#if !data.seller.agreed && !locked}
+	<SellerAgreement error={form?.agreeError ?? ''} />
+{:else if locked}
 	<p class="muted">This beat {l.status === 'sold' ? 'has been sold' : 'was removed'} and can't be edited.</p>
 {:else}
 	<form method="POST" action="?/save" class="stack" use:enhance={keep}>
@@ -130,14 +134,34 @@
 			{/if}
 		</section>
 
-		<section class="card stack">
-			<label class="check">
-				<input type="checkbox" name="attest" checked={l.attested} />
-				<span>
-					I own this beat and it has never been sold or leased anywhere else. If it contains samples, clearing them is up to me and the buyer —
-					AuxRiot only removes beats on a valid DMCA notice.
-				</span>
-			</label>
+		<section class="card stack sign">
+			<h2>Samples &amp; signature</h2>
+			<div>
+				<label for="sample_disclosure">Sample disclosure</label>
+				<textarea id="sample_disclosure" name="sample_disclosure" rows="2" maxlength="1000" placeholder={'"none" — or what\'s sampled and how it\'s cleared'}>{l.sampleDisclosure}</textarea>
+				<p class="small muted">Shown on the buyer's license. Clearing samples is on you (and the buyer for their own uses) — AuxRiot doesn't clear samples.</p>
+			</div>
+			<div>
+				<label for="legal_name">Your full legal name</label>
+				<input id="legal_name" name="legal_name" type="text" autocomplete="name" maxlength="120" value={data.seller.legalName} />
+				<p class="small muted">Private. Printed only on licenses for your sales.</p>
+			</div>
+			{#if l.signed}
+				<p class="signed mono small">✓ Signed by {l.signed.name} · {new Date(l.signed.at).toLocaleDateString()}</p>
+				<p class="small muted">Changing the sample disclosure clears this signature, so you'd sign again.</p>
+			{:else}
+				<label class="check">
+					<input type="checkbox" name="sign" />
+					<span>
+						I sign the <a href="/store/license" target="_blank">Exclusive Beat License</a> for "{data.battle.title}". I own it, it has never been sold or leased anywhere,
+						and once it sells I'll never sell, lease or license it again.
+					</span>
+				</label>
+				<div>
+					<label for="signature">Type your full legal name to sign</label>
+					<input id="signature" name="signature" type="text" maxlength="120" autocomplete="off" />
+				</div>
+			{/if}
 		</section>
 
 		{#if l.missing.length && l.status !== 'listed'}
@@ -186,6 +210,8 @@
 	.check { display: flex; gap: 10px; align-items: flex-start; margin: 0; text-transform: none; letter-spacing: 0; font-family: var(--body); font-size: 0.95rem; color: var(--paper); font-weight: 400; cursor: pointer; }
 	.check input { width: 20px; height: 20px; accent-color: var(--pink); flex: none; margin-top: 2px; }
 	.actions { justify-content: flex-end; }
+	.signed { color: var(--pink); margin: 0; }
+	.draftnote { color: var(--warn); }
 	.ghost { color: var(--dim); }
 	.small-btn { min-height: 36px; padding: 0 12px; font-size: 0.9rem; justify-self: start; }
 	.unlist { margin-top: 10px; text-align: right; }

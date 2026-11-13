@@ -1,4 +1,4 @@
-Last updated: November 12, 2026
+Last updated: November 13, 2026
 
 # AuxRiot Terms of Service
 
@@ -35,7 +35,7 @@ You give us a nonexclusive, worldwide, royalty-free license to host, store, stre
 
 This license lasts while the content is on AuxRiot, plus a reasonable period for nonpublic backups. Finished battles normally remain as part of the record unless removed. Email [hello@auxriot.com](mailto:hello@auxriot.com) to request content removal or account deletion. We stop new public uses of removed content; cached or previously shared copies may take time to disappear.
 
-Other users may stream beats through AuxRiot. We offer no downloads. Do not copy, extract, redistribute, sample or reuse someone else's beat without separate permission. Keep your own originals; AuxRiot is not a backup service.
+Other users may stream battle beats through AuxRiot; battle streams aren't downloadable. Beats bought in our store are delivered as downloads under the [Store Terms](/store/terms). Do not copy, extract, redistribute, sample or reuse someone else's beat without separate permission. Keep your own originals; AuxRiot is not a backup service.
 
 ## 4. Fair play and community rules
 

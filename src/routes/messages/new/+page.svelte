@@ -26,7 +26,7 @@
 		</div>
 		<textarea name="body" rows="5" maxlength="2000" required placeholder="Your question…" bind:value={body}></textarea>
 		{#if form?.error}<p class="error small">{form.error}</p>{/if}
-		<p class="small muted">🔒 Keep the deal on AuxRiot — payments made anywhere else aren't protected.</p>
+		<p class="small muted">🔒 Keep the deal on AuxRiot — arranging payment elsewhere for a listed beat isn't allowed and isn't protected.</p>
 		<button class="primary" disabled={busy || !body.trim()}>{busy ? 'Sending…' : 'Send message'}</button>
 	</form>
 {/if}

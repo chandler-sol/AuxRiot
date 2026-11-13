@@ -1,6 +1,9 @@
 import { newId } from './util.ts';
 import { MAX_FILE_BYTES, MAX_STEMS_BYTES } from '../store.ts';
 
+/** Bump when the store documents change; acceptances record which version was agreed to. */
+export const STORE_DOCS_VERSION = '2026-11-13-draft';
+
 export const FEE_KEY = 'store_fee_pct';
 export const MIN_PRICE_KEY = 'store_min_price_cents';
 
@@ -37,6 +40,10 @@ export type ListingRow = {
 	stems_name: string | null;
 	stems_size: number | null;
 	attested_at: number | null;
+	sample_disclosure: string | null;
+	producer_signature: string | null;
+	producer_signed_at: number | null;
+	license_version: string | null;
 	buyer_id: string | null;
 	sold_at: number | null;
 	created_at: number;
@@ -67,7 +74,8 @@ export function missingForListing(l: ListingRow): string[] {
 	if (!l.file_key) out.push('the file buyers get');
 	if (l.stems_price_cents && !l.stems_key) out.push('the stems zip (or remove the stems price)');
 	if (l.stems_price_cents && l.price_cents && l.stems_price_cents <= l.price_cents) out.push('a stems price higher than the exclusive price');
-	if (!l.attested_at) out.push('the exclusive-rights checkbox');
+	if (!l.sample_disclosure?.trim()) out.push('a sample disclosure ("none" if there are no samples)');
+	if (!l.producer_signed_at) out.push('your signature on the Exclusive Beat License');
 	return out;
 }
 

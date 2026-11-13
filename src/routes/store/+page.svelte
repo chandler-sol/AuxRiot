@@ -24,6 +24,7 @@
 	<p class="mono kicker">The store — exclusives only</p>
 	<h1 class="headline">Beats that <span>battled.</span></h1>
 	<p class="sub">One buyer per beat. When it sells, it's gone — and the battle gets a SOLD stamp.</p>
+	<p class="mono small links"><a href="/store/terms">Store Terms</a> · <a href="/store/license">Exclusive Beat License</a></p>
 </section>
 
 <div class="layout">
@@ -93,6 +94,8 @@
 	.headline { font-size: clamp(2.4rem, 11vw, 5rem); line-height: 0.92; margin: 0 0 8px; }
 	.headline span { color: var(--pink); }
 	.sub { color: var(--dim); margin: 0; }
+	.links { margin: 8px 0 0; }
+	.links a { color: var(--dim); }
 	.layout { display: grid; gap: 22px; }
 	@media (min-width: 1000px) { .layout { grid-template-columns: 1fr 280px; align-items: start; } }
 	.filters { display: grid; gap: 8px; margin-bottom: 14px; }

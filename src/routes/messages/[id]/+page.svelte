@@ -48,7 +48,7 @@
 {/if}
 
 <p class="safety small">
-	🔒 <strong>Keep deals on AuxRiot.</strong> Buying through the site gets you the files, a license and protection. Payments anywhere else — Cash App, PayPal, wire — aren't protected and we can't help if something goes wrong.
+	🔒 <strong>Keep deals on AuxRiot.</strong> Buying through the site gets you the files, a signed license and protection. Arranging payment anywhere else for a beat listed here — Cash App, PayPal, wire — isn't allowed under the <a href="/store/terms">Store Terms</a>, and isn't protected. Never share payment details here.
 </p>
 
 {#if form?.ok}<p class="success">{form.ok}</p>{/if}
@@ -64,7 +64,7 @@
 				{/if}
 			</div>
 			{#if m.offPlatform}
-				<p class="warn small">⚠️ This mentions contact or payment info. Deals made outside AuxRiot aren't protected.</p>
+				<p class="warn small">⚠️ This mentions contact or payment info. Paying outside AuxRiot for a listed beat isn't allowed — and isn't protected.</p>
 			{/if}
 			{#if reporting === m.id}
 				<form method="POST" action="?/report" class="report" use:enhance={() => async ({ update }) => { await update({ reset: false }); reporting = null; }}>

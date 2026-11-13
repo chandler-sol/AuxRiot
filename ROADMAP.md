@@ -112,6 +112,15 @@ No packs under ~$5: card fees (≈30¢ + 3%) eat small purchases.
 **Phase 1 (built on beta):** listings, private chunked uploads, earnings preview, Store page, storefronts, battle-page sale status, admin fee/minimum and listings monitor, moderation sync.
 **Phase 2 (needs a Stripe account):** Connect onboarding, Checkout, Stripe Tax, webhooks, delivery and downloads, PDF license, refunds, discount codes, sale and payout notifications.
 
+**Store legal (temporary drafts, on beta)**
+- **Rights:** the producer keeps copyright and grants an exclusive, perpetual, worldwide license with unlimited commercial use. "Prod. by" credit is required. The producer keeps 50% of the writer's share, with no master royalties. Only the buyer may register Content ID.
+- **Copyright removal after a sale:** AuxRiot refunds the buyer and recovers the money from the producer.
+- **Off-site payment for listed beats is prohibited.**
+- **Seller checklist:** agreed once before the first listing, recorded with timestamp and version.
+- **Per-beat license signature:** typed legal name (kept private) plus a sample disclosure. Changing the disclosure clears the signature.
+- **Buyer signs at checkout** (Phase 2).
+- **Pages:** /store/terms and /store/license.
+
 **Messaging (built on beta)**
 - **Public Q&A on every listing:** anyone asks, and the producer answers publicly. Uses the blocked-words filter and is reportable.
 - **Private "Ask the producer" threads,** one per buyer per beat, with an inbox at /messages:
@@ -128,7 +137,7 @@ No packs under ~$5: card fees (≈30¢ + 3%) eat small purchases.
 **Later**
 - **Make an offer** (negotiated price).
 - **"Featured in the store"** placement bought with Battle Credits, like promoted battles.
-- **Exclusive license contract:** lawyer-drafted template (what transfers: master rights, publishing split, credit). Owner is arranging it.
+- **Lawyer review of the store documents.** Temporary ChatGPT drafts are live on beta: Store Terms, Exclusive Beat License and Seller checklist, with lawyer notes kept in `docs/legal/`.
 - **Co-producer splits** (Stripe Connect transfers to multiple accounts).
 - **Battle Credits toward purchases:** revisit later. Today they have no cash value per the Terms.
 

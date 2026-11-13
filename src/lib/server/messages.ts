@@ -117,7 +117,7 @@ async function maybeEmail(db: D1Database, c: Conversation, sender: SessionUser, 
 			body: preview,
 			button: 'Reply on AuxRiot',
 			url,
-			footer: 'Keep deals on AuxRiot — purchases made anywhere else aren\'t protected.',
+			footer: 'Keep deals on AuxRiot — paying elsewhere for a listed beat isn\'t allowed or protected.',
 			unsubscribeUrl: unsub
 		}),
 		text: `@${sender.username} wrote${title ? ` about "${title}"` : ''}:\n\n${preview}\n\nReply: ${url}\n\nStop message emails: ${unsub}`,
