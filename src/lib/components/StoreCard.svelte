@@ -38,6 +38,7 @@
 			<a class="btn primary" href="/battles/{item.battleId}#buy">Buy</a>
 		{/if}
 	</div>
+	{#if !sold}<a class="ask mono" href="/messages/new?listing={item.id}">✉ Ask @{item.seller.username}</a>{/if}
 </article>
 
 <style>
@@ -58,4 +59,6 @@
 	.btn { min-height: 42px; padding: 2px 16px 0; font-size: 1.05rem; white-space: nowrap; }
 	.locked { color: var(--dim); font-size: 0.85rem; }
 	.nowrap { white-space: nowrap; }
+	.ask { color: var(--dim); text-decoration: none; font-size: 0.66rem; justify-self: start; }
+	.ask:hover { color: var(--paper); }
 </style>

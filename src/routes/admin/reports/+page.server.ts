@@ -64,7 +64,47 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 			).results
 		: [];
 
-	const people = new Set<string>([...ids('user'), ...comments.map((c) => c.user_id), ...battles.flatMap((b) => [b.creator_id, b.challenger_id ?? ''])].filter(Boolean));
+	// Reported private messages: the message plus a few around it, so mods see context (and only for reported threads).
+	const mIds = ids('message');
+	const reportedMsgs = mIds.length
+		? (
+				await db
+					.prepare(
+						`SELECT m.id, m.body, m.hidden, m.off_platform, m.created_at, m.sender_id, m.conversation_id, b.title, b.id AS battle_id
+						 FROM messages m JOIN conversations c ON c.id = m.conversation_id
+						 LEFT JOIN listings l ON l.id = c.listing_id LEFT JOIN battles b ON b.id = l.battle_id
+						 WHERE m.id IN (${inList(mIds.length)})`
+					)
+					.bind(...mIds)
+					.all<{ id: string; body: string; hidden: number; off_platform: number; created_at: number; sender_id: string; conversation_id: string; title: string | null; battle_id: string | null }>()
+			).results
+		: [];
+	const contextFor = async (m: (typeof reportedMsgs)[number]) =>
+		(
+			await db
+				.prepare(
+					`SELECT x.id, x.body, x.sender_id, x.created_at, u.username FROM messages x JOIN users u ON u.id = x.sender_id
+					 WHERE x.conversation_id = ? AND x.created_at BETWEEN ? AND ? ORDER BY x.created_at ASC LIMIT 7`
+				)
+				.bind(m.conversation_id, m.created_at - 3 * 86_400_000, m.created_at + 3 * 86_400_000)
+				.all<{ id: string; body: string; sender_id: string; created_at: number; username: string }>()
+		).results;
+	const msgContext = Object.fromEntries(await Promise.all(reportedMsgs.map(async (m) => [m.id, await contextFor(m)] as const)));
+
+	const qIds = ids('question');
+	const reportedQs = qIds.length
+		? (
+				await db
+					.prepare(
+						`SELECT q.id, q.body, q.answer, q.hidden, q.created_at, q.user_id, b.title, b.id AS battle_id
+						 FROM listing_questions q JOIN listings l ON l.id = q.listing_id JOIN battles b ON b.id = l.battle_id WHERE q.id IN (${inList(qIds.length)})`
+					)
+					.bind(...qIds)
+					.all<{ id: string; body: string; answer: string | null; hidden: number; created_at: number; user_id: string; title: string; battle_id: string }>()
+			).results
+		: [];
+
+	const people = new Set<string>([...ids('user'), ...comments.map((c) => c.user_id), ...reportedMsgs.map((m) => m.sender_id), ...reportedQs.map((q) => q.user_id), ...battles.flatMap((b) => [b.creator_id, b.challenger_id ?? ''])].filter(Boolean));
 	const pIds = [...people];
 	const users = pIds.length
 		? (
@@ -92,7 +132,17 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 				...g,
 				comment: g.type === 'comment' ? (commentById[g.id] ?? null) : null,
 				battle: g.type === 'battle' ? (battleById[g.id] ?? null) : null,
-				user: g.type === 'user' ? (userById[g.id] ?? null) : null
+				user: g.type === 'user' ? (userById[g.id] ?? null) : null,
+				message: (() => {
+					const m = g.type === 'message' ? reportedMsgs.find((x) => x.id === g.id) : null;
+					return m
+						? { id: m.id, body: m.body, hidden: m.hidden, offPlatform: !!m.off_platform, createdAt: m.created_at, title: m.title, battleId: m.battle_id, sender: userById[m.sender_id] ?? null, context: msgContext[m.id] ?? [] }
+						: null;
+				})(),
+				question: (() => {
+					const q = g.type === 'question' ? reportedQs.find((x) => x.id === g.id) : null;
+					return q ? { id: q.id, body: q.body, answer: q.answer, hidden: q.hidden, createdAt: q.created_at, title: q.title, battleId: q.battle_id, author: userById[q.user_id] ?? null } : null;
+				})()
 			})),
 		now: Date.now()
 	};
@@ -126,6 +176,26 @@ export const actions: Actions = {
 		await refreshComment(db, id);
 		await logAction(db, me, 'comment.hide', 'comment', id, c.body.slice(0, 120));
 		return { ok: 'Comment hidden.' };
+	},
+
+	hideMessage: async ({ request, locals, platform }) => {
+		const me = requireMod(locals);
+		const db = getEnv(platform).DB;
+		const id = String((await request.formData()).get('id'));
+		await db.prepare('UPDATE messages SET hidden = 1 WHERE id = ?').bind(id).run();
+		await resolve(db, 'message', id, 'actioned');
+		await logAction(db, me, 'message.hide', 'message', id);
+		return { ok: 'Message hidden from the conversation.' };
+	},
+
+	hideQuestion: async ({ request, locals, platform }) => {
+		const me = requireMod(locals);
+		const db = getEnv(platform).DB;
+		const id = String((await request.formData()).get('id'));
+		await db.prepare('UPDATE listing_questions SET hidden = 1 WHERE id = ?').bind(id).run();
+		await resolve(db, 'question', id, 'actioned');
+		await logAction(db, me, 'question.hide', 'question', id);
+		return { ok: 'Question removed.' };
 	},
 
 	removeBattle: async ({ request, locals, platform }) => {

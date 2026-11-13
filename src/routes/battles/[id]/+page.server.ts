@@ -199,9 +199,27 @@ async function saleInfo(db: D1Database, battleId: string, status: string, userId
 		.bind(battleId)
 		.all<{ id: string; status: string; price_cents: number | null; stems_price_cents: number | null; has_stems: number; file_format: string | null; tagged: number; seller_id: string; slot: number }>();
 	const open = buyOpen(status);
-	return rows.results
-		.filter((r) => r.status === 'listed' || r.status === 'sold' || r.seller_id === userId)
+	const visible = rows.results.filter((r) => r.status === 'listed' || r.status === 'sold' || r.seller_id === userId);
+	const ids = visible.map((r) => r.id);
+	// Public Q&A per listing. Held (blocked words) questions show only to their author and the producer.
+	const qs = ids.length
+		? (
+				await db
+					.prepare(
+						`SELECT q.id, q.listing_id, q.body, q.answer, q.answered_at, q.created_at, q.held, q.user_id, u.username, u.avatar_key, u.color, u.respect
+						 FROM listing_questions q JOIN users u ON u.id = q.user_id
+						 WHERE q.listing_id IN (${ids.map(() => '?').join(',')}) AND q.hidden = 0
+						   AND ((q.held = 0 AND u.shadowbanned = 0) OR q.user_id = ? OR EXISTS (SELECT 1 FROM listings l WHERE l.id = q.listing_id AND l.seller_id = ?))
+						 ORDER BY q.created_at ASC LIMIT 200`
+					)
+					.bind(...ids, userId ?? '', userId ?? '')
+					.all<{ id: string; listing_id: string; body: string; answer: string | null; answered_at: number | null; created_at: number; held: number; user_id: string; username: string; avatar_key: string | null; color: string | null; respect: number }>()
+			).results
+		: [];
+	return visible
 		.map((r) => ({
+			listingId: r.id,
+			questions: qs.filter((q) => q.listing_id === r.id).map(({ listing_id, ...q }) => q),
 			slot: r.slot,
 			status: r.status,
 			mine: r.seller_id === userId,
@@ -390,6 +408,57 @@ export const actions: Actions = {
 		return { upvoted: res.on, upvoteId: id };
 	},
 
+	ask: async ({ request, params, locals, url }) => {
+		const user = requireUser(locals, url.pathname);
+		const db = getEnv().DB;
+		const f = await request.formData();
+		const listingId = String(f.get('listing_id') ?? '');
+		const body = String(f.get('body') ?? '').trim();
+		if (!user.emailVerified) return fail(403, { qError: 'Confirm your email to ask questions.', qListing: listingId });
+		if (body.length < 3 || body.length > 500) return fail(400, { qError: 'Questions are 3–500 characters.', qListing: listingId, qBody: body });
+		const l = await db.prepare(`SELECT seller_id, status FROM listings WHERE id = ? AND battle_id = ?`).bind(listingId, params.id).first<{ seller_id: string; status: string }>();
+		if (!l || (l.status !== 'listed' && l.status !== 'sold')) return fail(404, { qError: 'That beat is not for sale.', qListing: listingId });
+		if (l.seller_id === user.id) return fail(400, { qError: 'Answer questions instead of asking them 😄', qListing: listingId });
+		const last = await db.prepare('SELECT created_at FROM listing_questions WHERE user_id = ? ORDER BY created_at DESC LIMIT 1').bind(user.id).first<{ created_at: number }>();
+		if (last && Date.now() - last.created_at < 20_000) return fail(429, { qError: 'Slow down a little.', qListing: listingId, qBody: body });
+		const held = matchesBlocked(body, await getBlockedWords(db)) ? 1 : 0;
+		await db
+			.prepare('INSERT INTO listing_questions (id, listing_id, user_id, body, held, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+			.bind(newId(), listingId, user.id, body, held, Date.now())
+			.run();
+		return { asked: listingId };
+	},
+
+	answer: async ({ request, locals, url }) => {
+		const user = requireUser(locals, url.pathname);
+		const db = getEnv().DB;
+		const f = await request.formData();
+		const id = String(f.get('question_id') ?? '');
+		const answer = String(f.get('answer') ?? '').trim();
+		if (answer.length < 1 || answer.length > 1000) return fail(400, { aError: 'Answers are 1–1000 characters.', aId: id });
+		const r = await db
+			.prepare(`UPDATE listing_questions SET answer = ?, answered_at = ? WHERE id = ? AND listing_id IN (SELECT id FROM listings WHERE seller_id = ?)`)
+			.bind(answer, Date.now(), id, user.id)
+			.run();
+		if (!r.meta.changes) return fail(403, { aError: 'Only the producer can answer.', aId: id });
+		return { answered: id };
+	},
+
+	hideQuestion: async ({ request, locals, url }) => {
+		const user = requireUser(locals, url.pathname);
+		const db = getEnv().DB;
+		const id = String((await request.formData()).get('question_id') ?? '');
+		// The asker, the producer, or a moderator can take a question down.
+		const r = await db
+			.prepare(
+				`UPDATE listing_questions SET hidden = 1 WHERE id = ? AND (user_id = ? OR ? = 1 OR listing_id IN (SELECT id FROM listings WHERE seller_id = ?))`
+			)
+			.bind(id, user.id, user.isMod ? 1 : 0, user.id)
+			.run();
+		if (r.meta.changes && user.isMod) await logAction(db, user, 'question.hide', 'question', id);
+		return { hiddenQ: id };
+	},
+
 	report: async ({ request, locals, platform, url }) => {
 		const user = requireUser(locals, url.pathname);
 		const form = await request.formData();
@@ -397,7 +466,7 @@ export const actions: Actions = {
 		const targetId = String(form.get('target_id') ?? '');
 		const reason = String(form.get('reason') ?? '');
 		const details = String(form.get('details') ?? '').slice(0, 1000);
-		if (!['user', 'battle', 'comment'].includes(targetType) || !targetId) return fail(400, { reportError: 'Bad report.' });
+		if (!['user', 'battle', 'comment', 'question'].includes(targetType) || !targetId) return fail(400, { reportError: 'Bad report.' });
 		if (!['fake_votes', 'alt_account', 'harassment', 'spam', 'stolen_beat', 'other'].includes(reason)) {
 			return fail(400, { reportError: 'Pick a reason.' });
 		}

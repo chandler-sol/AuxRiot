@@ -45,7 +45,9 @@
 		'dmca.reject': 'rejected a DMCA notice',
 		'settings.store': 'changed store fee/minimum',
 		'listing.remove': 'removed a store listing',
-		'listing.restore': 'restored a store listing'
+		'listing.restore': 'restored a store listing',
+		'message.hide': 'hid a private message',
+		'question.hide': 'removed a store question'
 	};
 	function link(e: (typeof data.entries)[number]) {
 		if (e.target_type === 'battle') return `/admin/battles/${e.target_id}`;

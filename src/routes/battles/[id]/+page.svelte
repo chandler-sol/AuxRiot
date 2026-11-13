@@ -392,6 +392,50 @@
 							<button class="primary" disabled title="Checkout is being built">Checkout opens soon</button>
 						{/if}
 					</div>
+					{#if !s.mine && s.status !== 'sold'}
+						<a class="mono ask" href="/messages/new?listing={s.listingId}">✉ Ask {names[s.slot]} privately</a>
+					{/if}
+					<details class="qa" open={s.questions.length <= 3}>
+						<summary class="mono">Questions about this beat · {s.questions.length}</summary>
+						<ul>
+							{#each s.questions as q (q.id)}
+								<li>
+									<p class="q"><a class="mono" href="/u/{q.username}">@{q.username}</a> <Flair respect={q.respect} /> {q.body}</p>
+									{#if q.held}<p class="mono small held">Waiting for review — only you and the producer can see this.</p>{/if}
+									{#if q.answer}
+										<p class="a"><span class="mono">{names[s.slot]}:</span> {q.answer}</p>
+									{:else if s.mine}
+										<form method="POST" action="?/answer" class="ansf" use:enhance={() => async ({ update }) => update({ reset: true })}>
+											<input type="hidden" name="question_id" value={q.id} />
+											<input type="text" name="answer" maxlength="1000" placeholder="Answer publicly…" required />
+											<button class="small-btn">Answer</button>
+										</form>
+										{#if form?.aError && form.aId === q.id}<p class="error small">{form.aError}</p>{/if}
+									{:else}
+										<p class="mono small muted">Not answered yet</p>
+									{/if}
+									<div class="qfoot mono">
+										{ago(q.created_at, now)}
+										{#if data.user && (data.user.id === q.user_id || s.mine || data.user.isMod)}
+											<form method="POST" action="?/hideQuestion" use:enhance><input type="hidden" name="question_id" value={q.id} /><button class="link-btn">Remove</button></form>
+										{:else if data.user}
+											<ReportForm targetType="question" targetId={q.id} />
+										{/if}
+									</div>
+								</li>
+							{/each}
+						</ul>
+						{#if data.user && !s.mine && s.status === 'listed'}
+							<form method="POST" action="?/ask" class="askf" use:enhance={() => async ({ update }) => update({ reset: true })}>
+								<input type="hidden" name="listing_id" value={s.listingId} />
+								<input type="text" name="body" maxlength="500" placeholder="Ask in public — answers help everyone" required value={form?.qListing === s.listingId && form && 'qBody' in form ? String(form.qBody ?? '') : ''} />
+								<button class="small-btn">Ask</button>
+							</form>
+							{#if form?.qError && form.qListing === s.listingId}<p class="error small">{form.qError}</p>{/if}
+						{:else if !data.user && s.status === 'listed'}
+							<p class="mono small muted"><a href="/login?next=/battles/{b.id}%23buy">Log in</a> to ask a question.</p>
+						{/if}
+					</details>
 				{/each}
 				{#if mySlot !== undefined && b.status !== 'removed' && mine?.status !== 'sold'}
 					<a class="mono sell-link" href="/battles/{b.id}/sell">
@@ -579,6 +623,20 @@
 	.soldtag { background: var(--pink); color: var(--ink); padding: 4px 12px; transform: rotate(-4deg); font-size: 1.3rem; }
 	.locked { text-align: right; max-width: 140px; }
 	.sell-link { justify-self: end; color: var(--pink); text-decoration: none; }
+	.ask { justify-self: start; color: var(--paper); text-decoration: none; font-size: 0.72rem; padding: 4px 0; }
+	.ask:hover { color: var(--pink); }
+	.qa { background: var(--ink-2); border-radius: var(--radius); padding: 10px 14px; }
+	.qa summary { cursor: pointer; color: var(--dim); font-size: 0.7rem; }
+	.qa ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 12px; }
+	.qa li { border-top: 1px solid var(--line); padding-top: 10px; }
+	.qa .q { margin: 0; }
+	.qa .q a { color: var(--paper); text-decoration: none; }
+	.qa .a { margin: 6px 0 0; padding-left: 10px; border-left: 3px solid var(--pink); color: var(--paper); }
+	.qa .a .mono { color: var(--pink); }
+	.qfoot { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 0.58rem; font-weight: 400; margin-top: 4px; }
+	.ansf, .askf { display: flex; gap: 6px; margin-top: 8px; }
+	.ansf input, .askf input { flex: 1; min-width: 0; }
+	.small-btn { min-height: 40px; padding: 0 14px; font-size: 0.95rem; }
 	.held { color: var(--warn); margin: 4px 0 0; font-weight: 400; }
 	.modlink { display: inline-block; margin-top: 10px; color: var(--pink); }
 	article { --namecol: calc(min(100vw, 760px) - 34px); --namemax: 6rem; --winmax: 7.5rem; }

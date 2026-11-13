@@ -112,6 +112,19 @@ No packs under ~$5: card fees (≈30¢ + 3%) eat small purchases.
 **Phase 1 (built on beta):** listings, private chunked uploads, earnings preview, Store page, storefronts, battle-page sale status, admin fee/minimum and listings monitor, moderation sync.
 **Phase 2 (needs a Stripe account):** Connect onboarding, Checkout, Stripe Tax, webhooks, delivery and downloads, PDF license, refunds, discount codes, sale and payout notifications.
 
+**Messaging (built on beta)**
+- **Public Q&A on every listing:** anyone asks, and the producer answers publicly. Uses the blocked-words filter and is reportable.
+- **Private "Ask the producer" threads,** one per buyer per beat, with an inbox at /messages:
+  - An unread badge in the header.
+  - At most one email per thread every 30 minutes, with its own on/off setting.
+  - Confirmed email required; 10 new threads a day and 60 messages an hour.
+  - Block and report, plus a "keep deals on AuxRiot" notice.
+  - Phone numbers, emails and payment apps are flagged with a warning, never blocked.
+  - Shadowbanned senders' messages are silently undelivered.
+  - Mods only see a conversation when a message in it is reported.
+- **After purchase (Phase 2):** the same thread becomes the order thread, as the record for disputes and refunds.
+- **Producer ↔ producer:** no open DMs. Profile social links now read "Hit me up". Revisit open DMs with message requests if there's demand.
+
 **Later**
 - **Make an offer** (negotiated price).
 - **"Featured in the store"** placement bought with Battle Credits, like promoted battles.

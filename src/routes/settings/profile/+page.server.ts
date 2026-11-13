@@ -9,7 +9,7 @@ import { refreshFromResend, syncNewsContact } from '#lib/server/news.ts';
 export const load: PageServerLoad = async ({ locals, platform, url }) => {
 	if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(url.pathname)}`);
 	const row = await getEnv(platform)
-		.DB.prepare('SELECT username, email, avatar_key, bio, socials, color, news_opt_in, notify_battles, email_verified_at FROM users WHERE id = ?')
+		.DB.prepare('SELECT username, email, avatar_key, bio, socials, color, news_opt_in, notify_battles, notify_messages, email_verified_at FROM users WHERE id = ?')
 		.bind(locals.user.id)
 		.first<{
 			username: string;
@@ -20,6 +20,7 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 			color: string | null;
 			news_opt_in: number;
 			notify_battles: number;
+			notify_messages: number;
 			email_verified_at: number | null;
 		}>();
 	let newsOptIn = !!row!.news_opt_in;
@@ -35,6 +36,7 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 		color: row!.color,
 		newsOptIn,
 		notifyBattles: !!row!.notify_battles,
+		notifyMessages: !!row!.notify_messages,
 		emailVerified: row!.email_verified_at !== null,
 		bioMax: BIO_MAX
 	};
@@ -95,6 +97,13 @@ export const actions: Actions = {
 		const on = (await request.formData()).get('on') === 'on';
 		await getEnv(platform).DB.prepare('UPDATE users SET notify_battles = ? WHERE id = ?').bind(on ? 1 : 0, locals.user.id).run();
 		return { battleEmailsSaved: on ? 'on' : 'off' };
+	},
+
+	messageEmails: async ({ request, locals, platform }) => {
+		if (!locals.user) return fail(401);
+		const on = (await request.formData()).get('on') === 'on';
+		await getEnv(platform).DB.prepare('UPDATE users SET notify_messages = ? WHERE id = ?').bind(on ? 1 : 0, locals.user.id).run();
+		return { messageEmailsSaved: on ? 'on' : 'off' };
 	},
 
 	removeAvatar: async ({ locals, platform }) => {

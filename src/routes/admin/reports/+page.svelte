@@ -11,6 +11,7 @@
 		harassment: 'Harassment',
 		spam: 'Spam',
 		stolen_beat: 'Stolen beat',
+		scam: 'Scam / off-site payment',
 		other: 'Other'
 	};
 	const LABEL: Record<string, string> = { voting: 'Live', open: 'Open', closed: 'Final', removed: 'Removed', expired: 'Expired' };
@@ -115,6 +116,30 @@
 				{/if}
 				{@render userActions(b.creatorUser, 'Corner A')}
 				{@render userActions(b.challengerUser, 'Corner B')}
+			{:else if g.message}
+				{@const m = g.message}
+				<p class="mono small muted">Private message{m.title ? ` about "${m.title}"` : ''} — shown to mods only because it was reported.</p>
+				<ol class="thread">
+					{#each m.context as x (x.id)}
+						<li class:reported={x.id === m.id}><span class="mono">@{x.username}</span> {x.body}</li>
+					{/each}
+				</ol>
+				{#if m.offPlatform}<p class="mono small warnc">Mentions contact or payment info (possible off-site deal)</p>{/if}
+				{#if data.status === 'open' && !m.hidden}
+					<form method="POST" action="?/hideMessage" use:enhance={keep}><input type="hidden" name="id" value={m.id} /><button class="primary">Hide message</button></form>
+				{/if}
+				{@render userActions(m.sender, 'Sender')}
+			{:else if g.question}
+				{@const q = g.question}
+				<blockquote class:gone={q.hidden}>
+					<p>{q.body}</p>
+					{#if q.answer}<p class="small muted">Answer: {q.answer}</p>{/if}
+					<footer class="mono small">Public question on <a href="/battles/{q.battleId}#buy">"{q.title}"</a> · {ago(q.createdAt, data.now)}{q.hidden ? ' · removed' : ''}</footer>
+				</blockquote>
+				{#if data.status === 'open' && !q.hidden}
+					<form method="POST" action="?/hideQuestion" use:enhance={keep}><input type="hidden" name="id" value={q.id} /><button class="primary">Remove question</button></form>
+				{/if}
+				{@render userActions(q.author, 'Author')}
 			{:else if g.user}
 				{@render userActions(g.user, 'Reported user')}
 			{:else}
@@ -175,5 +200,10 @@
 	.who summary { cursor: pointer; color: var(--dim); }
 	.who p { margin: 6px 0 0; }
 	.resolve { justify-content: flex-end; }
+	.thread { list-style: none; margin: 0; padding: 10px 12px; background: var(--ink); border-radius: var(--radius); display: grid; gap: 6px; }
+	.thread li { color: var(--dim); overflow-wrap: anywhere; }
+	.thread li .mono { color: var(--paper); font-size: 0.7rem; margin-right: 6px; }
+	.thread li.reported { color: var(--paper); border-left: 3px solid #ff5a4e; padding-left: 8px; }
+	.warnc { color: var(--warn); }
 	.ghost { color: var(--dim); }
 </style>

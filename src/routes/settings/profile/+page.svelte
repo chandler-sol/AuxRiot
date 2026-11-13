@@ -38,12 +38,14 @@
 	let saving = $state(false);
 	let newsOn = $state(false);
 	let battleOn = $state(true);
+	let msgOn = $state(true);
 	let newsSeeded = false;
 	$effect.pre(() => {
 		if (newsSeeded) return;
 		newsSeeded = true;
 		newsOn = data.newsOptIn;
 		battleOn = data.notifyBattles;
+		msgOn = data.notifyMessages;
 	});
 
 	async function pickAvatar(e: Event) {
@@ -179,6 +181,14 @@
 		</label>
 		<noscript><button>Save</button></noscript>
 	</form>
+	<form method="POST" action="?/messageEmails" use:enhance={() => async ({ update }) => update({ reset: false })}>
+		<label class="optin">
+			<input type="checkbox" name="on" bind:checked={msgOn} onchange={(e) => (e.currentTarget as HTMLInputElement).form?.requestSubmit()} />
+			<span><strong>Message alerts</strong> — an email when a buyer or producer messages you (at most one per conversation every 30 minutes).</span>
+		</label>
+		<noscript><button>Save</button></noscript>
+	</form>
+	{#if form?.messageEmailsSaved}<p class="success small">{form.messageEmailsSaved === 'on' ? 'Message alerts on.' : 'Message alerts off.'}</p>{/if}
 	{#if form?.battleEmailsSaved}<p class="success small">{form.battleEmailsSaved === 'on' ? 'Battle alerts on.' : 'Battle alerts off.'}</p>{/if}
 	<form method="POST" action="?/news" use:enhance={() => async ({ update }) => update({ reset: false })}>
 		<label class="optin">

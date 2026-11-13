@@ -8,18 +8,19 @@ async function valid(url: URL) {
 	return u && t && t === (await unsubscribeToken(u)) ? u : null;
 }
 
-async function turnOff(platform: App.Platform | undefined, userId: string) {
-	await getEnv(platform).DB.prepare('UPDATE users SET notify_battles = 0 WHERE id = ?').bind(userId).run();
+async function turnOff(platform: App.Platform | undefined, userId: string, kind: string) {
+	const col = kind === 'messages' ? 'notify_messages' : 'notify_battles';
+	await getEnv(platform).DB.prepare(`UPDATE users SET ${col} = 0 WHERE id = ?`).bind(userId).run();
 }
 
-export const load: PageServerLoad = async ({ url }) => ({ ok: !!(await valid(url)) });
+export const load: PageServerLoad = async ({ url }) => ({ ok: !!(await valid(url)), kind: url.searchParams.get('kind') === 'messages' ? 'messages' : 'battles' });
 
 export const actions: Actions = {
 	// Mail apps' one-click unsubscribe POSTs here (List-Unsubscribe-Post), as does the button.
 	default: async ({ url, platform }) => {
 		const u = await valid(url);
 		if (!u) return { done: false };
-		await turnOff(platform, u);
+		await turnOff(platform, u, url.searchParams.get('kind') ?? '');
 		return { done: true };
 	}
 };

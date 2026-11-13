@@ -23,6 +23,8 @@ AuxRiot, at https://auxriot.com, is operated by Chandler Solomon, based in Waxha
 
 **Content and activity.** Uploaded audio, avatars, bios, social links, signature colors, comments, votes and scores, upvotes, reports, records, respect, flair and Credit activity. Beats are trimmed and converted to MP3 in your browser before upload.
 
+**Store and messages.** Beats you list for sale (prices, store details and the private files buyers receive), public questions and answers on listings, and private messages between buyers and producers. Private messages are seen only by the two people in the conversation. Moderators can read a conversation only if someone in it reports a message. We flag messages that mention phone numbers, email addresses or payment apps so we can warn about deals outside AuxRiot, which aren't protected.
+
 **Listening and views.** We record listening progress per beat to enforce the 75% listening rule. Beat view counts use a hashed device identifier. These are separate from Cloudflare Web Analytics.
 
 **Security signals.** Our anti-fraud records store salted, one-way hashes of IP addresses and random device identifiers. We use them, with voting patterns, to detect linked accounts, prevent vote rigging and rate-limit login and signup attempts. The random identifier also exists in a cookie on your device.
@@ -47,7 +49,7 @@ Automated anti-cheat checks compare shared device or IP hashes and voting patter
 
 ## 4. What is public
 
-Your username, avatar, bio, social links, signature color, win/loss record, battles, beats, comments and flair are public. Battle scores stay hidden until voting ends. Public content may be copied, indexed or shared by others.
+Your username, avatar, bio, social links, signature color, win/loss record, battles, beats, comments, store listings, public listing questions and answers, and flair are public. Private messages are not public. Battle scores stay hidden until voting ends. Public content may be copied, indexed or shared by others.
 
 Your email is never shown publicly or to moderators. Authorized administrators and providers may access it to run the service. Reports and security details are not public profile fields.
 

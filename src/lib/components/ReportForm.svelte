@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 
-	let { targetType, targetId, label = 'Report' }: { targetType: 'user' | 'battle' | 'comment'; targetId: string; label?: string } =
+	let { targetType, targetId, label = 'Report' }: { targetType: 'user' | 'battle' | 'comment' | 'question'; targetId: string; label?: string } =
 		$props();
 	let done = $state(false);
 	let open = $state(false);

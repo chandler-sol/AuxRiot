@@ -41,7 +41,9 @@
 		</p>
 	{/if}
 	{#if p.bio}<p class="bio">{p.bio}</p>{/if}
-	<div class="soc"><SocialLinks socials={p.socials} username={p.username} /></div>
+	{#if Object.values(p.socials ?? {}).some(Boolean)}
+		<div class="soc"><p class="mono hit">Hit me up</p><SocialLinks socials={p.socials} username={p.username} /></div>
+	{/if}
 	<div class="ticket">
 		<div><span class="display v">{p.wins}</span><span class="mono l">Wins</span></div>
 		<div><span class="display v">{p.losses}</span><span class="mono l">Losses</span></div>
@@ -95,6 +97,7 @@
 	.edit:hover { color: var(--paper); }
 	.bio { color: var(--dim); margin: 0 0 14px; white-space: pre-line; overflow-wrap: anywhere; }
 	.soc { margin-bottom: 16px; }
+	.hit { margin: 0 0 6px; color: var(--pink); font-size: 0.66rem; }
 	.name { font-size: clamp(3rem, 16vw, 5.5rem); line-height: 0.9; color: var(--me); overflow-wrap: anywhere; }
 	.ticket {
 		display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;

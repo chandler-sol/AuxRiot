@@ -75,6 +75,7 @@
 						<Avatar username={data.user.username} avatarKey={data.user.avatarKey} color={data.user.color} size={30} />
 						<span class="mono uname">{data.user.username}</span>
 						<span class="mono chip">{data.user.credits.toLocaleString()} cr</span>
+						{#if data.unread}<span class="mono badge" aria-label="{data.unread} unread conversations">{data.unread}</span>{/if}
 						<svg class="chev" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
 					</summary>
 					<div class="menu">
@@ -83,6 +84,7 @@
 							<a class="mono mh-cr" href="/credits" onclick={() => (menuOpen = false)}>{data.user.credits.toLocaleString()} credits →</a>
 						</div>
 						<a href="/u/{data.user.username}" onclick={() => (menuOpen = false)}>My profile</a>
+						<a href="/messages" onclick={() => (menuOpen = false)}>Messages{#if data.unread}<span class="mono badge inmenu">{data.unread}</span>{/if}</a>
 						<a href="/credits" onclick={() => (menuOpen = false)}>Credits</a>
 						<a href="/store" onclick={() => (menuOpen = false)}>Beat store</a>
 						<a href="/settings/profile" onclick={() => (menuOpen = false)}>Edit profile</a>
@@ -166,6 +168,8 @@
 	.acct:hover, .account[open] .acct { border-color: var(--paper); background: var(--ink-2); }
 	.uname { color: var(--paper); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.chip { color: var(--pink); white-space: nowrap; }
+	.badge { background: var(--pink); color: var(--ink); border-radius: 999px; min-width: 20px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; font-size: 0.66rem; font-weight: 700; }
+	.badge.inmenu { margin-left: 10px; }
 	.chev { flex: none; transition: transform 0.15s; }
 	.account[open] .chev { transform: rotate(180deg); }
 	@media (max-width: 560px) { .uname { display: none; } }
