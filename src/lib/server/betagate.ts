@@ -36,8 +36,16 @@ export async function betaGate(request: Request, url: URL, cookies: import('@sve
 	if (url.pathname === PATH && request.method === 'POST') {
 		const pw = String((await request.formData()).get('password') ?? '').trim();
 		if (pw !== secret) return page('Wrong password.');
-		cookies.set(COOKIE, await proof(secret, salt), { path: '/', httpOnly: true, sameSite: 'lax', secure: true, maxAge: 60 * 60 * 24 * 30 });
-		return new Response(null, { status: 303, headers: { location: '/' } });
+		// This Response bypasses SvelteKit's resolve(), so cookies.set() would never be sent.
+		// Serialize the cookie onto the redirect ourselves.
+		const cookie = cookies.serialize(COOKIE, await proof(secret, salt), {
+			path: '/',
+			httpOnly: true,
+			sameSite: 'lax',
+			secure: url.protocol === 'https:',
+			maxAge: 60 * 60 * 24 * 30
+		});
+		return new Response(null, { status: 303, headers: { location: '/', 'set-cookie': cookie, 'cache-control': 'no-store' } });
 	}
 	if (cookies.get(COOKIE) === (await proof(secret, salt))) return null;
 	return page();
