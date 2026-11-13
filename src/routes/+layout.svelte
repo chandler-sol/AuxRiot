@@ -63,6 +63,7 @@
 	{/if}
 </svelte:head>
 
+{#if data.beta}<div class="betabar mono">Beta · prototype site · nothing here is real</div>{/if}
 <header>
 	<div class="container wide bar">
 		<a href="/" class="logo display" aria-label="AuxRiot home">AUX<span>RIOT</span></a>
@@ -136,6 +137,7 @@
 </footer>
 
 <style>
+	.betabar { background: var(--warn); color: var(--ink); text-align: center; padding: 5px 10px 4px; font-size: 0.66rem; font-weight: 700; }
 	header {
 		position: sticky;
 		top: 0;

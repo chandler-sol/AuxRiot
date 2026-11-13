@@ -25,6 +25,32 @@
 		"OPEN_BATTLE_EXPIRY_DAYS": "5",
 		"ADMIN_USERNAMES": "",
 		"TURNSTILE_SITE_KEY": "0x4AAAAAAF-pveF4S_0amzs_",
-		"NEWS_SEGMENT_ID": "ce8af3f3-9c97-4eed-8490-863bb6931821"
+		"NEWS_SEGMENT_ID": "ce8af3f3-9c97-4eed-8490-863bb6931821",
+		"ENVIRONMENT": "production"
+	},
+	// Prototype copy at beta.auxriot.com: its own database, audio bucket and secrets.
+	// Deployed from the `beta` branch. Bindings and vars are not inherited, so all are repeated here.
+	"env": {
+		"beta": {
+			"name": "auxriot-beta",
+			"routes": [{ "pattern": "beta.auxriot.com", "custom_domain": true }],
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "auxriot-beta",
+					"database_id": "73710241-b2a0-45dd-be46-fb4fef51c8cd",
+					"migrations_dir": "migrations"
+				}
+			],
+			"r2_buckets": [{ "binding": "AUDIO", "bucket_name": "auxriot-audio-beta" }],
+			"vars": {
+				"MIN_VOTER_ACCOUNT_AGE_HOURS": "0",
+				"OPEN_BATTLE_EXPIRY_DAYS": "5",
+				"ADMIN_USERNAMES": "ARSENiK",
+				"TURNSTILE_SITE_KEY": "",
+				"NEWS_SEGMENT_ID": "",
+				"ENVIRONMENT": "beta"
+			}
+		}
 	}
 }

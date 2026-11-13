@@ -56,9 +56,9 @@ export const actions: Actions = {
 		const id = newId();
 		const news = form.get('news') === 'on';
 		await env.DB.prepare(
-			'INSERT INTO users (id, username, email, password_hash, created_at, news_opt_in, news_opt_in_at, terms_accepted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+			'INSERT INTO users (id, username, email, password_hash, created_at, news_opt_in, news_opt_in_at, terms_accepted_at, email_verified_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
 		)
-			.bind(id, username, email, await hashPassword(password), Date.now(), news ? 1 : 0, news ? Date.now() : null, Date.now())
+			.bind(id, username, email, await hashPassword(password), Date.now(), news ? 1 : 0, news ? Date.now() : null, Date.now(), env.ENVIRONMENT === 'beta' ? Date.now() : null)
 			.run();
 		await recordSignals(env.DB, id, locals.ip, locals.deviceId, env.SIGNAL_SALT ?? 'dev-salt');
 		await recordAttempt(env.DB, locals.ip, salt, 'signup');

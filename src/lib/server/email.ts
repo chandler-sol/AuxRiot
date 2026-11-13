@@ -24,6 +24,7 @@ interface Message {
  * printed to the console instead, so links can still be clicked.
  */
 export async function sendEmail(env: Env, msg: Message): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+	if (env.ENVIRONMENT === 'beta') msg = { ...msg, subject: `[BETA] ${msg.subject}` };
 	if (!env.RESEND_API_KEY) {
 		console.log(`[email:dev] to=${msg.to} subject="${msg.subject}"\n${msg.text}`);
 		return { ok: true, id: 'dev' };

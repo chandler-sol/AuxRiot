@@ -1,6 +1,7 @@
 import type { Handle } from '@sveltejs/kit/hooks';
 import { DEVICE_COOKIE, SESSION_COOKIE, getSessionUser } from '#lib/server/auth.ts';
 import { getEnv, newId } from '#lib/server/util.ts';
+import { betaGate } from '#lib/server/betagate.ts';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	// One canonical host: www.auxriot.com → auxriot.com
@@ -11,6 +12,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const env = getEnv();
+	const isBeta = env.ENVIRONMENT === 'beta';
+	if (isBeta) {
+		const blocked = await betaGate(event.request, event.url, event.cookies, env);
+		if (blocked) return blocked;
+	}
 	event.locals.user = null;
 	event.locals.ip = event.request.headers.get('cf-connecting-ip') ?? '';
 
@@ -40,5 +46,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
 	response.headers.set('X-Content-Type-Options', 'nosniff');
 	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+	if (isBeta) response.headers.set('X-Robots-Tag', 'noindex, nofollow');
 	return response;
 };
