@@ -28,12 +28,13 @@ ${error ? `<p class="e">${error}</p>` : ''}<input type="password" name="password
 /** Returns a Response to send instead of the page, or null to let the request through. */
 export async function betaGate(request: Request, url: URL, cookies: import('@sveltejs/kit').Cookies, env: Env): Promise<Response | null> {
 	if (url.pathname === '/robots.txt') return new Response('User-agent: *\nDisallow: /\n', { headers: { 'content-type': 'text/plain' } });
-	const secret = env.BETA_PASSWORD;
+	// Trim: a stray space pasted into the dashboard shouldn't lock people out.
+	const secret = env.BETA_PASSWORD?.trim();
 	const salt = env.SIGNAL_SALT ?? 'dev-salt';
 	if (!secret) return page('Beta is locked until its password is set.');
 
 	if (url.pathname === PATH && request.method === 'POST') {
-		const pw = String((await request.formData()).get('password') ?? '');
+		const pw = String((await request.formData()).get('password') ?? '').trim();
 		if (pw !== secret) return page('Wrong password.');
 		cookies.set(COOKIE, await proof(secret, salt), { path: '/', httpOnly: true, sameSite: 'lax', secure: true, maxAge: 60 * 60 * 24 * 30 });
 		return new Response(null, { status: 303, headers: { location: '/' } });
