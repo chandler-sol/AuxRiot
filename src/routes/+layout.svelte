@@ -13,6 +13,13 @@
 	const WIDE = new Set(['/', '/battles', '/battles/[id]', '/u/[username]', '/admin/news', '/store', '/services']);
 	let wide = $derived(WIDE.has(page.route.id ?? ''));
 
+	// "Finish judging" bar: unfinished multi-beat ballots, minus the battle being viewed.
+	const ballots = $derived((data.ballots ?? []).filter((x) => page.params.id !== x.id || page.route.id !== '/battles/[id]'));
+	const leftLabel = (ms: number) => {
+		const m = Math.max(1, Math.round(ms / 60_000));
+		return m < 60 ? `${m}m` : m < 48 * 60 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`;
+	};
+
 	// Pages can override the share preview by returning `og: { title, description }` from their load.
 	const SITE = 'https://auxriot.com';
 	let og = $derived({
@@ -127,6 +134,18 @@
 	</div>
 {/if}
 
+{#if ballots.length}
+	<div class="ballotbar">
+		{#each ballots as x (x.id)}
+			{@const ms = x.endsAt - Date.now()}
+			<a href="/battles/{x.id}" class:urgent={ms < 3_600_000}>
+				<span class="mono k">{ms < 3_600_000 ? 'Last call' : 'Finish judging'}</span>
+				<span class="t">{x.title}</span>
+				<span class="mono m">{x.scored}/{x.rounds} rounds · closes in {leftLabel(ms)} →</span>
+			</a>
+		{/each}
+	</div>
+{/if}
 <main class="container" class:wide>
 	{@render children()}
 </main>
@@ -144,6 +163,15 @@
 </footer>
 
 <style>
+	.ballotbar { display: grid; border-bottom: 1.5px solid var(--line-2); }
+	.ballotbar a {
+		display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 8px 16px; text-decoration: none;
+		background: var(--paper); color: var(--ink); border-bottom: 1px solid #d8cfc0;
+	}
+	.ballotbar a.urgent { background: var(--pink); color: var(--ink); }
+	.ballotbar .k { font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+	.ballotbar .t { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+	.ballotbar .m { font-size: 0.7rem; margin-left: auto; }
 	.betabar { background: var(--warn); color: var(--ink); text-align: center; padding: 5px 10px 4px; font-size: 0.66rem; font-weight: 700; }
 	header {
 		position: sticky;

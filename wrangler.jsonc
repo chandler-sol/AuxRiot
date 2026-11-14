@@ -2,11 +2,13 @@
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"name": "auxriot",
 	"account_id": "0bf986208f219b3ecd65ab7f23e49d8e",
-	"main": ".svelte-kit/cloudflare/_worker.js",
+	"main": "worker.ts",
 	"compatibility_date": "2026-11-01",
 	"compatibility_flags": ["nodejs_als"],
 	"assets": { "binding": "ASSETS", "directory": ".svelte-kit/cloudflare" },
 	"observability": { "enabled": true },
+	// Every 15 minutes: close due battles and send "finish your ballot" reminders (worker.ts).
+	"triggers": { "crons": ["*/15 * * * *"] },
 	"routes": [
 		{ "pattern": "auxriot.com", "custom_domain": true },
 		{ "pattern": "www.auxriot.com", "custom_domain": true }
@@ -33,6 +35,7 @@
 	"env": {
 		"beta": {
 			"name": "auxriot-beta",
+			"triggers": { "crons": ["*/15 * * * *"] },
 			"routes": [{ "pattern": "beta.auxriot.com", "custom_domain": true }],
 			"d1_databases": [
 				{

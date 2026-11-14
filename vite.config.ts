@@ -11,7 +11,8 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			adapter: adapter()
+			// The adapter gets its own tiny config so it never overwrites worker.ts (see wrangler.adapter.jsonc).
+			adapter: adapter({ config: 'wrangler.adapter.jsonc', platformProxy: { configPath: 'wrangler.jsonc' } })
 		})
 	]
 });

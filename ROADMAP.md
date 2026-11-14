@@ -188,6 +188,7 @@ No packs under ~$5: card fees (≈30¢ + 3%) eat small purchases.
   - Forced OT with one submitter → that battler wins by forfeit. Nobody submits → the set leader wins. A tie where both don't submit stays a tie.
   - Judges earn +10 for the overtime round.
 - **Store:** each beat in a set can be listed separately.
+- **Finish-your-ballot nudges:** judges with a half-scored ballot see a "Finish judging" bar on every page (it turns pink in the last hour). They also get one email when under an hour is left, sent by a 15-minute cron that also closes due battles on time.
 - **Later:** overtime for 1-beat battles (on hold), and a tournament format with rounds-won scoring.
 
 ## AuxRiot Pro

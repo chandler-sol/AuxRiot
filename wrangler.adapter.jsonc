@@ -1,0 +1,9 @@
+// Only read by the SvelteKit adapter at build time, to know where to write its
+// worker. The real config is wrangler.jsonc, whose `main` is worker.ts: a thin
+// wrapper that adds the cron handler around this output.
+{
+	"name": "auxriot",
+	"main": ".svelte-kit/cloudflare/_worker.js",
+	"compatibility_date": "2026-11-01",
+	"assets": { "binding": "ASSETS", "directory": ".svelte-kit/cloudflare" }
+}

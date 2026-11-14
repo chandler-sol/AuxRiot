@@ -121,3 +121,18 @@ export async function submitOvertime(
 	}
 	return null;
 }
+
+/** Multi-beat ballots this judge started but hasn't finished, on battles still voting. */
+export async function unfinishedBallots(db: D1Database, userId: string) {
+	const rows = await db
+		.prepare(
+			`SELECT b.id, b.title, b.rounds, b.voting_ends_at AS endsAt, COUNT(*) AS scored
+			 FROM round_votes rv JOIN battles b ON b.id = rv.battle_id
+			 WHERE rv.voter_id = ? AND b.status = 'voting' AND rv.round <= b.rounds AND b.voting_ends_at > ?
+			 GROUP BY b.id HAVING COUNT(*) < b.rounds
+			 ORDER BY b.voting_ends_at LIMIT 3`
+		)
+		.bind(userId, Date.now())
+		.all<{ id: string; title: string; rounds: number; endsAt: number; scored: number }>();
+	return rows.results;
+}

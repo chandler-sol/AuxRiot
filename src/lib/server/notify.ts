@@ -203,3 +203,60 @@ export function notifyOvertime(db: D1Database, battleId: string) {
 		}
 	});
 }
+
+const BALLOT_REMIND_WINDOW = 60 * 60_000;
+
+/**
+ * Judges who saved some rounds of a multi-beat ballot but not all of them get one
+ * nudge when under an hour of voting is left. Run from the cron every 15 minutes.
+ */
+export async function remindUnfinishedBallots(db: D1Database) {
+	const now = Date.now();
+	const due = await db
+		.prepare(
+			`INSERT OR IGNORE INTO judge_reminders (battle_id, voter_id, sent_at)
+			 SELECT b.id, rv.voter_id, ?
+			 FROM battles b JOIN round_votes rv ON rv.battle_id = b.id AND rv.round <= b.rounds
+			 WHERE b.status = 'voting' AND b.rounds > 1 AND b.voting_ends_at > ? AND b.voting_ends_at <= ?
+			   AND rv.voter_id NOT IN (b.creator_id, b.challenger_id)
+			 GROUP BY b.id, rv.voter_id
+			 HAVING COUNT(*) < b.rounds
+			 LIMIT 200
+			 RETURNING battle_id, voter_id`
+		)
+		.bind(now, now, now + BALLOT_REMIND_WINDOW)
+		.all<{ battle_id: string; voter_id: string }>();
+	for (const r of due.results) {
+		const b = await db
+			.prepare(
+				`SELECT b.title, b.rounds, b.voting_ends_at,
+				        (SELECT COUNT(*) FROM round_votes WHERE battle_id = b.id AND voter_id = ? AND round <= b.rounds) AS scored
+				 FROM battles b WHERE b.id = ?`
+			)
+			.bind(r.voter_id, r.battle_id)
+			.first<{ title: string; rounds: number; voting_ends_at: number; scored: number }>();
+		const to = await recipient(db, r.voter_id);
+		if (!b || !to) continue;
+		const mins = Math.max(1, Math.round((b.voting_ends_at - now) / 60_000));
+		const left = b.rounds - b.scored;
+		const url = `${SITE}/battles/${r.battle_id}`;
+		const unsub = await unsubscribeUrl(to.id);
+		await sendEmail(getEnv(), {
+			to: to.email,
+			subject: `Finish your ballot — "${b.title}" closes in ${mins} min`,
+			html: layout({
+				kicker: `${b.scored} of ${b.rounds} rounds scored`,
+				headline: `Finish your <span style="color:#ff3d7f">ballot.</span>`,
+				body: `You started judging "${esc(b.title)}" but ${left === 1 ? 'one round is' : `${left} rounds are`} still unscored. Your saved rounds are waiting — the ballot only counts once every round is scored, and voting closes in about ${mins} minutes. Judging pays credits per round.`,
+				button: 'Finish judging',
+				url,
+				footer: 'You get this because you started judging this battle on AuxRiot.',
+				unsubscribeUrl: unsub
+			}),
+			text: `You're ${b.scored} of ${b.rounds} rounds into judging "${b.title}". It only counts once every round is scored, and voting closes in about ${mins} minutes.\n\n${url}\n\nStop battle emails: ${unsub}`,
+			idempotencyKey: `ballot:${r.battle_id}:${r.voter_id}`,
+			unsubscribeUrl: unsub
+		});
+	}
+	return due.results.length;
+}
