@@ -4,7 +4,7 @@ import { getEnv } from '#lib/server/util.ts';
 import { activePromotedIds } from '#lib/server/promos.ts';
 
 const TABS = {
-	voting: { where: `b.status = 'voting'`, sorts: ['ending', 'ending_last', 'newest', 'votes', 'comments', 'views'] },
+	voting: { where: `b.status IN ('voting', 'overtime')`, sorts: ['ending', 'ending_last', 'newest', 'votes', 'comments', 'views'] },
 	open: { where: `b.status = 'open'`, sorts: ['newest', 'oldest', 'comments', 'views'] },
 	results: { where: `b.status = 'closed'`, sorts: ['newest', 'votes', 'comments', 'views'] }
 } as const;
@@ -35,7 +35,7 @@ function orderBy(tab: Tab, sort: Sort): string {
 	}
 }
 
-const BASE = `SELECT b.id, b.title, b.status, b.created_at, b.voting_ends_at, b.winner_id, b.vote_hours, b.result_json, b.color_a, b.color_b, b.challenger_id, b.views,
+const BASE = `SELECT b.id, b.title, b.status, b.created_at, b.voting_ends_at, b.winner_id, b.vote_hours, b.rounds, b.ot_status, b.ot_deadline, b.ot_ends_at, b.result_json, b.color_a, b.color_b, b.challenger_id, b.views,
 		        c.username AS creator, c.id AS creator_id, ch.username AS challenger,
 		        (SELECT COUNT(*) FROM votes v WHERE v.battle_id = b.id) AS votes,
 		        (SELECT COUNT(*) FROM comments m WHERE m.battle_id = b.id AND m.hidden = 0) AS comments
@@ -83,7 +83,7 @@ export const load: PageServerLoad = async ({ platform, url }) => {
 		: { results: [] as Row[] };
 
 	const counts = await env.DB.prepare(
-		`SELECT (SELECT COUNT(*) FROM battles WHERE status = 'voting') AS live,
+		`SELECT (SELECT COUNT(*) FROM battles WHERE status IN ('voting', 'overtime')) AS live,
 		        (SELECT COUNT(*) FROM battles WHERE status = 'open') AS open,
 		        (SELECT COUNT(DISTINCT user_id) FROM entries) AS producers`
 	).first<{ live: number; open: number; producers: number }>();

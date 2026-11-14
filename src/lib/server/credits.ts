@@ -6,6 +6,8 @@
  */
 import { newId, DAY } from './util.ts';
 import { sharedSignals } from './battles.ts';
+import { formatOf } from '../battleformat.ts';
+import { getNumberSetting, JUDGE_ROUND_CAP_KEY } from './settings.ts';
 import { bookPromotion } from './promos.ts';
 
 export const CREDITS = {
@@ -15,8 +17,8 @@ export const CREDITS = {
 	promoPrice: 250, // one promo slot booking
 	promoHours: 3,
 	dailyCap: 5,
-	judge: 10, // per battle judged with a counted vote
-	judgeDailyCap: 10 // judged battles paid per day
+	judge: 10, // per round judged with a counted vote
+	judgeDailyCap: 30 // default rounds paid per day (admin setting judge_round_cap)
 } as const;
 export const MIN_VOTES_KEY = 'credits_min_votes';
 
@@ -76,9 +78,12 @@ export async function awardBattle(db: D1Database, battleId: string, minVotes?: n
 	const linked = await sharedSignals(db, p1.user_id, [p2.user_id, p2.user_id]);
 	if (linked.device) return rows.results.map((r) => ({ userId: r.user_id, amount: 0, awarded: false, reason: 'linked_accounts' }));
 
+	// Best of 3 pays double, best of 5 triple (still one battle toward the daily cap).
+	const fmt = await db.prepare('SELECT rounds FROM battles WHERE id = ?').bind(battleId).first<{ rounds: number }>();
+	const mult = formatOf(fmt?.rounds).multiplier;
 	const out: AwardOutcome[] = [];
 	for (const r of rows.results) {
-		const amount = CREDITS[r.outcome];
+		const amount = CREDITS[r.outcome] * mult;
 		const earnedThatDay = await db
 			.prepare(
 				`SELECT COUNT(*) AS n FROM credit_ledger
@@ -134,17 +139,27 @@ export async function buyPromotion(db: D1Database, userId: string, battleId: str
 	return { ok: true as const, slot: res.slot, startsAt: res.startsAt, endsAt: res.endsAt, startsNow: res.startsNow, cost };
 }
 
+/** How many more judged rounds this voter can be paid for in the 24h before `at`. */
+async function judgeRoundsLeft(db: D1Database, userId: string, excludeRef: string, at: number) {
+	const cap = await getNumberSetting(db, JUDGE_ROUND_CAP_KEY, CREDITS.judgeDailyCap);
+	const used = await db
+		.prepare(`SELECT COALESCE(SUM(amount), 0) AS paid FROM credit_ledger WHERE user_id = ? AND reason = 'judge_reward' AND ref != ? AND created_at > ? AND created_at <= ?`)
+		.bind(userId, excludeRef, at - DAY, at)
+		.first<{ paid: number }>();
+	return Math.max(0, cap - Math.round((used?.paid ?? 0) / CREDITS.judge));
+}
+
 /**
- * Pay voters who judged this battle. Runs at close, so it only pays ballots that
- * still count after every fair-play check and moderator override (weight > 0,
- * voter not shadowbanned or suspended). Idempotent per voter per battle, and
- * capped at CREDITS.judgeDailyCap judged battles in the 24h before the close.
+ * Pay voters who judged this battle: +10 per round (a best of 5 is 5 rounds).
+ * Runs at close, so it only pays ballots that still count after every fair-play
+ * check and moderator override (weight > 0, voter not shadowbanned or suspended).
+ * Idempotent per voter per battle, capped at the daily judged-rounds limit.
  */
 export async function awardJudges(db: D1Database, battleId: string) {
 	const b = await db
-		.prepare(`SELECT creator_id, challenger_id, (SELECT MAX(closed_at) FROM battle_outcomes WHERE battle_id = ?) AS closed_at FROM battles WHERE id = ? AND status = 'closed'`)
+		.prepare(`SELECT creator_id, challenger_id, rounds, (SELECT MAX(closed_at) FROM battle_outcomes WHERE battle_id = ?) AS closed_at FROM battles WHERE id = ? AND status = 'closed'`)
 		.bind(battleId, battleId)
-		.first<{ creator_id: string; challenger_id: string; closed_at: number | null }>();
+		.first<{ creator_id: string; challenger_id: string; rounds: number; closed_at: number | null }>();
 	if (!b) return 0;
 	const closedAt = b.closed_at ?? Date.now();
 	const voters = await db
@@ -157,12 +172,30 @@ export async function awardJudges(db: D1Database, battleId: string) {
 		.all<{ voter_id: string }>();
 	let paid = 0;
 	for (const { voter_id } of voters.results) {
-		const today = await db
-			.prepare(`SELECT COUNT(*) AS n FROM credit_ledger WHERE user_id = ? AND reason = 'judge_reward' AND ref != ? AND created_at > ? AND created_at <= ?`)
-			.bind(voter_id, battleId, closedAt - DAY, closedAt)
-			.first<{ n: number }>();
-		if ((today?.n ?? 0) >= CREDITS.judgeDailyCap) continue;
-		if (await addCredits(db, voter_id, CREDITS.judge, 'judge_reward', battleId, '', closedAt)) paid++;
+		const rounds = Math.min(b.rounds || 1, await judgeRoundsLeft(db, voter_id, battleId, closedAt));
+		if (rounds <= 0) continue;
+		if (await addCredits(db, voter_id, CREDITS.judge * rounds, 'judge_reward', battleId, '', closedAt)) paid++;
+	}
+	return paid;
+}
+
+/** Overtime-round judges: +10 each for counted ballots on that round. */
+export async function awardOtJudges(db: D1Database, battleId: string, otRound: number) {
+	const b = await db.prepare('SELECT creator_id, challenger_id FROM battles WHERE id = ?').bind(battleId).first<{ creator_id: string; challenger_id: string }>();
+	if (!b) return 0;
+	const now = Date.now();
+	const ref = `${battleId}:ot`;
+	const voters = await db
+		.prepare(
+			`SELECT rv.voter_id FROM round_votes rv JOIN users u ON u.id = rv.voter_id
+			 WHERE rv.battle_id = ? AND rv.round = ? AND rv.weight > 0 AND u.shadowbanned = 0 AND u.suspended_at IS NULL AND rv.voter_id NOT IN (?, ?)`
+		)
+		.bind(battleId, otRound, b.creator_id, b.challenger_id)
+		.all<{ voter_id: string }>();
+	let paid = 0;
+	for (const { voter_id } of voters.results) {
+		if ((await judgeRoundsLeft(db, voter_id, ref, now)) <= 0) continue;
+		if (await addCredits(db, voter_id, CREDITS.judge, 'judge_reward', ref, 'Overtime round', now)) paid++;
 	}
 	return paid;
 }

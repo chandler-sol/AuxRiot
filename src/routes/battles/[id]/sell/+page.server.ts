@@ -4,21 +4,23 @@ import { getEnv } from '#lib/server/util.ts';
 import { STORE_DOCS_VERSION, buyOpen, getOrCreateListing, missingForListing, storeSettings, type ListingRow } from '#lib/server/store.ts';
 import { GENRES, KEYS, MOODS } from '#lib/store.ts';
 
-async function context(locals: App.Locals, battleId: string, path: string) {
+async function context(locals: App.Locals, battleId: string, path: string, round = 1) {
 	if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(path)}`);
 	const db = getEnv().DB;
 	const battle = await db
 		.prepare(
-			`SELECT b.id, b.title, b.status, b.creator_id, b.challenger_id, c.username AS creator, ch.username AS challenger
+			`SELECT b.id, b.title, b.status, b.rounds, b.creator_id, b.challenger_id, c.username AS creator, ch.username AS challenger
 			 FROM battles b JOIN users c ON c.id = b.creator_id LEFT JOIN users ch ON ch.id = b.challenger_id WHERE b.id = ?`
 		)
 		.bind(battleId)
-		.first<{ id: string; title: string; status: string; creator_id: string; challenger_id: string | null; creator: string; challenger: string | null }>();
+		.first<{ id: string; title: string; status: string; rounds: number; creator_id: string; challenger_id: string | null; creator: string; challenger: string | null }>();
 	if (!battle || battle.status === 'removed') error(404, 'Battle not found');
-	const listing = await getOrCreateListing(db, battle.id, locals.user.id);
+	const listing = await getOrCreateListing(db, battle.id, locals.user.id, round);
 	if (!listing) error(403, 'Only the producers in this battle can sell their beat.');
 	return { db, battle, listing, user: locals.user };
 }
+
+const roundOf = (url: URL) => Math.max(1, Math.min(5, Number(url.searchParams.get('round')) || 1));
 
 const toCents = (v: FormDataEntryValue | null) => {
 	const s = String(v ?? '').replace(/[$,\s]/g, '');
@@ -28,7 +30,7 @@ const toCents = (v: FormDataEntryValue | null) => {
 };
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
-	const { db, battle, listing } = await context(locals, params.id, url.pathname);
+	const { db, battle, listing } = await context(locals, params.id, url.pathname, roundOf(url));
 	const settings = await storeSettings(db);
 	const seller = await db
 		.prepare('SELECT legal_name, seller_agreed_at, seller_agreement_version FROM users WHERE id = ?')
@@ -36,7 +38,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		.first<{ legal_name: string | null; seller_agreed_at: number | null; seller_agreement_version: string | null }>();
 	const opponent = listing.seller_id === battle.creator_id ? battle.challenger : battle.creator;
 	return {
-		battle: { id: battle.id, title: battle.title, status: battle.status, opponent, buyOpen: buyOpen(battle.status) },
+		battle: { id: battle.id, title: battle.title, status: battle.status, opponent, buyOpen: buyOpen(battle.status), rounds: battle.rounds, round: roundOf(url) },
 		listing: {
 			id: listing.id,
 			status: listing.status,
@@ -68,7 +70,7 @@ function locked(l: ListingRow) {
 
 export const actions: Actions = {
 	agree: async ({ request, locals, params, url }) => {
-		const { db, user } = await context(locals, params.id, url.pathname);
+		const { db, user } = await context(locals, params.id, url.pathname, roundOf(url));
 		const ticked = (await request.formData()).getAll('item');
 		if (ticked.length < 10) return fail(400, { agreeError: 'Tick every point to enable selling.' });
 		await db
@@ -79,7 +81,7 @@ export const actions: Actions = {
 	},
 
 	save: async ({ request, locals, params, url }) => {
-		const { db, listing, user } = await context(locals, params.id, url.pathname);
+		const { db, listing, user } = await context(locals, params.id, url.pathname, roundOf(url));
 		if (locked(listing)) return fail(400, { error: "This beat can't be changed anymore." });
 		const agreed = await db.prepare('SELECT seller_agreement_version FROM users WHERE id = ?').bind(user.id).first<{ seller_agreement_version: string | null }>();
 		if (agreed?.seller_agreement_version !== STORE_DOCS_VERSION) return fail(400, { error: 'Agree to the seller checklist first.' });
@@ -136,14 +138,14 @@ export const actions: Actions = {
 	},
 
 	unlist: async ({ locals, params, url }) => {
-		const { db, listing } = await context(locals, params.id, url.pathname);
+		const { db, listing } = await context(locals, params.id, url.pathname, roundOf(url));
 		if (listing.status !== 'listed') return fail(400, { error: "It isn't on sale." });
 		await db.prepare(`UPDATE listings SET status = 'unlisted', updated_at = ? WHERE id = ?`).bind(Date.now(), listing.id).run();
 		return { ok: 'Taken off the store. You can put it back anytime.' };
 	},
 
 	removeStems: async ({ locals, params, url }) => {
-		const { db, listing } = await context(locals, params.id, url.pathname);
+		const { db, listing } = await context(locals, params.id, url.pathname, roundOf(url));
 		if (locked(listing)) return fail(400, { error: "This beat can't be changed anymore." });
 		if (listing.stems_key) await getEnv().AUDIO.delete(listing.stems_key);
 		await db

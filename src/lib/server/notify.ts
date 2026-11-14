@@ -165,3 +165,41 @@ export async function remindWaiting(db: D1Database, expiryDays: number) {
 		}
 	});
 }
+
+/** The set was too close (or judges called for more): invite both battlers to run it back. */
+export function notifyOvertime(db: D1Database, battleId: string) {
+	later(async () => {
+		const b = await db
+			.prepare(
+				`SELECT b.title, b.creator_id, b.challenger_id, b.ot_mode, c.username AS creator, ch.username AS challenger
+				 FROM battles b JOIN users c ON c.id = b.creator_id JOIN users ch ON ch.id = b.challenger_id WHERE b.id = ?`
+			)
+			.bind(battleId)
+			.first<{ title: string; creator_id: string; challenger_id: string; ot_mode: string; creator: string; challenger: string }>();
+		if (!b) return;
+		const url = `${SITE}/battles/${battleId}#overtime`;
+		for (const uid of [b.creator_id, b.challenger_id]) {
+			const to = await recipient(db, uid);
+			if (!to) continue;
+			const opp = uid === b.creator_id ? b.challenger : b.creator;
+			const why = b.ot_mode === 'forced' ? 'The judges want one more round.' : 'The set finished too close to call.';
+			const unsub = await unsubscribeUrl(to.id);
+			await sendEmail(getEnv(), {
+				to: to.email,
+				subject: `Overtime? "${b.title}" vs ${opp}`,
+				html: layout({
+					kicker: 'Too close to call',
+					headline: `Run it <span style="color:#ff3d7f">back?</span>`,
+					body: `${why} Drop one more beat within 24 hours to go to overtime — ${opp} can't hear it until you've both submitted.${b.ot_mode === 'forced' ? ' If only one of you submits, that producer takes the battle.' : ' If you both don’t submit, it stays a tie.'}`,
+					button: 'Drop your overtime beat',
+					url,
+					footer: 'You get this because you battled on AuxRiot.',
+					unsubscribeUrl: unsub
+				}),
+				text: `${why} Drop one more beat within 24 hours: ${url}\n\nStop battle emails: ${unsub}`,
+				idempotencyKey: `ot:${battleId}:${uid}`,
+				unsubscribeUrl: unsub
+			});
+		}
+	});
+}

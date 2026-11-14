@@ -28,6 +28,7 @@ export interface OgBattle {
 	colorB: string | null;
 	scores: [number, number] | null;
 	voteHours: number;
+	rounds?: number;
 }
 
 /** Shrink long names so they stay on one line in a 1080px-wide column. */
@@ -38,8 +39,11 @@ function nameSize(name: string, max: number) {
 /** 1200×630 flyer-style share card for a battle. */
 export async function renderBattleOg(b: OgBattle): Promise<ArrayBuffer> {
 	const [ca, cb] = battleColors(b.id, b.colorA, b.colorB);
-	const stamp =
-		b.status === 'open'
+	const fmt = (b.rounds ?? 1) > 1 ? `BEST OF ${b.rounds} · ` : '';
+	const stamp = fmt + (
+		b.status === 'overtime'
+			? 'OVERTIME'
+			: b.status === 'open'
 			? `OPEN CHALLENGE · ${b.voteHours}H VOTE`
 			: b.status === 'voting'
 				? 'LIVE VOTE — SCORE IT'
@@ -47,7 +51,7 @@ export async function renderBattleOg(b: OgBattle): Promise<ArrayBuffer> {
 					? b.winner
 						? `FINAL — ${b.winner.toUpperCase()} WINS`
 						: 'FINAL — DEAD EVEN'
-					: 'AUXRIOT';
+					: 'AUXRIOT');
 	const second = b.challenger
 		? `<div style="display:flex;font-family:Anton;font-size:${nameSize(b.challenger, 128)}px;line-height:1;color:${cb}">${esc(b.challenger.toUpperCase())}</div>`
 		: `<div style="display:flex;font-family:Anton;font-size:110px;line-height:1;color:#3a352e">???</div>`;

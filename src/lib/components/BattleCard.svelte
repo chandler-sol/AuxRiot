@@ -20,6 +20,10 @@
 		score?: [number, number] | null;
 		color_a?: string | null;
 		color_b?: string | null;
+		rounds?: number;
+		ot_status?: string | null;
+		ot_deadline?: number | null;
+		ot_ends_at?: number | null;
 	}
 	let { battle: b, now, promoted = false }: { battle: Battle; now: number; promoted?: boolean } = $props();
 
@@ -34,12 +38,16 @@
 	<span class="edge" aria-hidden="true"><i class="ea"></i><i class="eb"></i></span>
 	<span class="body">
 		{#if promoted}<span class="promo mono">★ Promoted</span>{/if}
+		{#if (b.rounds ?? 1) > 1}<span class="fmt mono">Best of {b.rounds}</span>{/if}
 		<span class="strip mono">
 			{#if b.status === 'voting'}
 				<span class="status live">● Live vote</span>
 				<span class="clock" class:hot={b.voting_ends_at !== null && b.voting_ends_at - now < 3_600_000}>
 					{b.voting_ends_at ? countdown(b.voting_ends_at - now) : ''}
 				</span>
+			{:else if b.status === 'overtime'}
+				<span class="status live">● Overtime</span>
+				<span class="clock hot">{b.ot_status === 'voting' ? (b.ot_ends_at ? countdown(b.ot_ends_at - now) : '') : 'Beats due'}</span>
 			{:else if b.status === 'open'}
 				<span class="status open">○ Needs a challenger</span>
 				<span>{b.vote_hours}h vote</span>
@@ -81,6 +89,7 @@
 </a>
 
 <style>
+	.fmt { align-self: flex-start; border: 1.5px solid var(--a); color: var(--a); padding: 2px 8px 1px; border-radius: var(--radius); font-size: 0.62rem; }
 	.bcard {
 		display: flex;
 		background: var(--ink-2);

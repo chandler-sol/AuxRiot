@@ -170,10 +170,25 @@ No packs under ~$5: card fees (≈30¢ + 3%) eat small purchases.
 
 ## Judging credits (built on beta)
 
-- **+10 battle credits per judged battle,** paid at close and only for counted votes: not shadowbanned or suspended, and not zeroed by fair-play checks or a mod.
-- **Capped at 10 judged battles a day.**
+- **+10 battle credits per judged battle (per round in multi-beat battles),** paid at close and only for counted votes: not shadowbanned or suspended, and not zeroed by fair-play checks or a mod.
+- **Capped at 30 judged rounds a day** (live: 10 battles a day until the multi-beat change ships).
 - **Reversed on a recount or removal** (ledger reason judge_void).
 - **Voters see "+10 credits for judging"** on the results.
+
+## Best of 3 / best of 5 + overtime (built on beta)
+
+- **Formats:** 1 beat (24/48h vote), best of 3 (48/72h), best of 5 (72/96h). Anyone can start one, and the 3-open limit still applies.
+- **Winner:** best total score across all beats. Rounds-won scoring is reserved for a future tournament format.
+- **Hidden beats:** challengers hear a 10-second taste of round 1 only, and must answer with the same number of beats. Every open challenge (including 1-beat) now previews 10 seconds. Landing-page samples stay at 30s.
+- **Judging:** score each round separately, and progress saves. The ballot counts once every round is scored. Pays +10 per round, up to 30 rounds a day (setting judge_round_cap).
+- **Credits:** ×2 for best of 3, ×3 for best of 5. Still counts as one battle toward the daily cap.
+- **Overtime:**
+  - Triggers when totals land within ±0.1 (setting ot_margin), or when judges force it (a majority of counted ballots ask, with at least 5 judges).
+  - Battlers have 24h to drop one more beat, and neither hears the other's until both are in. Then a 24h overtime vote.
+  - Forced OT with one submitter → that battler wins by forfeit. Nobody submits → the set leader wins. A tie where both don't submit stays a tie.
+  - Judges earn +10 for the overtime round.
+- **Store:** each beat in a set can be listed separately.
+- **Later:** overtime for 1-beat battles (on hold), and a tournament format with rounds-won scoring.
 
 ## AuxRiot Pro
 

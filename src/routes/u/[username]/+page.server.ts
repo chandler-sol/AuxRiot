@@ -27,7 +27,7 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 
 	const battles = await db
 		.prepare(
-			`SELECT b.id, b.title, b.status, b.created_at, b.winner_id, b.voting_ends_at, b.vote_hours, b.result_json, b.color_a, b.color_b, b.views,
+			`SELECT b.id, b.title, b.status, b.created_at, b.winner_id, b.voting_ends_at, b.vote_hours, b.rounds, b.ot_status, b.ot_deadline, b.ot_ends_at, b.result_json, b.color_a, b.color_b, b.views,
 			        b.creator_id, b.challenger_id, c.username AS creator, ch.username AS challenger,
 			        (SELECT COUNT(*) FROM votes v WHERE v.battle_id = b.id) AS votes,
 			        (SELECT COUNT(*) FROM comments m WHERE m.battle_id = b.id AND m.hidden = 0) AS comments

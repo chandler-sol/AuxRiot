@@ -195,12 +195,14 @@ export const actions: Actions = {
 		// decision is 'remove0', 'remove1' or 'removeBoth'
 		const slots = decision === 'remove0' ? [0] : decision === 'remove1' ? [1] : [0, 1];
 		for (const slot of slots) {
-			const entry = await env.DB.prepare('SELECT id, audio_key FROM entries WHERE battle_id = ? AND slot = ?')
+			// Every beat that battler has in it (multi-beat sets and overtime too).
+			const entries = await env.DB.prepare('SELECT id, audio_key FROM entries WHERE battle_id = ? AND slot = ? AND removed = 0')
 				.bind(req.battle_id, slot)
-				.first<{ id: string; audio_key: string }>();
-			if (!entry) continue;
-			await env.AUDIO.delete(entry.audio_key);
-			await env.DB.prepare('UPDATE entries SET removed = 1 WHERE id = ?').bind(entry.id).run();
+				.all<{ id: string; audio_key: string }>();
+			for (const entry of entries.results) {
+				await env.AUDIO.delete(entry.audio_key);
+				await env.DB.prepare('UPDATE entries SET removed = 1 WHERE id = ?').bind(entry.id).run();
+			}
 		}
 		// A battle missing a beat can't be fairly judged; pull it if it hasn't finished.
 		await env.DB.prepare(`UPDATE battles SET status = 'removed' WHERE id = ? AND status IN ('open', 'voting')`).bind(req.battle_id).run();

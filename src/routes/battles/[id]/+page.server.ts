@@ -5,6 +5,7 @@ import {
 	LISTEN_THRESHOLD,
 	castVote,
 	finalizeBattle,
+	finalizeOvertime,
 	storeAudio,
 	voterAgeOk,
 	type BattleResult,
@@ -19,6 +20,8 @@ import { getBlockedWords, logAction, matchesBlocked } from '#lib/server/mod.ts';
 import { refreshComment, toggleUpvote } from '#lib/server/respect.ts';
 import { notifyAnswered } from '#lib/server/notify.ts';
 import { buyOpen } from '#lib/server/store.ts';
+import { saveOtVote, saveRoundVote, setWantsOt, submitOvertime } from '#lib/server/multibeat.ts';
+import { OPEN_PREVIEW_SECONDS, OT_VOTE_HOURS, formatOf } from '#lib/battleformat.ts';
 
 interface BattleRow {
 	id: string;
@@ -35,6 +38,12 @@ interface BattleRow {
 	color_a: string | null;
 	color_b: string | null;
 	views: number;
+	rounds: number;
+	ot_status: string | null;
+	ot_mode: string | null;
+	ot_deadline: number | null;
+	ot_ends_at: number | null;
+	base_result_json: string | null;
 	creator: string;
 	challenger: string | null;
 }
@@ -57,6 +66,10 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 
 	if (battle.status === 'voting' && battle.voting_ends_at! <= Date.now()) {
 		await finalizeBattle(env.DB, battle.id);
+		battle = (await getBattle(env.DB, params.id))!;
+	}
+	if (battle.status === 'overtime') {
+		await finalizeOvertime(env.DB, battle.id);
 		battle = (await getBattle(env.DB, params.id))!;
 	}
 
@@ -89,7 +102,7 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			reason = o && o.counted_votes < minVotes ? 'votes' : 'rules';
 		}
 		const bal = await env.DB.prepare('SELECT credits FROM users WHERE id = ?').bind(user!.id).first<{ credits: number }>();
-		const canPromote = battle.status === 'open' || battle.status === 'voting';
+		const canPromote = battle.status === 'open' || battle.status === 'voting' || battle.status === 'overtime';
 		credits = {
 			earned: award?.amount ?? null,
 			reason,
@@ -102,9 +115,9 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 		};
 	}
 	const [entries, comments, voteCount, myVote, listens] = await Promise.all([
-		env.DB.prepare(`SELECT id, user_id, slot, audio_key, duration_ms, peaks, removed FROM entries WHERE battle_id = ? ORDER BY slot`)
+		env.DB.prepare(`SELECT id, user_id, slot, round, audio_key, duration_ms, peaks, removed FROM entries WHERE battle_id = ? ORDER BY round, slot`)
 			.bind(battle.id)
-			.all<{ id: string; user_id: string; slot: number; audio_key: string; duration_ms: number; peaks: string; removed: number }>(),
+			.all<{ id: string; user_id: string; slot: number; round: number; audio_key: string; duration_ms: number; peaks: string; removed: number }>(),
 		env.DB.prepare(
 			// Held comments (blocked words) and shadowbanned authors are only visible to the author.
 			`SELECT m.id, m.body, m.created_at, m.user_id, m.held, m.upvotes, u.username, u.avatar_key, u.color, u.respect,
@@ -133,14 +146,54 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 	const minHours = await getVoterMinAgeHours(env.DB, env);
 
 	let voteBlock: string | null = null;
-	if (battle.status === 'voting') {
+	if (battle.status === 'voting' || (battle.status === 'overtime' && battle.ot_status === 'voting')) {
 		if (!user) voteBlock = 'login';
 		else if (isParticipant) voteBlock = 'participant';
 		else if (!user.emailVerified) voteBlock = 'unverified';
 		else if (!voterAgeOk(user, minHours)) voteBlock = 'age';
 	}
 
+	// What each person can hear:
+	// - open challenge: only round 1's first 10 seconds (the creator hears all of theirs);
+	// - overtime beats: hidden until both battlers have dropped theirs.
+	const rounds = battle.rounds || 1;
+	const isCreator = !!user && user.id === battle.creator_id;
+	const otVisible = battle.ot_status === 'voting' || battle.status === 'closed';
+	const visibleEntries = entries.results.filter((e) => {
+		if (battle.status === 'open' && !isCreator && e.round > 1) return false;
+		if (e.round > rounds && !otVisible && e.user_id !== user?.id) return false;
+		return true;
+	});
+	const previewOpen = battle.status === 'open' && !isCreator ? OPEN_PREVIEW_SECONDS : null;
+
+	// Multi-beat ballot progress and overtime state for this viewer.
+	let roundVotes: Record<number, Scores> = {};
+	if (user && rounds > 1) {
+		const rv = await env.DB.prepare('SELECT * FROM round_votes WHERE battle_id = ? AND voter_id = ?').bind(battle.id, user.id).all<Record<string, number>>();
+		roundVotes = Object.fromEntries(rv.results.map((r) => [r.round, [0, 1].map((s) => Object.fromEntries(CATEGORIES.map((c) => [c, r[`s${s}_${c}`]]))) as Scores]));
+	}
+	const otEntries = entries.results.filter((e) => e.round === rounds + 1 && !e.removed);
+	const overtime =
+		battle.ot_status || battle.status === 'overtime'
+			? {
+					status: battle.ot_status,
+					mode: battle.ot_mode,
+					deadline: battle.ot_deadline,
+					endsAt: battle.ot_ends_at,
+					submitted: [otEntries.some((e) => e.slot === 0), otEntries.some((e) => e.slot === 1)] as [boolean, boolean],
+					mine: !!user && otEntries.some((e) => e.user_id === user.id),
+					base: battle.base_result_json ? (JSON.parse(battle.base_result_json) as BattleResult) : null,
+					myVote: user && rounds > 1 ? (roundVotes[rounds + 1] ?? null) : null
+				}
+			: null;
+
 	return {
+		format: { rounds, ...formatOf(rounds) },
+		roundVotes,
+		wantsOt: !!myVote?.wants_ot,
+		overtime,
+		previewSeconds: previewOpen,
+		hiddenRounds: battle.status === 'open' && !isCreator ? rounds - 1 : 0,
 		battle: {
 			id: battle.id,
 			title: battle.title,
@@ -157,10 +210,11 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			colorB: battle.color_b,
 			result: battle.result_json ? (JSON.parse(battle.result_json) as BattleResult) : null
 		},
-		entries: entries.results.map((e) => ({
+		entries: visibleEntries.map((e) => ({
 			id: e.id,
 			userId: e.user_id,
 			slot: e.slot,
+			round: e.round,
 			src: e.removed ? null : `/audio/${e.audio_key}`,
 			durationMs: e.duration_ms,
 			peaks: JSON.parse(e.peaks) as number[],
@@ -186,9 +240,9 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 		judged:
 			user && battle.status === 'closed' && !isBattler
 				? ((
-						await env.DB.prepare(`SELECT amount FROM credit_ledger WHERE user_id = ? AND ref = ? AND reason = 'judge_reward'`)
-							.bind(user.id, battle.id)
-							.first<{ amount: number }>()
+						await env.DB.prepare(`SELECT SUM(amount) AS amount FROM credit_ledger WHERE user_id = ? AND ref IN (?, ?) AND reason = 'judge_reward'`)
+							.bind(user.id, battle.id, `${battle.id}:ot`)
+							.first<{ amount: number | null }>()
 					)?.amount ?? null)
 				: null,
 		promo,
@@ -206,7 +260,7 @@ async function saleInfo(db: D1Database, battleId: string, status: string, userId
 			 FROM listings l JOIN entries e ON e.id = l.entry_id WHERE l.battle_id = ?`
 		)
 		.bind(battleId)
-		.all<{ id: string; status: string; price_cents: number | null; stems_price_cents: number | null; has_stems: number; file_format: string | null; tagged: number; seller_id: string; slot: number }>();
+		.all<{ id: string; status: string; price_cents: number | null; stems_price_cents: number | null; has_stems: number; file_format: string | null; tagged: number; seller_id: string; slot: number; round: number }>();
 	const open = buyOpen(status);
 	const visible = rows.results.filter((r) => r.status === 'listed' || r.status === 'sold' || r.seller_id === userId);
 	const ids = visible.map((r) => r.id);
@@ -230,6 +284,7 @@ async function saleInfo(db: D1Database, battleId: string, status: string, userId
 			listingId: r.id,
 			questions: qs.filter((q) => q.listing_id === r.id).map(({ listing_id, ...q }) => q),
 			slot: r.slot,
+			round: r.round,
 			status: r.status,
 			mine: r.seller_id === userId,
 			priceCents: r.price_cents,
@@ -271,6 +326,22 @@ async function countView(env: Env, battleId: string, deviceId: string) {
 	return true;
 }
 
+/** Why this user can't judge this battle (null if they can). */
+async function voteEligibility(env: Env, user: SessionUser, battle: BattleRow) {
+	if (user.id === battle.creator_id || user.id === battle.challenger_id) return "You can't vote in your own battle.";
+	if (!user.emailVerified) return 'Confirm your email to vote — check your inbox for the link.';
+	if (!voterAgeOk(user, await getVoterMinAgeHours(env.DB, env))) return 'Your account is too new to vote yet.';
+	return null;
+}
+
+function readScores(form: FormData) {
+	return [0, 1].map((s) => {
+		const r = {} as Record<(typeof CATEGORIES)[number], number>;
+		for (const c of CATEGORIES) r[c] = Number(form.get(`s${s}_${c}`));
+		return r;
+	}) as Scores;
+}
+
 function requireUser(locals: App.Locals, path: string) {
 	if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(path)}`);
 	return locals.user;
@@ -287,11 +358,22 @@ export const actions: Actions = {
 		if (!battle || battle.status !== 'open') return fail(400, { respondError: 'Someone already took this battle.' });
 		if (battle.creator_id === user.id) return fail(400, { respondError: "You can't battle yourself." });
 
-		const audio = await storeAudio(env.AUDIO, form.get('audio') as File, String(form.get('peaks') ?? ''));
-		if (typeof audio === 'string') return fail(400, { respondError: audio });
+		// The challenger answers with one beat per round, all at once, so the battle never stalls halfway.
+		const rounds = battle.rounds || 1;
+		const beats: { key: string; durationMs: number; peaks: string }[] = [];
+		for (let i = 0; i < rounds; i++) {
+			const file = (form.get(`audio_${i}`) ?? (i === 0 ? form.get('audio') : null)) as File;
+			const peaks = String(form.get(`peaks_${i}`) ?? (i === 0 ? form.get('peaks') : '') ?? '');
+			const audio = await storeAudio(env.AUDIO, file, peaks);
+			if (typeof audio === 'string') {
+				for (const b of beats) await env.AUDIO.delete(b.key);
+				return fail(400, { respondError: rounds > 1 ? `Round ${i + 1}: ${audio}` : audio });
+			}
+			beats.push(audio);
+		}
 
-		// "First to enter takes it": UNIQUE(battle_id, slot) means only one slot-1 insert can
-		// ever succeed, and the batch runs as a single transaction.
+		// "First to enter takes it": UNIQUE(battle_id, slot, round) means only one challenger's
+		// inserts can ever succeed, and the batch runs as a single transaction.
 		const now = Date.now();
 		const ends = now + battle.vote_hours * HOUR;
 		const me = await env.DB.prepare('SELECT color FROM users WHERE id = ?').bind(user.id).first<{ color: string | null }>();
@@ -299,19 +381,21 @@ export const actions: Actions = {
 		const colorB = challengerColor(battle.id, colorA, me?.color);
 		try {
 			const res = await env.DB.batch([
-				env.DB.prepare(
-					`INSERT INTO entries (id, battle_id, user_id, slot, audio_key, duration_ms, peaks, created_at)
-					 SELECT ?, id, ?, 1, ?, ?, ?, ? FROM battles WHERE id = ? AND status = 'open' AND creator_id != ?`
-				).bind(newId(), user.id, audio.key, audio.durationMs, audio.peaks, now, battle.id, user.id),
+				...beats.map((b, i) =>
+					env.DB.prepare(
+						`INSERT INTO entries (id, battle_id, user_id, slot, round, audio_key, duration_ms, peaks, created_at)
+						 SELECT ?, id, ?, 1, ?, ?, ?, ?, ? FROM battles WHERE id = ? AND status = 'open' AND creator_id != ?`
+					).bind(newId(), user.id, i + 1, b.key, b.durationMs, b.peaks, now, battle.id, user.id)
+				),
 				env.DB.prepare(
 					`UPDATE battles SET challenger_id = ?, status = 'voting', voting_started_at = ?, voting_ends_at = ?, color_a = ?, color_b = ?
 					 WHERE id = ? AND status = 'open'
-					   AND EXISTS (SELECT 1 FROM entries WHERE battle_id = ? AND slot = 1 AND user_id = ?)`
-				).bind(user.id, now, ends, colorA, colorB, battle.id, battle.id, user.id)
+					   AND (SELECT COUNT(*) FROM entries WHERE battle_id = ? AND slot = 1 AND user_id = ?) = ?`
+				).bind(user.id, now, ends, colorA, colorB, battle.id, battle.id, user.id, rounds)
 			]);
-			if (!res[1].meta.changes) throw new Error('lost race');
+			if (!res[res.length - 1].meta.changes) throw new Error('lost race');
 		} catch {
-			await env.AUDIO.delete(audio.key);
+			for (const b of beats) await env.AUDIO.delete(b.key);
 			return fail(409, { respondError: 'Too slow — someone else answered this battle first.' });
 		}
 		notifyAnswered(env.DB, battle.id);
@@ -325,6 +409,7 @@ export const actions: Actions = {
 		if (!battle || battle.status !== 'voting' || battle.voting_ends_at! <= Date.now()) {
 			return fail(400, { voteError: 'Voting is closed for this battle.' });
 		}
+		if ((battle.rounds || 1) > 1) return fail(400, { voteError: 'Score this battle round by round.' });
 		if (user.id === battle.creator_id || user.id === battle.challenger_id) {
 			return fail(403, { voteError: "You can't vote in your own battle." });
 		}
@@ -359,6 +444,60 @@ export const actions: Actions = {
 
 		await castVote(env.DB, user, { id: battle.id, creator_id: battle.creator_id, challenger_id: battle.challenger_id! }, scores);
 		return { voted: true };
+	},
+
+	voteRound: async ({ request, params, locals, url }) => {
+		const user = requireUser(locals, url.pathname);
+		const env = getEnv();
+		const battle = await getBattle(env.DB, params.id);
+		if (!battle || battle.status !== 'voting' || battle.voting_ends_at! <= Date.now()) return fail(400, { voteError: 'Voting is closed for this battle.' });
+		const block = await voteEligibility(env, user, battle);
+		if (block) return fail(403, { voteError: block });
+		const form = await request.formData();
+		const round = Number(form.get('round'));
+		const res = await saveRoundVote(env.DB, user, { ...battle, challenger_id: battle.challenger_id!, rounds: battle.rounds }, round, readScores(form), form.get('wants_ot') === 'on');
+		if ('error' in res) return fail(400, { voteError: res.error, voteRound: round });
+		return { roundSaved: round, scored: res.scored };
+	},
+
+	wantsOt: async ({ request, params, locals, url }) => {
+		const user = requireUser(locals, url.pathname);
+		const env = getEnv();
+		const battle = await getBattle(env.DB, params.id);
+		if (!battle || battle.status !== 'voting') return fail(400, { voteError: 'Voting is closed for this battle.' });
+		await setWantsOt(env.DB, user.id, battle.id, (await request.formData()).get('on') === '1');
+		return { wantsOtSaved: true };
+	},
+
+	submitOt: async ({ request, params, locals, url }) => {
+		const user = requireUser(locals, url.pathname);
+		const env = getEnv();
+		const battle = await getBattle(env.DB, params.id);
+		if (!battle) return fail(404, { otError: 'Battle not found.' });
+		const form = await request.formData();
+		if (form.get('ack_rights') !== 'on') return fail(400, { otError: 'Please confirm the copyright notice.' });
+		const audio = await storeAudio(env.AUDIO, form.get('audio') as File, String(form.get('peaks') ?? ''));
+		if (typeof audio === 'string') return fail(400, { otError: audio });
+		const err = await submitOvertime(env.DB, { ...battle, challenger_id: battle.challenger_id! }, user.id, audio, newId, OT_VOTE_HOURS);
+		if (err) {
+			await env.AUDIO.delete(audio.key);
+			return fail(400, { otError: err });
+		}
+		return { otSubmitted: true };
+	},
+
+	voteOt: async ({ request, params, locals, url }) => {
+		const user = requireUser(locals, url.pathname);
+		const env = getEnv();
+		const battle = await getBattle(env.DB, params.id);
+		if (!battle || battle.status !== 'overtime' || battle.ot_status !== 'voting' || (battle.ot_ends_at ?? 0) <= Date.now()) {
+			return fail(400, { voteError: 'The overtime vote is closed.' });
+		}
+		const block = await voteEligibility(env, user, battle);
+		if (block) return fail(403, { voteError: block });
+		const res = await saveOtVote(env.DB, user, { ...battle, challenger_id: battle.challenger_id! }, readScores(await request.formData()));
+		if ('error' in res) return fail(400, { voteError: res.error });
+		return { otVoted: true };
 	},
 
 	promote: async ({ request, params, locals, platform, url }) => {

@@ -33,12 +33,13 @@
 		<div><span class="display">+{r.win}</span><span class="mono">Win</span></div>
 		<div><span class="display">+{r.tie}</span><span class="mono">Tie</span></div>
 		<div><span class="display">+{r.loss}</span><span class="mono">Loss</span></div>
-		<div><span class="display">+{r.judge}</span><span class="mono">Judge a battle</span></div>
+		<div><span class="display">+{r.judge}</span><span class="mono">Per round judged</span></div>
 	</div>
 	<ul class="fine">
 		<li>A battle pays out when it closes with at least <strong>{data.minVotes} counted vote{data.minVotes === 1 ? '' : 's'}</strong>. Votes the fair-play checks discount don't count.</li>
 		<li>Your own battles pay out for up to <strong>{r.dailyCap} battles a day</strong>.</li>
-		<li>Judging pays <strong>+{r.judge}</strong> per battle when voting closes — only if your vote counts (full listen, fair-play checks passed). Up to <strong>{r.judgeDailyCap} judged battles a day</strong>.</li>
+		<li>Judging pays <strong>+{r.judge} per round</strong> when voting closes — a best of 3 is 3 rounds — only if your vote counts (full listen, fair-play checks passed). Up to <strong>{data.judgeCap} rounds a day</strong>.</li>
+		<li>Best of 3 battles pay battlers <strong>×2</strong>, best of 5 <strong>×3</strong> — still one battle toward the daily limit.</li>
 		<li>Battles between accounts on the same device never pay.</li>
 		<li>Credits have no cash value and can't be transferred or cashed out.</li>
 	</ul>

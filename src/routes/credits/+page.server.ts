@@ -2,6 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
 import { CREDITS, getMinVotes } from '#lib/server/credits.ts';
+import { getNumberSetting, JUDGE_ROUND_CAP_KEY } from '#lib/server/settings.ts';
 
 export const load: PageServerLoad = async ({ locals, platform, url }) => {
 	if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(url.pathname)}`);
@@ -30,5 +31,6 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 			.all<{ id: string; title: string; status: string; creator: string; challenger: string | null }>(),
 		getMinVotes(db)
 	]);
-	return { balance: me?.credits ?? 0, ledger: ledger.results, promotable: promotable.results, rules: CREDITS, minVotes };
+	const judgeCap = await getNumberSetting(db, JUDGE_ROUND_CAP_KEY, CREDITS.judgeDailyCap);
+	return { balance: me?.credits ?? 0, ledger: ledger.results, promotable: promotable.results, rules: CREDITS, minVotes, judgeCap };
 };

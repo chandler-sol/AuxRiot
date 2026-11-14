@@ -19,7 +19,8 @@
 					a: `A few things have to line up: you're logged in, your email is confirmed, you've played at least 75% of <strong>both</strong> beats, and you're not one of the battlers.${data.voterWait ? ` New accounts also wait ${data.voterWait} before their first vote.` : ''}`
 				},
 				{ q: 'Can I change my vote?', a: "Yes — until voting closes. Scores stay sealed until then, so nobody sees how it's going." },
-				{ q: 'Do I get anything for judging?', a: 'Yes: +10 battle credits for each battle you judge, paid when voting closes, as long as your vote counts. Up to 10 a day. See <a href="/credits">Credits</a>.' },
+				{ q: 'Do I get anything for judging?', a: 'Yes: +10 battle credits for each round you judge (a best of 3 is 3 rounds), paid when voting closes, as long as your vote counts. Up to 30 rounds a day. See <a href="/credits">Credits</a>.' },
+				{ q: 'What are best of 3 and best of 5?', a: 'Multi-beat battles: each producer brings 3 or 5 beats that face off round by round. Judges score every round and the best total wins. Close sets can go to overtime. Details on <a href="/rules">How battles go down</a>.' },
 				{ q: "Why didn't my vote count?", a: "Our fair-play checks quietly discount votes that look like alt accounts or rigging (for example, sharing a device with a battler). We don't say which check tripped, so it can't be gamed." }
 			]
 		},

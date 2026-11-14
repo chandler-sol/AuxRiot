@@ -11,6 +11,7 @@
 	import { money } from '#lib/store.ts';
 	import type { PreparedAudio } from '#lib/audio-prep.ts';
 	import WinnerReveal from '#lib/components/WinnerReveal.svelte';
+	import MultiBeat from './MultiBeat.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { battleColors, pairStyle } from '#lib/colors.ts';
 	import { ago, timeLeft } from '#lib/format.ts';
@@ -112,7 +113,7 @@
 			for (let i = 0; i < 12; i++) {
 				await new Promise((r) => setTimeout(r, i === 0 ? 1500 : 3000));
 				await invalidateAll();
-				if (data.battle.status === 'closed') break;
+				if (data.battle.status !== 'voting') break;
 			}
 		})();
 	});
@@ -120,6 +121,11 @@
 		if (counting && b.status === 'closed') {
 			counting = false;
 			markSeen(b.id);
+		}
+		// Too close to call: no winner to reveal yet, it's overtime.
+		if (counting && b.status === 'overtime') {
+			counting = false;
+			revealing = false;
 		}
 	});
 	function untilText(t: number) {
@@ -167,6 +173,9 @@
 <article style={pairStyle(b.id, b.colorA, b.colorB)}>
 	{#if b.status === 'closed' && b.result}
 		{@const r = b.result}
+		{@const otWon = r.overtime?.outcome === 'won' && !!r.overtime.slots}
+		{@const head = otWon ? r.overtime!.slots! : r.slots}
+		{@const how = otWon ? 'In overtime' : r.overtime?.outcome === 'forfeit' ? 'By forfeit' : 'By crowd vote'}
 		<!-- RESULTS -->
 		<div class="results-top">
 		<section class="winner">
@@ -174,18 +183,18 @@
 			{#if winnerSlot !== null}
 				<h1 class="wname" style:color={COLORS[winnerSlot]} style:font-size={fitSize(names[winnerSlot], '--winmax')}>{names[winnerSlot]}</h1>
 				<div class="final">
-					<span class="display big" style:color={COLORS[winnerSlot]}>{r.slots[winnerSlot].total.toFixed(1)}</span>
+					<span class="display big" style:color={COLORS[winnerSlot]}>{head[winnerSlot].total.toFixed(1)}</span>
 					<span class="display dash">—</span>
-					<span class="display big lose" style:color={COLORS[1 - winnerSlot]}>{r.slots[1 - winnerSlot].total.toFixed(1)}</span>
-					<div class="stamp" aria-hidden="true"><span class="display">Winner</span><span class="mono">By crowd vote</span></div>
+					<span class="display big lose" style:color={COLORS[1 - winnerSlot]}>{head[1 - winnerSlot].total.toFixed(1)}</span>
+					<div class="stamp" aria-hidden="true"><span class="display">Winner</span><span class="mono">{how}</span></div>
 				</div>
-				<p class="mono muted over">Over {names[1 - winnerSlot]}</p>
+				<p class="mono muted over">Over {names[1 - winnerSlot]}{#if otWon}&nbsp;· overtime round · set was {r.slots[0].total.toFixed(2)}–{r.slots[1].total.toFixed(2)}{/if}</p>
 			{:else}
 				<h1 class="wname">Dead even</h1>
 				<div class="final">
-					<span class="display big" style:color={COLORS[0]}>{r.slots[0].total.toFixed(1)}</span>
+					<span class="display big" style:color={COLORS[0]}>{head[0].total.toFixed(1)}</span>
 					<span class="display dash">—</span>
-					<span class="display big" style:color={COLORS[1]}>{r.slots[1].total.toFixed(1)}</span>
+					<span class="display big" style:color={COLORS[1]}>{head[1].total.toFixed(1)}</span>
 				</div>
 			{/if}
 			<p class="title">{b.title}</p>
@@ -232,6 +241,9 @@
 			</p>
 		{/if}
 
+		{#if data.format.rounds > 1}
+			<MultiBeat {data} {form} {names} {now} bind:listened />
+		{:else}
 		<section class="replay">
 			<h2>Run it back</h2>
 			{#each [winnerSlot ?? 0, 1 - (winnerSlot ?? 0)] as slot (slot)}
@@ -251,6 +263,7 @@
 				{/if}
 			{/each}
 		</section>
+		{/if}
 	{:else}
 		<!-- LIVE / OPEN / EXPIRED -->
 		<section class="poster">
@@ -275,6 +288,17 @@
 				<div class="tr">
 					<span class="display tv">{data.voteCount}</span>
 					<span class="mono tl">Vote{data.voteCount === 1 ? '' : 's'} in · sealed</span>
+				</div>
+			</div>
+		{:else if b.status === 'overtime' && data.overtime}
+			<div class="ticket">
+				<div>
+					<span class="mono tl">{data.overtime.status === 'voting' ? 'Overtime vote closes in' : 'Overtime — beats due in'}</span>
+					<span class="display tv">{hms(((data.overtime.status === 'voting' ? data.overtime.endsAt : data.overtime.deadline) ?? 0) - now)}</span>
+				</div>
+				<div class="tr">
+					<span class="display tv">OT</span>
+					<span class="mono tl">{data.overtime.mode === 'forced' ? 'Judges called it' : 'Too close to call'}</span>
 				</div>
 			</div>
 		{:else if b.status === 'open'}
@@ -309,6 +333,9 @@
 			</p>
 		{/if}
 
+		{#if data.format.rounds > 1}
+			<MultiBeat {data} {form} {names} {now} bind:listened />
+		{:else}
 		<section class="players">
 			{#each [0, 1] as slot (slot)}
 				{@const e = data.entries.find((x) => x.slot === slot)}
@@ -324,6 +351,7 @@
 						entryId={data.user && b.status === 'voting' && !data.voteBlock ? e.id : undefined}
 						bind:listenedMs={listened[e.id]}
 						threshold={data.threshold}
+						previewSeconds={data.previewSeconds ?? undefined}
 					/>
 				{:else if e}
 					<div class="slot" style:--c={COLORS[slot]}><p class="muted">This beat was removed following a copyright takedown.</p></div>
@@ -372,16 +400,17 @@
 				{/if}
 			{/each}
 		</section>
+		{/if}
 
 		{@const forSale = data.sale.filter((x) => x.status === 'listed' || x.status === 'sold')}
 		{@const mySlot = data.entries.find((e) => e.userId === data.user?.id)?.slot}
 		{@const mine = data.sale.find((x) => x.mine)}
 		{#if forSale.length || mySlot !== undefined}
 			<section class="forsale" id="buy">
-				{#each forSale as s (s.slot)}
+				{#each forSale as s (`${s.slot}-${s.round}`)}
 					<div class="sale" style:--c={COLORS[s.slot]}>
 						<div>
-							<p class="mono small sale-k">{names[s.slot]}'s beat · exclusive</p>
+							<p class="mono small sale-k">{names[s.slot]}'s beat{data.format.rounds > 1 ? ` · round ${s.round}` : ''} · exclusive</p>
 							<p class="display sale-p">{money(s.priceCents)}{#if s.stemsPriceCents}<span class="mono small"> · {money(s.stemsPriceCents)} with stems</span>{/if}</p>
 							<p class="mono small muted">{s.format?.toUpperCase() ?? ''}{s.tagged ? ' (tagged)' : ''} · one buyer, then it's gone</p>
 						</div>
@@ -440,7 +469,16 @@
 						{/if}
 					</details>
 				{/each}
-				{#if mySlot !== undefined && b.status !== 'removed' && mine?.status !== 'sold'}
+				{#if mySlot !== undefined && b.status !== 'removed' && data.format.rounds > 1}
+					<div class="sell-links mono">
+						{#each Array.from({ length: data.format.rounds }, (_, i) => i + 1) as rd (rd)}
+							{@const m = data.sale.find((x) => x.mine && x.round === rd)}
+							{#if m?.status !== 'sold'}
+								<a class="sell-link" href="/battles/{b.id}/sell?round={rd}">{m?.status === 'listed' ? `Edit round ${rd} listing` : m ? `Finish round ${rd} listing` : `Sell round ${rd}`} →</a>
+							{/if}
+						{/each}
+					</div>
+				{:else if mySlot !== undefined && b.status !== 'removed' && mine?.status !== 'sold'}
 					<a class="mono sell-link" href="/battles/{b.id}/sell">
 						{mine?.status === 'listed' ? 'Edit your listing →' : mine ? 'Finish your listing →' : 'Sell this beat →'}
 					</a>
@@ -474,7 +512,7 @@
 	{/if}
 
 	<div class="lower" class:solo={b.status !== 'voting'}>
-		{#if b.status === 'voting'}
+		{#if b.status === 'voting' && data.format.rounds === 1}
 			<section class="scorecard">
 				<div class="sc-head">
 					<h2>{data.myVote ? 'Your scorecard' : 'Score it'}</h2>
@@ -629,6 +667,7 @@
 	.soldtag { background: var(--pink); color: var(--ink); padding: 4px 12px; transform: rotate(-4deg); font-size: 1.3rem; }
 	.locked { text-align: right; max-width: 140px; }
 	.sell-link { justify-self: end; color: var(--pink); text-decoration: none; }
+	.sell-links { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: flex-end; }
 	.ask { justify-self: start; color: var(--paper); text-decoration: none; font-size: 0.72rem; padding: 4px 0; }
 	.ask:hover { color: var(--pink); }
 	.qa { background: var(--ink-2); border-radius: var(--radius); padding: 10px 14px; }

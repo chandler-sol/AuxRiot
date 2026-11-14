@@ -25,3 +25,12 @@ export function describeHours(h: number): string {
 	if (h % 24 === 0) return h === 24 ? '24 hours' : `${h / 24} days`;
 	return `${h} hour${h === 1 ? '' : 's'}`;
 }
+
+/** Read a numeric setting, falling back to `fallback` if it's missing or not a number. */
+export async function getNumberSetting(db: D1Database, key: string, fallback: number) {
+	const row = await db.prepare('SELECT value FROM settings WHERE key = ?').bind(key).first<{ value: string }>();
+	const n = Number(row?.value);
+	return row && Number.isFinite(n) ? n : fallback;
+}
+export const OT_MARGIN_KEY = 'ot_margin';
+export const JUDGE_ROUND_CAP_KEY = 'judge_round_cap';

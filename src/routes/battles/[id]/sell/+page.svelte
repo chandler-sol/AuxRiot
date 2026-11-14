@@ -35,6 +35,7 @@
 
 <p class="mono muted kicker"><a href="/battles/{data.battle.id}">← "{data.battle.title}"</a></p>
 <h1 class="headline">Sell this <span>beat.</span></h1>
+{#if data.battle.rounds > 1}<p class="mono roundtag">Round {data.battle.round} of {data.battle.rounds} · each beat in the set sells on its own</p>{/if}
 <p class="status mono" class:on={l.status === 'listed'}>{STATUS[l.status] ?? l.status}</p>
 
 <div class="explain">
@@ -183,6 +184,7 @@
 	.headline { font-size: clamp(2.8rem, 12vw, 4.4rem); line-height: 0.9; }
 	.headline span { color: var(--pink); }
 	.status { color: var(--dim); margin: 10px 0 12px; }
+	.roundtag { color: var(--pink); margin: 8px 0 0; font-size: 0.7rem; }
 	.status.on { color: var(--pink); }
 	.explain { border-left: 4px solid var(--pink); padding: 2px 0 2px 12px; margin-bottom: 14px; }
 	.explain p { margin: 0 0 6px; }

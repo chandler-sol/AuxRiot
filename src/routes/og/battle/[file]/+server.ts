@@ -4,7 +4,7 @@ import { getEnv } from '#lib/server/util.ts';
 import { renderBattleOg } from '#lib/server/ogimage.ts';
 import type { BattleResult } from '#lib/server/battles.ts';
 
-const VERSION = 'v3';
+const VERSION = 'v4';
 
 /**
  * Per-battle share image. Rendered once per battle state (open → live → final)
@@ -15,13 +15,13 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 	if (!id) error(404);
 	const env = getEnv(platform);
 	const b = await env.DB.prepare(
-		`SELECT b.id, b.title, b.status, b.vote_hours, b.color_a, b.color_b, b.winner_id, b.creator_id, b.result_json,
+		`SELECT b.id, b.title, b.status, b.vote_hours, b.rounds, b.color_a, b.color_b, b.winner_id, b.creator_id, b.result_json,
 		        c.username AS creator, ch.username AS challenger
 		 FROM battles b JOIN users c ON c.id = b.creator_id LEFT JOIN users ch ON ch.id = b.challenger_id WHERE b.id = ?`
 	)
 		.bind(id)
 		.first<{
-			id: string; title: string; status: string; vote_hours: number; color_a: string | null; color_b: string | null;
+			id: string; title: string; status: string; vote_hours: number; rounds: number; color_a: string | null; color_b: string | null;
 			winner_id: string | null; creator_id: string; result_json: string | null; creator: string; challenger: string | null;
 		}>();
 	if (!b || b.status === 'removed') return Response.redirect('https://auxriot.com/og-v2.png', 302);
@@ -44,7 +44,8 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 		colorA: b.color_a,
 		colorB: b.color_b,
 		scores: result ? [result.slots[0].total, result.slots[1].total] : null,
-		voteHours: b.vote_hours
+		voteHours: b.vote_hours,
+		rounds: b.rounds
 	});
 	await env.AUDIO.put(key, png, { httpMetadata: { contentType: 'image/png' } });
 	return new Response(png, { headers });

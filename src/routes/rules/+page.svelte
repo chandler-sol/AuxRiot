@@ -49,6 +49,26 @@
 		<li>Anyone with an account can post a beat. Up to 3 of yours can wait for a challenger at once.</li>
 		<li>Open battles with no challenger expire after 5 days. You get a reminder with your challenge link after 3.</li>
 		<li>You can't answer your own battle.</li>
+		<li>Open challenges play a <strong>10-second taste</strong>. The full beats open up once someone answers.</li>
+	</ul>
+</section>
+
+<section class="block">
+	<h2>Best of 3 &amp; best of 5</h2>
+	<ul>
+		<li>Bring <strong>3 or 5 beats</strong> in the order you want them to face off. Round 1 is beat 1 vs beat 1, and so on.</li>
+		<li>Challengers hear a 10-second taste of round 1 only, and must answer with the full set at once.</li>
+		<li>Judges score every round (your progress saves). The <strong>best total across all rounds</strong> wins.</li>
+		<li>Credits pay <strong>×2</strong> for best of 3 and <strong>×3</strong> for best of 5. Voting runs 48–72h for best of 3 and 72–96h for best of 5.</li>
+	</ul>
+</section>
+
+<section class="block">
+	<h2>Overtime</h2>
+	<ul>
+		<li>If a best-of set finishes within <strong>0.1 points</strong>, or most judges (at least 5) tick <em>"Too close — I want overtime"</em>, it goes to overtime.</li>
+		<li>Both battlers get 24 hours to drop <strong>one more beat</strong>. Neither hears the other's until both are in. Then judges get 24 hours to score that one round, and it decides the battle.</li>
+		<li>If a tie goes to overtime and both don't submit, it stays a tie. If the judges called for overtime and only one battler submits, they win by forfeit; if neither does, the set result stands.</li>
 	</ul>
 </section>
 
@@ -71,7 +91,7 @@
 	<ul>
 		<li>Finish a battle and earn credits: <strong>+100</strong> for a win, <strong>+50</strong> for a tie, <strong>+25</strong> for a loss.</li>
 		<li>A battle pays out only with enough counted votes (votes the fair-play checks discount don't count), from up to 5 battles a day, and never between accounts on the same device.</li>
-		<li>Judge battles and earn <strong>+10</strong> for each one where your vote counts — paid when voting closes, up to 10 battles a day.</li>
+		<li>Judge battles and earn <strong>+10 per round</strong> where your vote counts — paid when voting closes, up to 30 rounds a day. Best of 3 and 5 pay battlers ×2 and ×3.</li>
 		<li>Spend <strong>250 credits for 3 hours</strong> in a promo slot at the top of the feed.</li>
 		<li>Credits have no cash value and can't be transferred. Cheating forfeits them. <a href="/credits">Your credits</a></li>
 	</ul>

@@ -51,10 +51,10 @@ export type ListingRow = {
 };
 
 /** The seller's listing for their beat in this battle, creating a draft if needed. Null if they have no beat in it. */
-export async function getOrCreateListing(db: D1Database, battleId: string, userId: string) {
+export async function getOrCreateListing(db: D1Database, battleId: string, userId: string, round = 1) {
 	const entry = await db
-		.prepare('SELECT id, removed FROM entries WHERE battle_id = ? AND user_id = ?')
-		.bind(battleId, userId)
+		.prepare('SELECT id, removed FROM entries WHERE battle_id = ? AND user_id = ? AND round = ?')
+		.bind(battleId, userId, round)
 		.first<{ id: string; removed: number }>();
 	if (!entry || entry.removed) return null;
 	const existing = await db.prepare('SELECT * FROM listings WHERE entry_id = ?').bind(entry.id).first<ListingRow>();

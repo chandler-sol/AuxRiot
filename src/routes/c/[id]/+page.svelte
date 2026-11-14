@@ -13,7 +13,7 @@
 <svelte:head><title>{c.creator.username} wants smoke · AuxRiot</title></svelte:head>
 
 <article class="flyer" style:--c={c.color}>
-	<p class="mono kicker">Open challenge · {c.voteHours}h vote · first to answer takes it</p>
+	<p class="mono kicker">Open challenge{c.rounds > 1 ? ` · best of ${c.rounds}` : ''} · {c.voteHours}h vote · first to answer takes it</p>
 	<div class="who">
 		<Avatar username={c.creator.username} avatarKey={c.creator.avatarKey} color={c.creator.color} size={64} />
 		<div>
@@ -24,8 +24,8 @@
 	<p class="title">"{c.title}"</p>
 
 	<div class="player">
-		<Player variant="full" src={c.src} peaks={c.peaks} durationMs={c.durationMs} name={c.creator.username} corner="Corner A" accent={c.color} previewSeconds={30} />
-		<p class="mono muted small">30-second preview. Answer to hear the rest — and make them hear yours.</p>
+		<Player variant="full" src={c.src} peaks={c.peaks} durationMs={c.durationMs} name={c.creator.username} corner="Corner A" accent={c.color} previewSeconds={10} />
+		<p class="mono muted small">10-second taste{c.rounds > 1 ? ` of round 1 — rounds 2–${c.rounds} stay hidden` : ''}. Answer to hear the rest — and make them hear yours.</p>
 	</div>
 
 	{#if data.isCreator}
@@ -42,7 +42,7 @@
 	{/if}
 
 	<ol class="how mono">
-		<li><span>01</span> Upload your beat (2:00 max, trimmed in your browser)</li>
+		<li><span>01</span> Upload your {c.rounds > 1 ? `${c.rounds} beats, in the order you want them to face off` : 'beat'} (2:00 max each, trimmed in your browser)</li>
 		<li><span>02</span> The crowd listens to 75% of both, then scores them</li>
 		<li><span>03</span> Scores stay sealed until the clock hits zero</li>
 	</ol>
