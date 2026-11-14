@@ -480,6 +480,9 @@
 					<h2>{data.myVote ? 'Your scorecard' : 'Score it'}</h2>
 					<span class="mono muted">Tap 1–5</span>
 				</div>
+				{#if !data.voteBlock || data.voteBlock === 'login' || data.voteBlock === 'unverified' || data.voteBlock === 'age'}
+					<p class="mono judge-earn">Judge it, earn <strong>+10 credits</strong> when voting closes. <a href="/credits">How credits work</a></p>
+				{/if}
 				{#if data.voteBlock === 'login'}
 					<p class="muted"><a href="/login?next=/battles/{b.id}">Log in</a> to vote.</p>
 				{:else if data.voteBlock === 'participant'}
@@ -683,6 +686,9 @@
 	.full { width: 100%; }
 
 	/* Scorecard */
+	.judge-earn { margin: -4px 0 12px; color: var(--dim); font-weight: 400; font-size: 0.68rem; }
+	.judge-earn strong { color: var(--pink); }
+	.judge-earn a { color: var(--dim); }
 	.scorecard { background: var(--ink-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 16px; }
 	.sc-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
 	.sc-head h2 { margin: 0; }
