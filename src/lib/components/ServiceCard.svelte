@@ -2,6 +2,7 @@
 	import Player from '#lib/components/Player.svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import Flair from '#lib/components/Flair.svelte';
+	import Verified from '#lib/components/Verified.svelte';
 	import { money } from '#lib/store.ts';
 	import { categoryOf } from '#lib/services.ts';
 	import type { ServiceCard } from '#lib/server/services.ts';
@@ -23,6 +24,7 @@
 				<Avatar username={p.username} avatarKey={p.avatarKey} color={p.color} size={40} />
 				<span class="display">{p.username}</span>
 			</a>
+			<Verified label={p.verified} compact />
 			<Flair respect={p.respect} />
 		</div>
 		<p class="rep mono">

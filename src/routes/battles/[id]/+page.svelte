@@ -7,6 +7,8 @@
 	import CopyrightNotice from '#lib/components/CopyrightNotice.svelte';
 	import ReportForm from '#lib/components/ReportForm.svelte';
 	import Flair from '#lib/components/Flair.svelte';
+	import Verified from '#lib/components/Verified.svelte';
+	import CrewTag from '#lib/components/CrewTag.svelte';
 	import ShareChallenge from '#lib/components/ShareChallenge.svelte';
 	import { money } from '#lib/store.ts';
 	import type { PreparedAudio } from '#lib/audio-prep.ts';
@@ -277,6 +279,12 @@
 					<span class="pname display nb tbd">???</span>
 				{/if}
 			</div>
+			{#if b.verified[0] || (b.challenger && b.verified[1])}
+				<p class="vrow">
+					{#if b.verified[0]}<span><Verified label={b.verified[0]} /> <span class="mono small">{b.creator}</span></span>{/if}
+					{#if b.challenger && b.verified[1]}<span><Verified label={b.verified[1]} /> <span class="mono small">{b.challenger}</span></span>{/if}
+				</p>
+			{/if}
 		</section>
 
 		{#if b.status === 'voting' && b.votingEndsAt}
@@ -432,7 +440,7 @@
 						<ul>
 							{#each s.questions as q (q.id)}
 								<li>
-									<p class="q"><a class="mono" href="/u/{q.username}">@{q.username}</a> <Flair respect={q.respect} /> {q.body}</p>
+									<p class="q"><a class="mono" href="/u/{q.username}">@{q.username}</a> <Verified label={q.verified_label} compact /> <Flair respect={q.respect} /> <CrewTag crew={q.crew} /> {q.body}</p>
 									{#if q.held}<p class="mono small held">Waiting for review — only you and the producer can see this.</p>{/if}
 									{#if q.answer}
 										<p class="a"><span class="mono">{names[s.slot]}:</span> {q.answer}</p>
@@ -598,11 +606,13 @@
 		<ul class="comments">
 			{#each sortedComments as c (c.id)}
 				{@const v = voteOf(c)}
-				<li>
+				<li class:vip={!!c.verified_label}>
 					<div class="cmeta">
 						<span class="whowrap">
 							<a class="mono who" href="/u/{c.username}"><Avatar username={c.username} avatarKey={c.avatar_key} color={c.color} size={28} />@{c.username}</a>
+							<Verified label={c.verified_label} />
 							<Flair respect={c.respect} />
+							<CrewTag crew={c.crew} />
 						</span>
 						<span class="mono muted actions">
 							{ago(c.created_at, now)}
@@ -658,6 +668,10 @@
 </article>
 
 <style>
+	.vrow { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 8px 0 0; }
+	.vrow > span { display: inline-flex; align-items: center; gap: 6px; }
+	/* Verified creators' comments stand out so their crowd can find them. */
+	.comments li.vip { border-left: 3px solid var(--cyan, #2bd9f5); padding-left: 10px; background: linear-gradient(90deg, rgba(43, 217, 245, 0.06), transparent 70%); }
 	.forsale { display: grid; gap: 8px; }
 	.sale { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--ink-2); border-left: 6px solid var(--c); border-radius: var(--radius); padding: 12px 14px; }
 	.sale p { margin: 0; }

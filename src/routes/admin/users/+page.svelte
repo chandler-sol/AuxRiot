@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { VERIFIED_LABELS } from '#lib/verified.ts';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -79,6 +80,7 @@
 		<option value="shadowbanned">Shadowbanned</option>
 		<option value="suspended">Suspended</option>
 		<option value="staff">Mods &amp; admins</option>
+		<option value="verified">Verified creators</option>
 	</select>
 	<select name="sort" value={data.sort} onchange={nav} aria-label="Sort">
 		<option value="newest">Newest</option>
@@ -136,6 +138,16 @@
 									<button>{u.is_mod ? 'Remove moderator' : 'Make moderator'}</button>
 								</form>
 							{/if}
+							{#if data.isAdmin}
+								<form method="POST" action={act('verify')} use:enhance={keepClose} class="vform">
+									<input type="hidden" name="user_id" value={u.id} />
+									<select name="label" aria-label="Verify {u.username} as">
+										<option value="">{u.verified_label ? 'Remove verification' : 'Verify as…'}</option>
+										{#each VERIFIED_LABELS as l (l)}<option value={l} selected={u.verified_label === l}>{l}</option>{/each}
+									</select>
+									<button>{u.verified_label ? 'Update' : 'Verify'}</button>
+								</form>
+							{/if}
 							<a href="/u/{u.username}">View profile</a>
 						</div>
 					</details>
@@ -143,6 +155,7 @@
 			</div>
 			<div class="tags mono">
 				{#if u.is_admin}<span class="tag pink">Admin</span>{:else if u.is_mod}<span class="tag pink">Moderator</span>{/if}
+				{#if u.verified_label}<span class="tag cyan">✓ {u.verified_label} · crew {u.crew_size}</span>{/if}
 				{#if u.suspended_at}<span class="tag bad">Suspended {ago(u.suspended_at, data.now)}{u.suspended_reason ? ` — ${u.suspended_reason}` : ''}</span>{/if}
 				{#if !u.email_verified_at}<span class="tag warn">Unconfirmed</span>{/if}
 				{#if u.shadowbanned}<span class="tag bad">Shadowbanned</span>{/if}
@@ -206,6 +219,10 @@
 </ul>
 
 <style>
+	.vform { display: flex; gap: 6px; padding: 4px 0; }
+	.vform select { min-height: 34px; padding: 4px 8px; font-size: 0.8rem; flex: 1; min-width: 0; }
+	.vform button { flex: none; }
+	.tag.cyan { border-color: var(--cyan, #2bd9f5); color: var(--cyan, #2bd9f5); }
 	.kicker { margin: 8px 0 10px; }
 	.kicker a { color: var(--muted); }
 	.headline { font-size: clamp(2.8rem, 12vw, 4.4rem); line-height: 0.9; }

@@ -6,19 +6,22 @@ import { overLimit, recordAttempt } from '#lib/server/ratelimit.ts';
 import { enabledProviders } from '#lib/server/oauth.ts';
 import { describeHours, getVoterMinAgeHours } from '#lib/server/settings.ts';
 import { createEmailToken, sendEmail, verifyEmail } from '#lib/server/email.ts';
+import { applyCrewOnSignup, crewFromCookie } from '#lib/server/crews.ts';
 
 function safeNext(next: string | null) {
 	return next && next.startsWith('/') && !next.startsWith('//') ? next : '/battles';
 }
 
-export const load: PageServerLoad = async ({ locals, platform, url }) => {
+export const load: PageServerLoad = async ({ locals, platform, url, cookies }) => {
 	if (locals.user) redirect(303, safeNext(url.searchParams.get('next')));
 	const env = getEnv(platform);
 	return {
 		turnstileSiteKey: env.TURNSTILE_SITE_KEY || '',
 		providers: enabledProviders(env),
 		next: url.searchParams.get('next') ?? '',
-		voterWait: describeHours(await getVoterMinAgeHours(env.DB, env))
+		voterWait: describeHours(await getVoterMinAgeHours(env.DB, env)),
+		// Came through a verified creator's crew link.
+		crew: await crewFromCookie(env.DB, cookies)
 	};
 };
 
@@ -61,6 +64,7 @@ export const actions: Actions = {
 			.bind(id, username, email, await hashPassword(password), Date.now(), news ? 1 : 0, news ? Date.now() : null, Date.now(), env.ENVIRONMENT === 'beta' ? Date.now() : null, form.get('provider') === 'on' ? 1 : 0)
 			.run();
 		await recordSignals(env.DB, id, locals.ip, locals.deviceId, env.SIGNAL_SALT ?? 'dev-salt');
+		await applyCrewOnSignup(env.DB, cookies, id);
 		await recordAttempt(env.DB, locals.ip, salt, 'signup');
 		await createSession(env.DB, cookies, id, url.protocol === 'https:');
 

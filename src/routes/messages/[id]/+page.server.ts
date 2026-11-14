@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const { db, c, me } = await ctx(locals, params.id, url.pathname);
 	const otherId = c.buyer_id === me.id ? c.seller_id : c.buyer_id;
 	const [other, listing, msgs, iBlocked, service, blockedEither] = await Promise.all([
-		db.prepare('SELECT username, avatar_key, color, respect FROM users WHERE id = ?').bind(otherId).first<{ username: string; avatar_key: string | null; color: string | null; respect: number }>(),
+		db.prepare('SELECT username, avatar_key, color, respect, verified_label FROM users WHERE id = ?').bind(otherId).first<{ username: string; avatar_key: string | null; color: string | null; respect: number; verified_label: string | null }>(),
 		c.listing_id
 			? db
 					.prepare(`SELECT l.status, l.price_cents, l.stems_price_cents, b.title, b.id AS battle_id, b.status AS battle_status FROM listings l JOIN battles b ON b.id = l.battle_id WHERE l.id = ?`)
@@ -41,7 +41,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	return {
 		id: c.id,
 		role: c.buyer_id === me.id ? 'buyer' : 'seller',
-		other: other ? { username: other.username, avatarKey: other.avatar_key, color: other.color, respect: other.respect } : null,
+		other: other ? { username: other.username, avatarKey: other.avatar_key, color: other.color, respect: other.respect, verified: other.verified_label } : null,
 		listing: listing ? { ...listing } : null,
 		service: service ? { ...service } : null,
 		purchased: !!c.order_id,

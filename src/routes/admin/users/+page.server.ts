@@ -2,6 +2,7 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getEnv, newId, DAY } from '#lib/server/util.ts';
 import { addCredits } from '#lib/server/credits.ts';
+import { isVerifiedLabel } from '#lib/verified.ts';
 import { logAction, requireAdmin, requireMod, setModerator, setShadowban, setSuspended } from '#lib/server/mod.ts';
 
 const SORTS = {
@@ -39,11 +40,13 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 	if (filter === 'news') where.push('u.news_opt_in = 1');
 	if (filter === 'suspended') where.push('u.suspended_at IS NOT NULL');
 	if (filter === 'staff') where.push('(u.is_mod = 1 OR u.is_admin = 1)');
+	if (filter === 'verified') where.push('u.verified_label IS NOT NULL');
 
 	const rows = await db
 		.prepare(
 			`SELECT u.id, u.username, u.email, u.created_at, u.email_verified_at, u.credits, u.wins, u.losses, u.ties,
-			        u.shadowbanned, u.is_admin, u.is_mod, u.suspended_at, u.suspended_reason, u.news_opt_in, u.avatar_key, u.color,
+			        u.shadowbanned, u.is_admin, u.is_mod, u.suspended_at, u.suspended_reason, u.news_opt_in, u.avatar_key, u.color, u.verified_label,
+			        (SELECT COUNT(*) FROM users cm WHERE cm.crew_id = u.id) AS crew_size,
 			        (SELECT COUNT(*) FROM entries e WHERE e.user_id = u.id) AS battles,
 			        (SELECT COUNT(*) FROM votes v WHERE v.voter_id = u.id) AS votes,
 			        (SELECT MAX(last_seen) FROM user_signals s WHERE s.user_id = u.id) AS last_seen,
@@ -57,7 +60,7 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 		.all<{
 			id: string; username: string; email: string; created_at: number; email_verified_at: number | null; credits: number;
 			wins: number; losses: number; ties: number; shadowbanned: number; is_admin: number; is_mod: number;
-			suspended_at: number | null; suspended_reason: string | null; news_opt_in: number;
+			suspended_at: number | null; suspended_reason: string | null; news_opt_in: number; verified_label: string | null; crew_size: number;
 			avatar_key: string | null; color: string | null; battles: number; votes: number; last_seen: number | null; linked: number;
 		}>();
 	const total = await db.prepare('SELECT COUNT(*) AS n FROM users').first<{ n: number }>();
@@ -110,6 +113,21 @@ export const actions: Actions = {
 		const err = await setModerator(getEnv(platform).DB, admin, String(f.get('user_id')), on);
 		if (err) return fail(403, { error: err });
 		return { ok: on ? 'Now a moderator. They\'ll see Mod tools in their menu.' : 'Moderator role removed.' };
+	},
+
+	/** Verify a creator (streamer, producer…) or remove it. Verified accounts get a badge and a crew link. */
+	verify: async ({ request, locals, platform }) => {
+		const admin = requireAdmin(locals);
+		const f = await request.formData();
+		const userId = String(f.get('user_id'));
+		const label = String(f.get('label') ?? '');
+		if (label && !isVerifiedLabel(label)) return fail(400, { error: 'Pick a label.' });
+		const db = getEnv(platform).DB;
+		const u = await db.prepare('SELECT username FROM users WHERE id = ?').bind(userId).first<{ username: string }>();
+		if (!u) return fail(404, { error: 'No such user.' });
+		await db.prepare('UPDATE users SET verified_label = ?, verified_at = ? WHERE id = ?').bind(label || null, label ? Date.now() : null, userId).run();
+		await logAction(db, admin, label ? 'verify' : 'unverify', 'user', userId, label ? `${u.username} as ${label}` : u.username);
+		return { ok: label ? `${u.username} is verified as ${label}. Their crew link: auxriot.com/with/${u.username}` : `Removed ${u.username}'s verification.` };
 	},
 
 	/** Give credits to N randomly picked members (giveaways). */

@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getEnv, newId } from '#lib/server/util.ts';
 import { USERNAME_RE, createSession, recordSignals } from '#lib/server/auth.ts';
+import { applyCrewOnSignup } from '#lib/server/crews.ts';
 import { hashToken } from '#lib/server/oauth.ts';
 import { overLimit, recordAttempt } from '#lib/server/ratelimit.ts';
 import { createEmailToken, sendEmail, verifyEmail } from '#lib/server/email.ts';
@@ -64,6 +65,7 @@ export const actions: Actions = {
 		]);
 		await recordSignals(env.DB, id, locals.ip, locals.deviceId, salt);
 		await recordAttempt(env.DB, locals.ip, salt, 'signup');
+		await applyCrewOnSignup(env.DB, cookies, id);
 		await createSession(env.DB, cookies, id, url.protocol === 'https:');
 		if (!verified) {
 			const t = await createEmailToken(env.DB, id, 'verify');

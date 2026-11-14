@@ -21,6 +21,7 @@ export interface ServiceCard {
 		avatarKey: string | null;
 		color: string | null;
 		respect: number;
+		verified: string | null;
 		wins: number;
 		losses: number;
 		ties: number;
@@ -30,12 +31,12 @@ export interface ServiceCard {
 	samples: ServiceSample[];
 }
 
-const PROVIDER_SELECT = `u.id AS uid, u.username, u.avatar_key, u.color, u.respect, u.wins, u.losses, u.ties, u.provider,
+const PROVIDER_SELECT = `u.id AS uid, u.username, u.avatar_key, u.color, u.respect, u.verified_label, u.wins, u.losses, u.ties, u.provider,
 	(SELECT COUNT(*) FROM votes v JOIN battles vb ON vb.id = v.battle_id WHERE v.voter_id = u.id AND vb.status = 'closed' AND v.weight > 0) AS judged`;
 
 type Row = {
 	id: string; category: string; title: string; description: string; price_from_cents: number; turnaround_days: number; revisions: number; status: string;
-	uid: string; username: string; avatar_key: string | null; color: string | null; respect: number; wins: number; losses: number; ties: number; provider: number; judged: number;
+	uid: string; username: string; avatar_key: string | null; color: string | null; respect: number; verified_label: string | null; wins: number; losses: number; ties: number; provider: number; judged: number;
 };
 
 /** Load service cards matching a WHERE clause (on `s` services and `u` users), with their samples. */
@@ -65,6 +66,7 @@ export async function loadServices(db: D1Database, where: string, binds: unknown
 			avatarKey: r.avatar_key,
 			color: r.color,
 			respect: r.respect,
+			verified: r.verified_label,
 			wins: r.wins,
 			losses: r.losses,
 			ties: r.ties,

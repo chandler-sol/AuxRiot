@@ -4,12 +4,18 @@
 	import StoreCard from '#lib/components/StoreCard.svelte';
 	import ServiceCard from '#lib/components/ServiceCard.svelte';
 	import Flair from '#lib/components/Flair.svelte';
+	import Verified from '#lib/components/Verified.svelte';
+	import CrewTag from '#lib/components/CrewTag.svelte';
+	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
 	import { nextFlair } from '#lib/flair.ts';
 	import SocialLinks from '#lib/components/SocialLinks.svelte';
 	import { hexFor } from '#lib/colors.ts';
 	import type { PageProps } from './$types';
 
-	let { data }: PageProps = $props();
+	let { data, form }: PageProps = $props();
+	let copied = $state(false);
+	const crewLink = $derived(`${page.url.origin}/with/${data.profile.username}`);
 	let p = $derived(data.profile);
 	let decided = $derived(p.wins + p.losses);
 	let accent = $derived(hexFor(p.color));
@@ -28,11 +34,34 @@
 	<div class="id">
 		<Avatar username={p.username} avatarKey={p.avatar_key} color={p.color} size={88} />
 		<div class="idtext">
-			<p class="mono muted">Producer — joined {new Date(p.created_at).toLocaleDateString()}</p>
+			<p class="mono muted">{p.verified_label ?? 'Producer'} — joined {new Date(p.created_at).toLocaleDateString()}</p>
 			{#if data.isMe}<a class="mono edit" href="/settings/profile">Edit profile</a>{/if}
 		</div>
 	</div>
 	<h1 class="name">{p.username}</h1>
+	{#if p.verified_label || p.crew}
+		<p class="badges"><Verified label={p.verified_label} size="lg" /><CrewTag crew={p.crew} /></p>
+	{/if}
+	{#if data.crew}
+		<div class="crewbox" id="crew">
+			<p class="mono"><span class="display csize">{data.crew.size.toLocaleString()}</span> in {p.username}'s crew</p>
+			{#if data.isMe}
+				<p class="small muted">Share your crew link. Everyone who signs up through it reps your crew next to their name.</p>
+				<div class="clink">
+					<code>{crewLink.replace(/^https?:\/\//, '')}</code>
+					<button type="button" onclick={async () => { await navigator.clipboard.writeText(crewLink); copied = true; setTimeout(() => (copied = false), 1600); }}>{copied ? 'Copied' : 'Copy'}</button>
+				</div>
+			{:else if data.meId}
+				<form method="POST" action={data.crew.mine ? '?/leaveCrew' : '?/joinCrew'} use:enhance>
+					<button class={data.crew.mine ? '' : 'primary'}>{data.crew.mine ? 'Leave crew' : `Join ${p.username}'s crew`}</button>
+				</form>
+			{:else}
+				<a class="btn primary" href="/with/{p.username}">Join {p.username}'s crew</a>
+			{/if}
+			{#if form?.crewOk}<p class="success small">{form.crewOk}</p>{/if}
+			{#if form?.crewError}<p class="error small">{form.crewError}</p>{/if}
+		</div>
+	{/if}
 	{#if p.respect > 0 || data.isMe}
 		{@const nx = nextFlair(p.respect)}
 		<p class="respect mono">
@@ -98,6 +127,13 @@
 </div>
 
 <style>
+	.badges { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0 0; }
+	.crewbox { border: 1.5px dashed var(--cyan, #2bd9f5); border-radius: var(--radius); padding: 12px; display: grid; gap: 8px; margin-top: 12px; }
+	.crewbox p { margin: 0; }
+	.csize { font-size: 1.8rem; color: var(--cyan, #2bd9f5); margin-right: 4px; }
+	.clink { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+	.clink code { font-family: var(--mono); font-size: 0.8rem; background: #000; padding: 8px 10px; border-radius: var(--radius); overflow-wrap: anywhere; }
+	.clink button { min-height: 36px; padding: 4px 14px; }
 	.storefront { margin: 26px 0 8px; }
 	.sf-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 	.sf-head a { color: var(--dim); }

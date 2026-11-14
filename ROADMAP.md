@@ -198,6 +198,11 @@ No packs under ~$5: card fees (≈30¢ + 3%) eat small purchases.
 - **Store testing:** test producers' beats listed as ready-to-buy exclusives.
 - **Log in as** any test producer (and back), plus a one-click wipe of everything test accounts touch.
 
+## Verified creators and crews (built on beta)
+
+- **Admins verify accounts** (Streamer, Producer, Artist, Engineer, Creator) from Admin → Users. Verified accounts get a cyan seal badge in comments, store Q&A, messages, service cards, their profile and the battle header. Their comments are highlighted.
+- **Crews:** each verified creator gets a crew link, auxriot.com/with/<name>. Anyone who signs up through it (email or OAuth) reps that crew, with a tag next to their name. Existing users can join or leave from the creator's profile, one crew at a time. The profile shows crew size.
+
 ## AuxRiot Pro
 
 Launch ad-free with better audio first; add perks as they're built.

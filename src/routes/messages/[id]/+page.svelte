@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import Flair from '#lib/components/Flair.svelte';
+	import Verified from '#lib/components/Verified.svelte';
 	import { ago } from '#lib/format.ts';
 	import { money } from '#lib/store.ts';
 	import { categoryOf } from '#lib/services.ts';
@@ -33,6 +34,7 @@
 		<Avatar username={data.other.username} avatarKey={data.other.avatarKey} color={data.other.color} size={48} />
 		<div>
 			<a class="display who" href="/u/{data.other.username}">@{data.other.username}</a>
+			<Verified label={data.other.verified} />
 			<Flair respect={data.other.respect} />
 		</div>
 	</div>

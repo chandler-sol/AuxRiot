@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import type { PageProps } from './$types';
 	import OAuthButtons from '#lib/components/OAuthButtons.svelte';
+	import Verified from '#lib/components/Verified.svelte';
 	import Turnstile from '#lib/components/Turnstile.svelte';
 
 	let { data, form }: PageProps = $props();
@@ -14,6 +15,14 @@
 </svelte:head>
 
 <div class="auth card stack">
+	{#if data.crew}
+		<div class="crewban">
+			<span class="mono small">You're joining</span>
+			<strong class="display">@{data.crew.username}'s crew</strong>
+			<Verified label={data.crew.verified_label} />
+			<span class="small muted">Their crew tag shows next to your name. You can leave anytime.</span>
+		</div>
+	{/if}
 	<h1>Create your account</h1>
 	<OAuthButtons providers={data.providers} next={data.next} verb="Sign up" />
 	<form
@@ -66,6 +75,9 @@
 </div>
 
 <style>
+	.crewban { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; border: 1.5px dashed var(--cyan, #2bd9f5); border-radius: var(--radius); padding: 10px 12px; }
+	.crewban strong { font-size: 1.4rem; color: var(--cyan, #2bd9f5); }
+	.crewban .muted { flex-basis: 100%; }
 	.auth { max-width: 420px; margin: 24px auto; }
 	.optin { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-family: var(--body); font-size: 0.9rem; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--dim); }
 	.optin input { width: 20px; height: 20px; flex: none; margin-top: 1px; accent-color: var(--pink); }

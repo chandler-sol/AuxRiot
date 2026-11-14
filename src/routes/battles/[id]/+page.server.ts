@@ -11,6 +11,7 @@ import {
 	type BattleResult,
 	type Scores
 } from '#lib/server/battles.ts';
+import { BADGE_SELECT } from '#lib/server/crews.ts';
 import { getEnv, newId, sha256, HOUR } from '#lib/server/util.ts';
 import { getVoterMinAgeHours } from '#lib/server/settings.ts';
 import { previewSlot, promoStatus } from '#lib/server/promos.ts';
@@ -46,12 +47,14 @@ interface BattleRow {
 	base_result_json: string | null;
 	creator: string;
 	challenger: string | null;
+	creator_verified: string | null;
+	challenger_verified: string | null;
 }
 
 async function getBattle(db: D1Database, id: string) {
 	return db
 		.prepare(
-			`SELECT b.*, c.username AS creator, ch.username AS challenger
+			`SELECT b.*, c.username AS creator, ch.username AS challenger, c.verified_label AS creator_verified, ch.verified_label AS challenger_verified
 			 FROM battles b JOIN users c ON c.id = b.creator_id LEFT JOIN users ch ON ch.id = b.challenger_id
 			 WHERE b.id = ?`
 		)
@@ -120,14 +123,14 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			.all<{ id: string; user_id: string; slot: number; round: number; audio_key: string; duration_ms: number; peaks: string; removed: number }>(),
 		env.DB.prepare(
 			// Held comments (blocked words) and shadowbanned authors are only visible to the author.
-			`SELECT m.id, m.body, m.created_at, m.user_id, m.held, m.upvotes, u.username, u.avatar_key, u.color, u.respect,
+			`SELECT m.id, m.body, m.created_at, m.user_id, m.held, m.upvotes, u.username, u.avatar_key, u.color, u.respect, ${BADGE_SELECT},
 			        COALESCE((SELECT cv.counted + 1 FROM comment_votes cv WHERE cv.comment_id = m.id AND cv.user_id = ?), 0) AS upvoted
 			 FROM comments m JOIN users u ON u.id = m.user_id
 			 WHERE m.battle_id = ? AND m.hidden = 0 AND ((u.shadowbanned = 0 AND m.held = 0) OR m.user_id = ?)
 			 ORDER BY m.created_at ASC LIMIT 500`
 		)
 			.bind(user?.id ?? '', battle.id, user?.id ?? '')
-			.all<{ id: string; body: string; created_at: number; user_id: string; held: number; upvotes: number; username: string; avatar_key: string | null; color: string | null; respect: number; upvoted: number }>(),
+			.all<{ id: string; body: string; created_at: number; user_id: string; held: number; upvotes: number; username: string; avatar_key: string | null; color: string | null; respect: number; verified_label: string | null; crew: string | null; upvoted: number }>(),
 		env.DB.prepare('SELECT COUNT(*) AS n FROM votes WHERE battle_id = ?').bind(battle.id).first<{ n: number }>(),
 		user
 			? env.DB.prepare('SELECT * FROM votes WHERE battle_id = ? AND voter_id = ?').bind(battle.id, user.id).first<Record<string, number>>()
@@ -202,6 +205,7 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			challengerId: battle.challenger_id,
 			creator: battle.creator,
 			challenger: battle.challenger,
+			verified: [battle.creator_verified, battle.challenger_verified] as [string | null, string | null],
 			voteHours: battle.vote_hours,
 			createdAt: battle.created_at,
 			votingEndsAt: battle.voting_ends_at,
@@ -269,14 +273,14 @@ async function saleInfo(db: D1Database, battleId: string, status: string, userId
 		? (
 				await db
 					.prepare(
-						`SELECT q.id, q.listing_id, q.body, q.answer, q.answered_at, q.created_at, q.held, q.user_id, u.username, u.avatar_key, u.color, u.respect
+						`SELECT q.id, q.listing_id, q.body, q.answer, q.answered_at, q.created_at, q.held, q.user_id, u.username, u.avatar_key, u.color, u.respect, ${BADGE_SELECT}
 						 FROM listing_questions q JOIN users u ON u.id = q.user_id
 						 WHERE q.listing_id IN (${ids.map(() => '?').join(',')}) AND q.hidden = 0
 						   AND ((q.held = 0 AND u.shadowbanned = 0) OR q.user_id = ? OR EXISTS (SELECT 1 FROM listings l WHERE l.id = q.listing_id AND l.seller_id = ?))
 						 ORDER BY q.created_at ASC LIMIT 200`
 					)
 					.bind(...ids, userId ?? '', userId ?? '')
-					.all<{ id: string; listing_id: string; body: string; answer: string | null; answered_at: number | null; created_at: number; held: number; user_id: string; username: string; avatar_key: string | null; color: string | null; respect: number }>()
+					.all<{ id: string; listing_id: string; body: string; answer: string | null; answered_at: number | null; created_at: number; held: number; user_id: string; username: string; avatar_key: string | null; color: string | null; respect: number; verified_label: string | null; crew: string | null }>()
 			).results
 		: [];
 	return visible
