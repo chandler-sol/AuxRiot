@@ -191,6 +191,13 @@ No packs under ~$5: card fees (≈30¢ + 3%) eat small purchases.
 - **Finish-your-ballot nudges:** judges with a half-scored ballot see a "Finish judging" bar on every page (it turns pink in the last hour). They also get one email when under an hour is left, sent by a 15-minute cron that also closes due battles on time.
 - **Later:** overtime for 1-beat battles (on hold), and a tournament format with rounds-won scoring.
 
+## Beta test lab (built on beta)
+
+- **/admin/seed** (admins, beta only): fake producers, beats generated in the browser, and battles at any stage (open, live, finished, overtime offered, overtime vote).
+- **Fast-forward buttons:** add judges (random, tied, asking for OT), end voting or overtime now, a test user answers, overtime drops (both or one side).
+- **Store testing:** test producers' beats listed as ready-to-buy exclusives.
+- **Log in as** any test producer (and back), plus a one-click wipe of everything test accounts touch.
+
 ## AuxRiot Pro
 
 Launch ad-free with better audio first; add perks as they're built.

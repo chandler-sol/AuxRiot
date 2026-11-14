@@ -71,6 +71,12 @@
 </svelte:head>
 
 {#if data.beta}<div class="betabar mono">Beta · prototype site · nothing here is real</div>{/if}
+{#if data.seedReturn && data.user}
+	<form method="POST" action="/admin/seed/return" class="seedback mono">
+		<span>Viewing as test producer <strong>{data.user.username}</strong></span>
+		<button>Back to my account</button>
+	</form>
+{/if}
 <header>
 	<div class="container wide bar">
 		<a href="/" class="logo display" aria-label="AuxRiot home">AUX<span>RIOT</span></a>
@@ -172,6 +178,8 @@
 	.ballotbar .k { font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
 	.ballotbar .t { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 	.ballotbar .m { font-size: 0.7rem; margin-left: auto; }
+	.seedback { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; justify-content: center; background: var(--cyan, #2bd9f5); color: var(--ink); padding: 6px 12px; font-size: 0.7rem; font-weight: 700; margin: 0; }
+	.seedback button { min-height: 0; padding: 4px 10px; font-size: 0.68rem; background: var(--ink); color: var(--paper); border-color: var(--ink); }
 	.betabar { background: var(--warn); color: var(--ink); text-align: center; padding: 5px 10px 4px; font-size: 0.66rem; font-weight: 700; }
 	header {
 		position: sticky;
