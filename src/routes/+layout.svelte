@@ -134,6 +134,8 @@
 <footer class="container wide mono">
 	<a href="/rules">Rules &amp; voting</a>
 	<span>·</span>
+	<a href="/faq">FAQ</a>
+	<span>·</span>
 	<a href="/dmca">DMCA / copyright</a>
 	<span>·</span>
 	<a href="/terms">Terms</a>

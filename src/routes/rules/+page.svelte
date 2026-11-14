@@ -101,6 +101,8 @@
 	<p class="muted small">Copyright: beats are taken down on valid DMCA notices. <a href="/dmca">How takedowns work</a>.</p>
 </section>
 
+<p class="muted small">More questions? Check the <a href="/faq">FAQ</a> or email <a href="mailto:hello@auxriot.com">hello@auxriot.com</a>.</p>
+
 <div class="ctas">
 	<a class="btn primary" href="/battles">See live battles</a>
 	{#if !data.user}<a class="btn" href="/signup">Join free</a>{/if}
