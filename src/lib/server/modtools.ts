@@ -57,18 +57,20 @@ async function reverseResult(db: D1Database, battleId: string) {
 	const now = Date.now();
 	const tag = `${battleId}#void${now}`;
 	const paid = await db
-		.prepare(`SELECT user_id, amount FROM credit_ledger WHERE ref = ? AND reason LIKE 'battle_%'`)
+		.prepare(`SELECT user_id, amount, reason FROM credit_ledger WHERE ref = ? AND (reason LIKE 'battle_%' OR reason = 'judge_reward')`)
 		.bind(battleId)
-		.all<{ user_id: string; amount: number }>();
+		.all<{ user_id: string; amount: number; reason: string }>();
 
 	await db.batch([
 		...outcomes.results.map((o) => db.prepare(`UPDATE users SET ${col[o.outcome]} = MAX(0, ${col[o.outcome]} - 1) WHERE id = ?`).bind(o.user_id)),
 		db.prepare('DELETE FROM battle_outcomes WHERE battle_id = ?').bind(battleId),
-		db.prepare(`UPDATE credit_ledger SET ref = ?, note = 'Reversed by a moderator' WHERE ref = ? AND reason LIKE 'battle_%'`).bind(tag, battleId),
+		db.prepare(`UPDATE credit_ledger SET ref = ?, note = 'Reversed by a moderator' WHERE ref = ? AND (reason LIKE 'battle_%' OR reason = 'judge_reward')`).bind(tag, battleId),
 		db.prepare(`UPDATE battles SET status = 'voting', winner_id = NULL, result_json = NULL, voting_ends_at = ? WHERE id = ? AND status = 'closed'`).bind(now, battleId)
 	]);
 	for (const p of paid.results) {
-		if (p.amount) await addCredits(db, p.user_id, -p.amount, 'battle_void', tag, 'Battle result reversed');
+		if (!p.amount) continue;
+		const judging = p.reason === 'judge_reward';
+		await addCredits(db, p.user_id, -p.amount, judging ? 'judge_void' : 'battle_void', tag, judging ? 'Judging credits reversed' : 'Battle result reversed');
 	}
 	return outcomes.results.length > 0;
 }
