@@ -247,7 +247,7 @@
 	.card h2 { margin: 0; font-size: 1.6rem; }
 	.danger { border-color: var(--warn); }
 	.scen { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
-	.scen button { display: grid; gap: 4px; text-align: left; padding: 12px; min-height: 0; text-transform: none; letter-spacing: 0; }
+	.scen button { display: grid; gap: 4px; justify-items: start; justify-content: stretch; align-content: center; text-align: left; padding: 12px 14px; min-height: 0; text-transform: none; letter-spacing: 0; }
 	.scen .display { font-size: 1.2rem; }
 	.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 	.grid label { margin: 0; display: grid; gap: 4px; }
