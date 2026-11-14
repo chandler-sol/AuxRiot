@@ -247,8 +247,10 @@
 	.card h2 { margin: 0; font-size: 1.6rem; }
 	.danger { border-color: var(--warn); }
 	.scen { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
-	.scen button { display: grid; gap: 4px; justify-items: start; justify-content: stretch; align-content: center; text-align: left; padding: 12px 14px; min-height: 0; text-transform: none; letter-spacing: 0; }
-	.scen .display { font-size: 1.2rem; }
+	.scen button { display: grid; gap: 6px; justify-items: start; justify-content: stretch; align-content: center; text-align: left; padding: 14px 16px; min-height: 0; text-transform: none; letter-spacing: 0; line-height: 1; }
+	.scen .display { font-size: 1.25rem; line-height: 1; }
+	/* Descriptions in the body font, not the button's condensed display face. */
+	.scen .small { font-family: var(--body); font-weight: 400; font-size: 0.85rem; line-height: 1.35; letter-spacing: 0; text-transform: none; }
 	.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 	.grid label { margin: 0; display: grid; gap: 4px; }
 	.checks { display: grid; gap: 6px; }
