@@ -1,4 +1,4 @@
-Last updated: November 12, 2026
+Last updated: November 14, 2026
 
 # AuxRiot Terms of Service
 
@@ -58,7 +58,7 @@ We may act without advance notice where appropriate, subject to applicable law. 
 
 ## 6. Battle Credits
 
-Credits are earned by finishing battles, whether you win, tie or lose, and may be awarded in admin giveaways. They can only promote a battle to the top of the feed for the displayed period. Promotion does not affect scoring or guarantee listeners, votes or wins.
+Credits are earned by finishing battles, whether you win, tie or lose, and by judging battles with a vote that counts, and may be awarded in admin giveaways. They can only promote a battle to the top of the feed for the displayed period. Promotion does not affect scoring or guarantee listeners, votes or wins.
 
 Credits cannot currently be purchased. They have no cash value and cannot be sold, transferred, traded, wagered or cashed out. AuxRiot offers no gambling, betting or prizes of real-world value.
 

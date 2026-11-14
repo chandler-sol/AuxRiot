@@ -33,10 +33,12 @@
 		<div><span class="display">+{r.win}</span><span class="mono">Win</span></div>
 		<div><span class="display">+{r.tie}</span><span class="mono">Tie</span></div>
 		<div><span class="display">+{r.loss}</span><span class="mono">Loss</span></div>
+		<div><span class="display">+{r.judge}</span><span class="mono">Judge a battle</span></div>
 	</div>
 	<ul class="fine">
 		<li>A battle pays out when it closes with at least <strong>{data.minVotes} counted vote{data.minVotes === 1 ? '' : 's'}</strong>. Votes the fair-play checks discount don't count.</li>
-		<li>Credits from up to <strong>{r.dailyCap} battles a day</strong>.</li>
+		<li>Your own battles pay out for up to <strong>{r.dailyCap} battles a day</strong>.</li>
+		<li>Judging pays <strong>+{r.judge}</strong> per battle when voting closes — only if your vote counts (full listen, fair-play checks passed). Up to <strong>{r.judgeDailyCap} judged battles a day</strong>.</li>
 		<li>Battles between accounts on the same device never pay.</li>
 		<li>Credits have no cash value and can't be transferred or cashed out.</li>
 	</ul>
@@ -75,7 +77,7 @@
 			{/each}
 		</ul>
 	{:else}
-		<p class="muted">No credits yet. Finish a battle to start earning.</p>
+		<p class="muted">No credits yet. Judge a live battle or finish one of your own to start earning.</p>
 	{/if}
 </section>
 
@@ -86,7 +88,8 @@
 	.wallet .mono { color: #5a544b; }
 	.worth { margin-top: 10px; font-weight: 400; }
 	.block { margin-top: 28px; }
-	.earn { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+	.earn { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
+	@media (max-width: 480px) { .earn { grid-template-columns: repeat(2, 1fr); } }
 	.earn div { background: var(--ink-2); display: flex; flex-direction: column; align-items: center; padding: 14px 6px 12px; }
 	.earn .display { font-size: 2.2rem; line-height: 1; color: var(--pink); }
 	.earn .mono { color: var(--dim); margin-top: 4px; }
