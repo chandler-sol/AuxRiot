@@ -182,6 +182,15 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 		threshold: LISTEN_THRESHOLD,
 		og: battleOg(battle),
 		credits,
+		// Voters see what judging this battle earned them once it's closed.
+		judged:
+			user && battle.status === 'closed' && !isBattler
+				? ((
+						await env.DB.prepare(`SELECT amount FROM credit_ledger WHERE user_id = ? AND ref = ? AND reason = 'judge_reward'`)
+							.bind(user.id, battle.id)
+							.first<{ amount: number }>()
+					)?.amount ?? null)
+				: null,
 		promo,
 		sale: await saleInfo(env.DB, battle.id, battle.status, user?.id ?? null),
 		views: battle.views + (newView ? 1 : 0),

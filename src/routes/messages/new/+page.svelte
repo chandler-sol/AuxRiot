@@ -4,18 +4,26 @@
 
 	let { data, form }: PageProps = $props();
 	let busy = $state(false);
-	const IDEAS = ['Is this still available?', 'Do you have a version without the tag?', "What's in the stems?", 'Can you do a custom key or tempo?'];
+	const IDEAS = $derived(
+		data.kind === 'service'
+			? ["Here's what I need:", 'What do you need from me (stems, references)?', 'How long would this take?', 'What would it cost for my project?']
+			: ['Is this still available?', 'Do you have a version without the tag?', "What's in the stems?", 'Can you do a custom key or tempo?']
+	);
+	const who = $derived(data.kind === 'service' ? data.service!.producer : data.listing!.producer);
+	const what = $derived(data.kind === 'service' ? `${data.service!.category}: "${data.service!.title}"` : `"${data.listing!.title}"`);
+	const price = $derived(data.kind === 'service' ? `from ${data.service!.price}` : data.listing!.price);
+	const back = $derived(data.kind === 'service' ? `/u/${data.service!.producer}#services` : `/battles/${data.listing!.battleId}#buy`);
 	let body = $state('');
 	$effect.pre(() => {
 		if (form?.body && !body) body = form.body;
 	});
 </script>
 
-<svelte:head><title>Ask @{data.listing.producer} · AuxRiot</title></svelte:head>
+<svelte:head><title>{data.kind === 'service' ? 'Request a quote' : 'Ask'} · @{who} · AuxRiot</title></svelte:head>
 
-<p class="mono muted kicker"><a href="/battles/{data.listing.battleId}#buy">← "{data.listing.title}"</a></p>
-<h1 class="headline">Ask <span>@{data.listing.producer}</span></h1>
-<p class="sub">About "{data.listing.title}"{data.listing.price ? ` · ${data.listing.price}` : ''}. Only you and the producer see this.</p>
+<p class="mono muted kicker"><a href={back}>← Back</a></p>
+<h1 class="headline">{data.kind === 'service' ? 'Request a quote from' : 'Ask'} <span>@{who}</span></h1>
+<p class="sub">{what}{price ? ` · ${price}` : ''}. Only you and {who} see this.</p>
 
 {#if !data.verified}
 	<p class="error">Confirm your email to message producers — check your inbox for the link.</p>
@@ -26,7 +34,7 @@
 		</div>
 		<textarea name="body" rows="5" maxlength="2000" required placeholder="Your question…" bind:value={body}></textarea>
 		{#if form?.error}<p class="error small">{form.error}</p>{/if}
-		<p class="small muted">🔒 Keep the deal on AuxRiot — arranging payment elsewhere for a listed beat isn't allowed and isn't protected.</p>
+		<p class="small muted">🔒 Keep the deal on AuxRiot — arranging payment elsewhere for a listed beat or service isn't allowed and isn't protected.</p>
 		<button class="primary" disabled={busy || !body.trim()}>{busy ? 'Sending…' : 'Send message'}</button>
 	</form>
 {/if}

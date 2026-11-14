@@ -22,7 +22,7 @@
 							<span class="display who">@{t.other.username}</span>
 							<span class="mono when">{ago(t.at, data.now)}</span>
 						</span>
-						<span class="mono about">{t.role === 'buying' ? 'You asked about' : 'Asking about'} {t.title ? `"${t.title}"` : 'a beat'}{t.purchased ? ' · purchased' : ''}</span>
+						<span class="mono about">{t.service ? (t.role === 'buying' ? 'Your quote request' : 'Quote request') : t.role === 'buying' ? 'You asked about' : 'Asking about'} {t.title ? `"${t.title}"` : t.service ? '' : 'a beat'}{t.purchased ? ' · purchased' : ''}</span>
 						<span class="preview">{t.mine ? 'You: ' : ''}{t.preview}</span>
 					</span>
 					{#if t.unread}<span class="dot" aria-label="Unread"></span>{/if}

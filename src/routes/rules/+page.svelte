@@ -71,6 +71,7 @@
 	<ul>
 		<li>Finish a battle and earn credits: <strong>+100</strong> for a win, <strong>+50</strong> for a tie, <strong>+25</strong> for a loss.</li>
 		<li>A battle pays out only with enough counted votes (votes the fair-play checks discount don't count), from up to 5 battles a day, and never between accounts on the same device.</li>
+		<li>Judge battles and earn <strong>+10</strong> for each one where your vote counts — paid when voting closes, up to 10 battles a day.</li>
 		<li>Spend <strong>250 credits for 3 hours</strong> in a promo slot at the top of the feed.</li>
 		<li>Credits have no cash value and can't be transferred. Cheating forfeits them. <a href="/credits">Your credits</a></li>
 	</ul>

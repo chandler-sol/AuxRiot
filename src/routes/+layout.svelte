@@ -10,7 +10,7 @@
 	let menuOpen = $state(false);
 	let verifyMsg = $state('');
 	// Pages that use the wide desktop layout; forms and reading pages stay narrow.
-	const WIDE = new Set(['/', '/battles', '/battles/[id]', '/u/[username]', '/admin/news']);
+	const WIDE = new Set(['/', '/battles', '/battles/[id]', '/u/[username]', '/admin/news', '/store', '/services']);
 	let wide = $derived(WIDE.has(page.route.id ?? ''));
 
 	// Pages can override the share preview by returning `og: { title, description }` from their load.
@@ -86,7 +86,8 @@
 						<a href="/u/{data.user.username}" onclick={() => (menuOpen = false)}>My profile</a>
 						<a href="/messages" onclick={() => (menuOpen = false)}>Messages{#if data.unread}<span class="mono badge inmenu">{data.unread}</span>{/if}</a>
 						<a href="/credits" onclick={() => (menuOpen = false)}>Credits</a>
-						<a href="/store" onclick={() => (menuOpen = false)}>Beat store</a>
+						<a href="/store" onclick={() => (menuOpen = false)}>Store &amp; services</a>
+						<a href="/settings/services" onclick={() => (menuOpen = false)}>Your services</a>
 						<a href="/settings/profile" onclick={() => (menuOpen = false)}>Edit profile</a>
 						{#if data.user.isMod}
 							<a href="/admin" onclick={() => (menuOpen = false)}>{data.user.isAdmin ? 'Admin' : 'Mod tools'}</a>

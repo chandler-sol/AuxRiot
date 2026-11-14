@@ -27,6 +27,11 @@
 	<p class="mono small links"><a href="/store/terms">Store Terms</a> · <a href="/store/license">Exclusive Beat License</a></p>
 </section>
 
+<nav class="tabs" data-sveltekit-noscroll>
+	<a href="/store" class="active">Beats</a>
+	<a href="/services">Services</a>
+</nav>
+
 <div class="layout">
 	<div class="main">
 		<form class="filters" method="GET" action="/store" onsubmit={(e) => { e.preventDefault(); nav(e); }}>

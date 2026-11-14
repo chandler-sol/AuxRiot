@@ -46,6 +46,10 @@
 			<span>I'm 18 or older and agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a>.</span>
 		</label>
 		<label class="optin">
+			<input type="checkbox" name="provider" />
+			<span>I'm here to offer services too — mixing, mastering, custom beats. (You can still battle and judge.)</span>
+		</label>
+		<label class="optin">
 			<input type="checkbox" name="news" />
 			<span>Send me AuxRiot news — battles of the week, events, new features. Unsubscribe anytime.</span>
 		</label>

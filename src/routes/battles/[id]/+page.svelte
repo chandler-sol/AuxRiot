@@ -216,6 +216,9 @@
 		</section>
 		</div>
 
+		{#if data.judged}
+			<p class="earned mono"><span class="display">+{data.judged}</span> credits for judging this battle · <a href="/credits">Your credits</a></p>
+		{/if}
 		{#if data.credits}
 			{@const cr = data.credits}
 			<p class="earned mono">

@@ -8,7 +8,7 @@ import { FEE_KEY, MIN_PRICE_KEY, storeSettings } from '#lib/server/store.ts';
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const me = requireMod(locals);
 	const db = getEnv().DB;
-	const status = ['listed', 'draft', 'unlisted', 'sold', 'removed'].includes(url.searchParams.get('status') ?? '') ? url.searchParams.get('status')! : 'listed';
+	const status = ['listed', 'draft', 'unlisted', 'sold', 'removed', 'services'].includes(url.searchParams.get('status') ?? '') ? url.searchParams.get('status')! : 'listed';
 	const [settings, counts, median, rows] = await Promise.all([
 		storeSettings(db),
 		db.prepare(`SELECT status, COUNT(*) AS n FROM listings GROUP BY status`).all<{ status: string; n: number }>(),
@@ -26,7 +26,20 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.bind(status)
 			.all<{ id: string; battle_id: string; status: string; price_cents: number | null; stems_price_cents: number | null; file_size: number | null; stems_size: number | null; genre: string | null; bpm: number | null; updated_at: number; title: string; username: string; joined: number; wins: number; losses: number }>()
 	]);
+	const services =
+		status === 'services'
+			? (
+					await db
+						.prepare(
+							`SELECT s.id, s.title, s.category, s.status, s.price_from_cents, s.updated_at, u.username,
+							        (SELECT COUNT(*) FROM service_samples x WHERE x.service_id = s.id) AS samples
+							 FROM services s JOIN users u ON u.id = s.user_id ORDER BY s.updated_at DESC LIMIT 200`
+						)
+						.all<{ id: string; title: string; category: string; status: string; price_from_cents: number; updated_at: number; username: string; samples: number }>()
+				).results
+			: [];
 	return {
+		services,
 		isAdmin: me.isAdmin,
 		settings,
 		counts: Object.fromEntries(counts.results.map((c) => [c.status, c.n])) as Record<string, number>,
@@ -65,6 +78,18 @@ export const actions: Actions = {
 		await db.prepare(`UPDATE listings SET status = 'removed', updated_at = ? WHERE id = ?`).bind(Date.now(), id).run();
 		await logAction(db, me, 'listing.remove', 'listing', id, reason);
 		return { ok: 'Listing removed from the store.' };
+	},
+
+	removeService: async ({ request, locals }) => {
+		const me = requireMod(locals);
+		const db = getEnv().DB;
+		const f = await request.formData();
+		const id = String(f.get('id'));
+		const reason = String(f.get('note') ?? '').trim().slice(0, 300);
+		if (!reason) return fail(400, { error: 'Add a reason.' });
+		await db.prepare(`UPDATE services SET status = 'removed', updated_at = ? WHERE id = ?`).bind(Date.now(), id).run();
+		await logAction(db, me, 'service.remove', 'service', id, reason);
+		return { ok: 'Service removed.' };
 	},
 
 	restore: async ({ request, locals }) => {

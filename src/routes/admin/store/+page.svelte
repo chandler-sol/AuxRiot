@@ -17,6 +17,7 @@
 		return '';
 	};
 	const TABS = ['listed', 'draft', 'unlisted', 'sold', 'removed'];
+	let removingSvc = $state<string | null>(null);
 </script>
 
 <svelte:head><title>Store · AuxRiot admin</title></svelte:head>
@@ -53,6 +54,31 @@
 	{/each}
 </nav>
 
+<p class="mono small svc-tab"><a href="/admin/store?status=services" class:on={data.status === 'services'}>Services →</a></p>
+
+{#if data.status === 'services'}
+	<ul class="list">
+		{#each data.services as sv (sv.id)}
+			<li>
+				<div class="top"><span class="display t">{sv.title}</span><span class="display p">from {money(sv.price_from_cents)}</span></div>
+				<p class="mono meta">@{sv.username} · {sv.category} · {sv.status} · {sv.samples} sample{sv.samples === 1 ? '' : 's'} · updated {ago(sv.updated_at, data.now)}</p>
+				{#if sv.status !== 'removed'}
+					{#if removingSvc === sv.id}
+						<form method="POST" action="?/removeService" class="row" use:enhance={keep}>
+							<input type="hidden" name="id" value={sv.id} />
+							<input name="note" required placeholder="Reason (mod log)" style="flex:1;min-width:160px" />
+							<button class="sm danger">Remove service</button>
+						</form>
+					{:else}
+						<button class="sm ghost" onclick={() => (removingSvc = sv.id)}>Remove…</button>
+					{/if}
+				{/if}
+			</li>
+		{:else}
+			<li class="muted">No services yet.</li>
+		{/each}
+	</ul>
+{:else}
 <ul class="list">
 	{#each data.listings as l (l.id)}
 		{@const warn = flag(l.price_cents)}
@@ -86,6 +112,7 @@
 		<li class="muted">Nothing here.</li>
 	{/each}
 </ul>
+{/if}
 
 <style>
 	.kicker { margin: 8px 0 10px; }
@@ -103,5 +130,8 @@
 	.flag { justify-self: start; border: 1px solid var(--warn); color: var(--warn); border-radius: var(--radius); padding: 2px 8px 1px; font-size: 0.6rem; }
 	.sm { min-height: 34px; padding: 0 12px; font-size: 0.85rem; justify-self: start; }
 	.ghost { color: var(--dim); }
+	.svc-tab { margin: -6px 0 12px; }
+	.svc-tab a { color: var(--dim); }
+	.svc-tab a.on { color: var(--pink); }
 	.danger { border-color: #ff5a4e; color: #ff5a4e; }
 </style>

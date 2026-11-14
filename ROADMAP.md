@@ -141,6 +141,39 @@ No packs under ~$5: card fees (≈30¢ + 3%) eat small purchases.
 - **Co-producer splits** (Stripe Connect transfers to multiple accounts).
 - **Battle Credits toward purchases:** revisit later. Today they have no cash value per the Terms.
 
+## Services (in progress on beta.auxriot.com)
+
+**Decided (Nov 2026)**
+- **Categories:** mixing, mastering, custom beat, vocal mix/tuning, feature.
+- **Fee:** 20% plus card processing, the same as beats. Revisit with data.
+- **Who can offer:** anyone, including engineers who sign up just for services (a sign-up checkbox). Reputation comes from battling, judging and respect, all shown on every service card.
+- **Samples are stream-only,** like battle beats: no downloads, 2:00 max. Mixing, mastering and vocal services can show before/after pairs.
+- **Paying outside AuxRiot is prohibited** for services, as for listed beats.
+- **Reviews:** only after a completed paid job.
+
+**Phase 1 (built on beta):**
+- Create and manage services at /settings/services.
+- Samples upload with an optional "before" version; a service can't go live without one.
+- Public /services page with filters, beside the Beats tab.
+- Profile "Hire …" section and a "Judged" stat.
+- "Request a quote" opens a private thread.
+- Mods can remove a service from the Store desk.
+
+**Phase 2 (after store checkout):**
+- Custom offers in the thread (scope, price, deadline, revisions).
+- Payment held until delivery, with delivery and approval in the thread.
+- Auto-release 3 days after delivery; disputes go to mods.
+- Services added to the Store Terms.
+
+**Phase 3:** reviews, featured placement with credits, milestone payments.
+
+## Judging credits (built on beta)
+
+- **+10 battle credits per judged battle,** paid at close and only for counted votes: not shadowbanned or suspended, and not zeroed by fair-play checks or a mod.
+- **Capped at 10 judged battles a day.**
+- **Reversed on a recount or removal** (ledger reason judge_void).
+- **Voters see "+10 credits for judging"** on the results.
+
 ## AuxRiot Pro
 
 Launch ad-free with better audio first; add perks as they're built.

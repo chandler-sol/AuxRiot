@@ -56,9 +56,9 @@ export const actions: Actions = {
 		const id = newId();
 		const news = form.get('news') === 'on';
 		await env.DB.prepare(
-			'INSERT INTO users (id, username, email, password_hash, created_at, news_opt_in, news_opt_in_at, terms_accepted_at, email_verified_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+			'INSERT INTO users (id, username, email, password_hash, created_at, news_opt_in, news_opt_in_at, terms_accepted_at, email_verified_at, provider) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 		)
-			.bind(id, username, email, await hashPassword(password), Date.now(), news ? 1 : 0, news ? Date.now() : null, Date.now(), env.ENVIRONMENT === 'beta' ? Date.now() : null)
+			.bind(id, username, email, await hashPassword(password), Date.now(), news ? 1 : 0, news ? Date.now() : null, Date.now(), env.ENVIRONMENT === 'beta' ? Date.now() : null, form.get('provider') === 'on' ? 1 : 0)
 			.run();
 		await recordSignals(env.DB, id, locals.ip, locals.deviceId, env.SIGNAL_SALT ?? 'dev-salt');
 		await recordAttempt(env.DB, locals.ip, salt, 'signup');
@@ -70,6 +70,8 @@ export const actions: Actions = {
 			const link = `${url.origin}/verify?token=${t.token}`;
 			await sendEmail(env, { to: email, ...verifyEmail(username, link, t.token) });
 		}
-		redirect(303, safeNext(url.searchParams.get('next')));
+		// Service providers land on their services page to set up, unless they came from somewhere specific.
+		const next = url.searchParams.get('next');
+		redirect(303, form.get('provider') === 'on' && !next ? '/settings/services?welcome=1' : safeNext(next));
 	}
 };

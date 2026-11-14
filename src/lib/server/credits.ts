@@ -14,7 +14,9 @@ export const CREDITS = {
 	tie: 50,
 	promoPrice: 250, // one promo slot booking
 	promoHours: 3,
-	dailyCap: 5
+	dailyCap: 5,
+	judge: 10, // per battle judged with a counted vote
+	judgeDailyCap: 10 // judged battles paid per day
 } as const;
 export const MIN_VOTES_KEY = 'credits_min_votes';
 
@@ -130,4 +132,37 @@ export async function buyPromotion(db: D1Database, userId: string, battleId: str
 	}
 	await db.prepare("UPDATE credit_ledger SET note = ? WHERE user_id = ? AND reason = 'promo_spend' AND ref = ?").bind(`${hours}h promo — slot ${res.slot}`, userId, attempt).run();
 	return { ok: true as const, slot: res.slot, startsAt: res.startsAt, endsAt: res.endsAt, startsNow: res.startsNow, cost };
+}
+
+/**
+ * Pay voters who judged this battle. Runs at close, so it only pays ballots that
+ * still count after every fair-play check and moderator override (weight > 0,
+ * voter not shadowbanned or suspended). Idempotent per voter per battle, and
+ * capped at CREDITS.judgeDailyCap judged battles in the 24h before the close.
+ */
+export async function awardJudges(db: D1Database, battleId: string) {
+	const b = await db
+		.prepare(`SELECT creator_id, challenger_id, (SELECT MAX(closed_at) FROM battle_outcomes WHERE battle_id = ?) AS closed_at FROM battles WHERE id = ? AND status = 'closed'`)
+		.bind(battleId, battleId)
+		.first<{ creator_id: string; challenger_id: string; closed_at: number | null }>();
+	if (!b) return 0;
+	const closedAt = b.closed_at ?? Date.now();
+	const voters = await db
+		.prepare(
+			`SELECT v.voter_id FROM votes v JOIN users u ON u.id = v.voter_id
+			 WHERE v.battle_id = ? AND v.weight > 0 AND u.shadowbanned = 0 AND u.suspended_at IS NULL
+			   AND v.voter_id NOT IN (?, ?)`
+		)
+		.bind(battleId, b.creator_id, b.challenger_id)
+		.all<{ voter_id: string }>();
+	let paid = 0;
+	for (const { voter_id } of voters.results) {
+		const today = await db
+			.prepare(`SELECT COUNT(*) AS n FROM credit_ledger WHERE user_id = ? AND reason = 'judge_reward' AND ref != ? AND created_at > ? AND created_at <= ?`)
+			.bind(voter_id, battleId, closedAt - DAY, closedAt)
+			.first<{ n: number }>();
+		if ((today?.n ?? 0) >= CREDITS.judgeDailyCap) continue;
+		if (await addCredits(db, voter_id, CREDITS.judge, 'judge_reward', battleId, '', closedAt)) paid++;
+	}
+	return paid;
 }

@@ -1,7 +1,7 @@
 import { newId, DAY, HOUR } from './util';
 import { notifyResult, remindWaiting } from './notify.ts';
 import { parseMp3 } from './mp3';
-import { awardBattle } from './credits.ts';
+import { awardBattle, awardJudges } from './credits.ts';
 
 export const MAX_DURATION_MS = 120_000;
 const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
@@ -163,6 +163,8 @@ export async function finalizeBattle(db: D1Database, battleId: string) {
 
 	// Battle Credits payout (rules and anti-farming checks live in credits.ts).
 	await awardBattle(db, battleId);
+	// Voters who judged it get credits too (counted ballots only).
+	await awardJudges(db, battleId);
 	notifyResult(db, battleId);
 }
 

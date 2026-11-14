@@ -14,7 +14,7 @@ const MESSAGES_PER_HOUR = 60;
 const EMAIL_GAP = 30 * 60_000;
 
 export type Conversation = {
-	id: string; listing_id: string | null; order_id: string | null; buyer_id: string; seller_id: string;
+	id: string; listing_id: string | null; order_id: string | null; service_id: string | null; buyer_id: string; seller_id: string;
 	buyer_read_at: number; seller_read_at: number; buyer_emailed_at: number; seller_emailed_at: number; last_message_at: number; created_at: number;
 };
 
@@ -63,6 +63,25 @@ export async function openConversation(db: D1Database, listingId: string, buyer:
 	return (await db.prepare('SELECT * FROM conversations WHERE listing_id = ? AND buyer_id = ?').bind(l.id, buyer.id).first<Conversation>())!;
 }
 
+/** Find or open a quote-request thread with a service provider. */
+export async function openServiceConversation(db: D1Database, serviceId: string, buyer: SessionUser): Promise<Conversation | string> {
+	const sv = await db.prepare(`SELECT id, user_id, status FROM services WHERE id = ?`).bind(serviceId).first<{ id: string; user_id: string; status: string }>();
+	if (!sv || sv.status !== 'active') return 'That service is not available right now.';
+	if (sv.user_id === buyer.id) return "That's your own service.";
+	const existing = await db.prepare('SELECT * FROM conversations WHERE service_id = ? AND buyer_id = ?').bind(sv.id, buyer.id).first<Conversation>();
+	if (existing) return existing;
+	if (!buyer.emailVerified) return 'Confirm your email to message people.';
+	if (await isBlocked(db, buyer.id, sv.user_id)) return "You can't message this person.";
+	const recent = await db.prepare('SELECT COUNT(*) AS n FROM conversations WHERE buyer_id = ? AND created_at > ?').bind(buyer.id, Date.now() - DAY).first<{ n: number }>();
+	if ((recent?.n ?? 0) >= NEW_THREADS_PER_DAY) return "You've started a lot of conversations today. Try again tomorrow.";
+	const now = Date.now();
+	await db
+		.prepare(`INSERT OR IGNORE INTO conversations (id, service_id, buyer_id, seller_id, last_message_at, created_at, buyer_read_at) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+		.bind(newId(), sv.id, buyer.id, sv.user_id, now, now, now)
+		.run();
+	return (await db.prepare('SELECT * FROM conversations WHERE service_id = ? AND buyer_id = ?').bind(sv.id, buyer.id).first<Conversation>())!;
+}
+
 export async function sendMessage(db: D1Database, c: Conversation, sender: SessionUser, raw: string): Promise<{ id: string; offPlatform: boolean } | string> {
 	const body = raw.trim();
 	if (!body) return 'Write a message first.';
@@ -103,7 +122,9 @@ async function maybeEmail(db: D1Database, c: Conversation, sender: SessionUser, 
 	if (!to) return;
 	const title = c.listing_id
 		? (await db.prepare('SELECT b.title FROM listings l JOIN battles b ON b.id = l.battle_id WHERE l.id = ?').bind(c.listing_id).first<{ title: string }>())?.title
-		: null;
+		: c.service_id
+			? (await db.prepare('SELECT title FROM services WHERE id = ?').bind(c.service_id).first<{ title: string }>())?.title
+			: null;
 	await db.prepare(`UPDATE conversations SET ${side}_emailed_at = ? WHERE id = ?`).bind(Date.now(), c.id).run();
 	const url = `https://auxriot.com/messages/${c.id}`;
 	const unsub = `https://auxriot.com/unsubscribe?u=${encodeURIComponent(to.id)}&t=${await unsubscribeToken(to.id)}&kind=messages`;

@@ -14,7 +14,7 @@ async function ctx(locals: App.Locals, id: string, path: string) {
 export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const { db, c, me } = await ctx(locals, params.id, url.pathname);
 	const otherId = c.buyer_id === me.id ? c.seller_id : c.buyer_id;
-	const [other, listing, msgs, iBlocked, blockedEither] = await Promise.all([
+	const [other, listing, msgs, iBlocked, service, blockedEither] = await Promise.all([
 		db.prepare('SELECT username, avatar_key, color, respect FROM users WHERE id = ?').bind(otherId).first<{ username: string; avatar_key: string | null; color: string | null; respect: number }>(),
 		c.listing_id
 			? db
@@ -31,6 +31,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			.bind(c.id, me.id)
 			.all<{ id: string; sender_id: string; body: string; off_platform: number; created_at: number }>(),
 		db.prepare('SELECT 1 FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?').bind(me.id, otherId).first(),
+		c.service_id
+			? db.prepare('SELECT id, title, category, price_from_cents, turnaround_days, revisions, status FROM services WHERE id = ?').bind(c.service_id).first<{ id: string; title: string; category: string; price_from_cents: number; turnaround_days: number; revisions: number; status: string }>()
+			: null,
 		isBlocked(db, me.id, otherId)
 	]);
 	// Opening the thread marks it read.
@@ -40,6 +43,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		role: c.buyer_id === me.id ? 'buyer' : 'seller',
 		other: other ? { username: other.username, avatarKey: other.avatar_key, color: other.color, respect: other.respect } : null,
 		listing: listing ? { ...listing } : null,
+		service: service ? { ...service } : null,
 		purchased: !!c.order_id,
 		messages: msgs.results.map((m) => ({ id: m.id, mine: m.sender_id === me.id, body: m.body, offPlatform: !!m.off_platform, at: m.created_at })),
 		iBlocked: !!iBlocked,

@@ -2,6 +2,7 @@
 	import Avatar from '#lib/components/Avatar.svelte';
 	import BattleCard from '#lib/components/BattleCard.svelte';
 	import StoreCard from '#lib/components/StoreCard.svelte';
+	import ServiceCard from '#lib/components/ServiceCard.svelte';
 	import Flair from '#lib/components/Flair.svelte';
 	import { nextFlair } from '#lib/flair.ts';
 	import SocialLinks from '#lib/components/SocialLinks.svelte';
@@ -49,8 +50,23 @@
 		<div><span class="display v">{p.losses}</span><span class="mono l">Losses</span></div>
 		<div><span class="display v">{p.ties}</span><span class="mono l">Ties</span></div>
 		<div><span class="display v">{winRate === null ? '—' : winRate + '%'}</span><span class="mono l">Win rate</span></div>
+		<div><span class="display v">{data.judged}</span><span class="mono l">Judged</span></div>
 	</div>
 </section>
+
+{#if data.services.length}
+	<section class="storefront" id="services">
+		<div class="sf-head">
+			<h2>Hire {p.username}</h2>
+			<a class="mono small" href="/services">All services →</a>
+		</div>
+		<ul class="sf-grid">
+			{#each data.services as svc (svc.id)}<li><ServiceCard service={svc} meId={data.meId} showProvider={false} /></li>{/each}
+		</ul>
+	</section>
+{:else if data.isMe}
+	<p class="muted small sf-empty" id="services">Mix, master or make beats to order? <a href="/settings/services">Offer your services</a>.</p>
+{/if}
 
 {#if data.store.length}
 	{@const forSale = data.store.filter((i) => i.status === 'listed').length}
@@ -85,6 +101,7 @@
 	.storefront { margin: 26px 0 8px; }
 	.sf-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 	.sf-head a { color: var(--dim); }
+	.sf-grid > li { min-width: 0; }
 	.sf-grid { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 12px; }
 	@media (min-width: 720px) { .sf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
 	.sf-empty { margin-top: 22px; }
@@ -100,11 +117,12 @@
 	.hit { margin: 0 0 6px; color: var(--pink); font-size: 0.66rem; }
 	.name { font-size: clamp(3rem, 16vw, 5.5rem); line-height: 0.9; color: var(--me); overflow-wrap: anywhere; }
 	.ticket {
-		display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+		display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
 		background: var(--paper); color: var(--ink); border-radius: var(--radius); padding: 12px 8px 10px; text-align: center;
 	}
 	.ticket div { display: flex; flex-direction: column; }
 	.v { font-size: 2rem; line-height: 1; }
+	@media (max-width: 480px) { .v { font-size: 1.6rem; } .l { font-size: 0.52rem; } }
 	.l { color: #5a544b; font-size: 0.6rem; margin-top: 4px; }
 	.list { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
 

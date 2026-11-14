@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
 import { parseSocials } from '#lib/server/profile.ts';
 import { ITEM_SELECT, toItem, type ItemRow } from '#lib/server/storequery.ts';
+import { loadServices } from '#lib/server/services.ts';
 
 export const load: PageServerLoad = async ({ params, platform, locals }) => {
 	const db = getEnv(platform).DB;
@@ -62,6 +63,12 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 		.bind(profile.id)
 		.all<ItemRow>();
 
+	const services = await loadServices(db, "s.user_id = ? AND s.status = 'active'", [profile.id], 's.created_at ASC', 8);
+	const judged = await db
+		.prepare(`SELECT COUNT(*) AS n FROM votes v JOIN battles b ON b.id = v.battle_id WHERE v.voter_id = ? AND b.status = 'closed' AND v.weight > 0`)
+		.bind(profile.id)
+		.first<{ n: number }>();
+
 	const { socials, ...rest } = profile;
 	return {
 		profile: { ...rest, socials: parseSocials(socials) },
@@ -70,6 +77,9 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			return { ...b, score: r ? ([r.slots[0].total, r.slots[1].total] as [number, number]) : null };
 		}),
 		store: store.results.map(toItem),
+		services,
+		judged: judged?.n ?? 0,
+		meId: locals.user?.id ?? null,
 		isMe: locals.user?.id === profile.id,
 		og: {
 			title: `${profile.username} · ${profile.wins}-${profile.losses}${profile.ties ? `-${profile.ties}` : ''} on AuxRiot`,

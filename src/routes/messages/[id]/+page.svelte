@@ -6,6 +6,7 @@
 	import Flair from '#lib/components/Flair.svelte';
 	import { ago } from '#lib/format.ts';
 	import { money } from '#lib/store.ts';
+	import { categoryOf } from '#lib/services.ts';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -47,8 +48,17 @@
 	</a>
 {/if}
 
+{#if data.service}
+	<div class="ctx">
+		<span class="mono small">{data.role === 'buyer' ? 'Quote request' : 'Quote request for your service'} · {categoryOf(data.service.category)?.label ?? ''}</span>
+		<span class="display">"{data.service.title}"</span>
+		<span class="mono small">From {money(data.service.price_from_cents)} · {data.service.turnaround_days}-day turnaround · {data.service.revisions} revision{data.service.revisions === 1 ? '' : 's'}</span>
+		<span class="mono small muted">Paying for services on AuxRiot opens soon — agree on scope here, but don't pay off-site.</span>
+	</div>
+{/if}
+
 <p class="safety small">
-	🔒 <strong>Keep deals on AuxRiot.</strong> Buying through the site gets you the files, a signed license and protection. Arranging payment anywhere else for a beat listed here — Cash App, PayPal, wire — isn't allowed under the <a href="/store/terms">Store Terms</a>, and isn't protected. Never share payment details here.
+	🔒 <strong>Keep deals on AuxRiot.</strong> Buying through the site gets you the files, a signed license and protection. Arranging payment anywhere else for a beat or service listed here — Cash App, PayPal, wire — isn't allowed under the <a href="/store/terms">Store Terms</a>, and isn't protected. Never share payment details here.
 </p>
 
 {#if form?.ok}<p class="success">{form.ok}</p>{/if}
