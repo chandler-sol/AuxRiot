@@ -39,6 +39,7 @@
 <p class="status mono" class:on={l.status === 'listed'}>{STATUS[l.status] ?? l.status}</p>
 
 <div class="explain">
+	{#if !data.seller.payoutsOn}<p class="payoutnote"><strong>Set up payouts</strong> so buyers can check out — Stripe pays you weekly on Mondays. <a href="/settings/payouts">Set up payouts →</a></p>{/if}
 	<p><strong>Exclusive only.</strong> One buyer gets the beat, then it's off the market for good. The battle stays up with a SOLD stamp.</p>
 	<p class="small muted"><a href="/store/terms">Store Terms</a> · <a href="/store/license">Exclusive Beat License</a> · <span class="draftnote">drafts pending legal review</span></p>
 	<p class="small muted">
@@ -179,6 +180,8 @@
 {/if}
 
 <style>
+	.payoutnote { border: 1.5px dashed var(--warn); border-radius: var(--radius); padding: 10px 12px; }
+	.payoutnote a { color: var(--warn); }
 	.kicker { margin: 8px 0 10px; }
 	.kicker a { color: var(--muted); }
 	.headline { font-size: clamp(2.8rem, 12vw, 4.4rem); line-height: 0.9; }

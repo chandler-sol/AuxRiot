@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
 import { logAction, requireAdmin, requireMod } from '#lib/server/mod.ts';
 import { setSetting } from '#lib/server/settings.ts';
+import { stripeMode, stripeV1 } from '#lib/server/stripe.ts';
 import { FEE_KEY, MIN_PRICE_KEY, storeSettings } from '#lib/server/store.ts';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -38,7 +39,25 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 						.all<{ id: string; title: string; category: string; status: string; price_from_cents: number; updated_at: number; username: string; samples: number }>()
 				).results
 			: [];
+	// Stripe health (admins): is a key set, which mode, and does it work?
+	let stripe: { mode: 'test' | 'live' | null; ok: boolean; available?: string; sellers?: number; error?: string } | null = null;
+	if (me.isAdmin) {
+		const env = getEnv();
+		stripe = { mode: stripeMode(env), ok: false };
+		if (stripe.mode) {
+			try {
+				const bal = await stripeV1<{ available: { amount: number; currency: string }[] }>(env, 'GET', '/v1/balance');
+				const usd = bal.available.find((b) => b.currency === 'usd');
+				stripe.ok = true;
+				stripe.available = '$' + ((usd?.amount ?? 0) / 100).toFixed(2);
+			} catch (e) {
+				stripe.error = e instanceof Error ? e.message : String(e);
+			}
+			stripe.sellers = (await db.prepare('SELECT COUNT(*) AS n FROM users WHERE payouts_enabled = 1').first<{ n: number }>())?.n ?? 0;
+		}
+	}
 	return {
+		stripe,
 		services,
 		isAdmin: me.isAdmin,
 		settings,

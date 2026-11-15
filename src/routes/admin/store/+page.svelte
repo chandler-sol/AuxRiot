@@ -24,6 +24,18 @@
 
 <p class="mono muted kicker"><a href="/admin">{data.isAdmin ? 'Admin' : 'Mod tools'}</a> — Store</p>
 <h1 class="headline">Store <span>desk.</span></h1>
+{#if data.stripe}
+	<section class="stripe-health" class:good={data.stripe.ok}>
+		<p class="mono small">Stripe</p>
+		{#if !data.stripe.mode}
+			<p><strong>Not connected.</strong> Add a <code>STRIPE_SECRET_KEY</code> secret to this Worker in Cloudflare.</p>
+		{:else if data.stripe.ok}
+			<p><strong>✓ Connected — {data.stripe.mode === 'test' ? 'test mode' : 'LIVE mode'}.</strong> Platform balance {data.stripe.available} · {data.stripe.sellers} seller{data.stripe.sellers === 1 ? '' : 's'} with payouts on.</p>
+		{:else}
+			<p><strong>Key found ({data.stripe.mode} mode) but Stripe rejected it:</strong> {data.stripe.error}</p>
+		{/if}
+	</section>
+{/if}
 
 {#if form?.ok}<p class="success">{form.ok}</p>{/if}
 {#if form?.error}<p class="error">{form.error}</p>{/if}
@@ -115,6 +127,10 @@
 {/if}
 
 <style>
+	.stripe-health { border: 1.5px solid var(--warn); border-radius: var(--radius); padding: 10px 14px; margin: 12px 0 18px; }
+	.stripe-health.good { border-color: #7dff9b; }
+	.stripe-health p { margin: 0; }
+	.stripe-health .mono { color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
 	.kicker { margin: 8px 0 10px; }
 	.kicker a { color: var(--muted); }
 	.headline { font-size: clamp(2.8rem, 12vw, 4.4rem); line-height: 0.9; margin-bottom: 14px; }

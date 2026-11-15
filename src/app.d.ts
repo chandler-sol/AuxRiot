@@ -30,6 +30,9 @@ declare global {
 		ENVIRONMENT?: string;
 		/** Shared password for beta.auxriot.com (secret on the beta worker only). */
 		BETA_PASSWORD?: string;
+		/** Stripe secret key (sk_test_… on beta, sk_live_… on live) and the webhook signing secret. */
+		STRIPE_SECRET_KEY?: string;
+		STRIPE_WEBHOOK_SECRET?: string;
 		GOOGLE_CLIENT_ID?: string;
 		GOOGLE_CLIENT_SECRET?: string;
 		DISCORD_CLIENT_ID?: string;

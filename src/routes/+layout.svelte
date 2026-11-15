@@ -101,6 +101,7 @@
 						<a href="/credits" onclick={() => (menuOpen = false)}>Credits</a>
 						<a href="/store" onclick={() => (menuOpen = false)}>Store &amp; services</a>
 						<a href="/settings/services" onclick={() => (menuOpen = false)}>Your services</a>
+						<a href="/settings/payouts" onclick={() => (menuOpen = false)}>Payouts</a>
 						<a href="/settings/profile" onclick={() => (menuOpen = false)}>Edit profile</a>
 						{#if data.user.isMod}
 							<a href="/admin" onclick={() => (menuOpen = false)}>{data.user.isAdmin ? 'Admin' : 'Mod tools'}</a>

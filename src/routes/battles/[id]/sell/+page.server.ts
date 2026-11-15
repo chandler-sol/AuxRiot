@@ -33,9 +33,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const { db, battle, listing } = await context(locals, params.id, url.pathname, roundOf(url));
 	const settings = await storeSettings(db);
 	const seller = await db
-		.prepare('SELECT legal_name, seller_agreed_at, seller_agreement_version FROM users WHERE id = ?')
+		.prepare('SELECT legal_name, seller_agreed_at, seller_agreement_version, payouts_enabled FROM users WHERE id = ?')
 		.bind(locals.user!.id)
-		.first<{ legal_name: string | null; seller_agreed_at: number | null; seller_agreement_version: string | null }>();
+		.first<{ legal_name: string | null; seller_agreed_at: number | null; seller_agreement_version: string | null; payouts_enabled: number }>();
 	const opponent = listing.seller_id === battle.creator_id ? battle.challenger : battle.creator;
 	return {
 		battle: { id: battle.id, title: battle.title, status: battle.status, opponent, buyOpen: buyOpen(battle.status), rounds: battle.rounds, round: roundOf(url) },
@@ -58,6 +58,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		settings,
 		seller: {
 			agreed: !!seller?.seller_agreed_at && seller.seller_agreement_version === STORE_DOCS_VERSION,
+			payoutsOn: !!seller?.payouts_enabled,
 			legalName: seller?.legal_name ?? ''
 		},
 		options: { genres: GENRES, keys: KEYS, moods: MOODS }

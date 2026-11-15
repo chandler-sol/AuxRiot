@@ -203,6 +203,13 @@ No packs under ~$5: card fees (≈30¢ + 3%) eat small purchases.
 - **Admins verify accounts** (Streamer, Producer, Artist, Engineer, Creator) from Admin → Users. Verified accounts get a cyan seal badge in comments, store Q&A, messages, service cards, their profile and the battle header. Their comments are highlighted.
 - **Crews:** each verified creator gets a crew link, auxriot.com/with/<name>. Anyone who signs up through it (email or OAuth) reps that crew, with a tag next to their name. Existing users can join or leave from the creator's profile, one crew at a time. The profile shows crew size.
 
+## Stripe (in progress on beta)
+
+- **Setup:** Connect marketplace on Accounts v2. Sellers get recipient accounts with the Express dashboard; AuxRiot collects fees and covers losses. Destination charges through Checkout, with a 20% fee plus card processing taken from the seller's share.
+- **Payouts:** weekly on **Mondays**, set per account through the Balance Settings API.
+- **Done:** a /settings/payouts page (Stripe-hosted onboarding, status, Express dashboard link), a Stripe health card on Admin → Store, and a payouts prompt on the sell page.
+- **Next:** checkout and webhook (orders, license, downloads, SOLD), then refunds and disputes, then Stripe Tax (pending registration decisions), then services checkout, then AuxRiot Pro (Billing).
+
 ## AuxRiot Pro
 
 Launch ad-free with better audio first; add perks as they're built.
