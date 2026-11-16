@@ -260,3 +260,60 @@ export async function remindUnfinishedBallots(db: D1Database) {
 	}
 	return due.results.length;
 }
+
+/** A beat sold: receipt-style note to the buyer (downloads + license) and the good news to the producer. */
+export function notifySale(db: D1Database, orderId: string) {
+	later(async () => {
+		const o = await db
+			.prepare(
+				`SELECT o.id, o.buyer_id, o.seller_id, o.amount_cents, o.seller_net_cents, o.includes_stems, b.title, b.id AS battle_id,
+				        bu.username AS buyer, se.username AS seller
+				 FROM orders o JOIN listings l ON l.id = o.listing_id JOIN battles b ON b.id = l.battle_id
+				 JOIN users bu ON bu.id = o.buyer_id JOIN users se ON se.id = o.seller_id WHERE o.id = ?`
+			)
+			.bind(orderId)
+			.first<{ id: string; buyer_id: string; seller_id: string; amount_cents: number; seller_net_cents: number; includes_stems: number; title: string; battle_id: string; buyer: string; seller: string }>();
+		if (!o) return;
+		const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
+		// Purchase emails go to any confirmed address (they're receipts, not marketing).
+		const buyer = await db.prepare('SELECT email FROM users WHERE id = ? AND email_verified_at IS NOT NULL').bind(o.buyer_id).first<{ email: string }>();
+		if (buyer) {
+			const url = `${SITE}/purchases?order=${o.id}`;
+			await sendEmail(getEnv(), {
+				to: buyer.email,
+				subject: `It's yours: "${o.title}" by ${o.seller}`,
+				html: layout({
+					kicker: `Order ${o.id.slice(0, 8).toUpperCase()} · ${usd(o.amount_cents)}`,
+					headline: `It's <span style="color:#ff3d7f">yours.</span>`,
+					body: `You own the exclusive license to "${esc(o.title)}" by ${esc(o.seller)}${o.includes_stems ? ', stems included' : ''}. Your files and signed license are ready. Downloads stay open for 7 days, and your first download makes the sale final.`,
+					button: 'Get my files',
+					url,
+					footer: 'You get this because you bought a beat on AuxRiot.'
+				}),
+				text: `You own the exclusive license to "${o.title}" by ${o.seller}. Download your files and license (open for 7 days): ${url}`,
+				idempotencyKey: `sale-buyer:${o.id}`
+			});
+		}
+		const seller = await recipient(db, o.seller_id);
+		if (seller) {
+			const url = `${SITE}/battles/${o.battle_id}`;
+			const unsub = await unsubscribeUrl(seller.id);
+			await sendEmail(getEnv(), {
+				to: seller.email,
+				subject: `You sold "${o.title}" 💸`,
+				html: layout({
+					kicker: `+${usd(o.seller_net_cents)} to you`,
+					headline: `Beat <span style="color:#ff3d7f">sold.</span>`,
+					body: `${esc(o.buyer)} bought the exclusive on "${esc(o.title)}". Your share after the AuxRiot fee and card processing is ${usd(o.seller_net_cents)}, paid out with Monday's payout. It's off the market now, and the battle wears a SOLD stamp.`,
+					button: 'See it',
+					url,
+					footer: 'You get this because you sell beats on AuxRiot.',
+					unsubscribeUrl: unsub
+				}),
+				text: `${o.buyer} bought "${o.title}". Your share: ${usd(o.seller_net_cents)}, paid out Monday.\n\n${url}\n\nStop battle emails: ${unsub}`,
+				idempotencyKey: `sale-seller:${o.id}`,
+				unsubscribeUrl: unsub
+			});
+		}
+	});
+}

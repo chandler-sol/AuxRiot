@@ -28,6 +28,8 @@ ${error ? `<p class="e">${error}</p>` : ''}<input type="password" name="password
 /** Returns a Response to send instead of the page, or null to let the request through. */
 export async function betaGate(request: Request, url: URL, cookies: import('@sveltejs/kit').Cookies, env: Env): Promise<Response | null> {
 	if (url.pathname === '/robots.txt') return new Response('User-agent: *\nDisallow: /\n', { headers: { 'content-type': 'text/plain' } });
+	// Stripe can't type a password; the webhook is protected by its signature instead.
+	if (url.pathname === '/api/stripe/webhook' && request.method === 'POST') return null;
 	// Trim: a stray space pasted into the dashboard shouldn't lock people out.
 	const secret = env.BETA_PASSWORD?.trim();
 	const salt = env.SIGNAL_SALT ?? 'dev-salt';

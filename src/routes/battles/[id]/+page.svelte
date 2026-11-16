@@ -30,6 +30,11 @@
 	const COLORS = ['var(--a)', 'var(--b)'];
 
 	let b = $derived(data.battle);
+	let buying = $state<string | null>(null);
+	// Store section (shown for every battle state; buying opens once it's decided).
+	const forSale = $derived(data.sale.filter((x) => x.status === 'listed' || x.status === 'sold'));
+	const mySlot = $derived(data.entries.find((e) => e.userId === data.user?.id)?.slot);
+	const mine = $derived(data.sale.find((x) => x.mine));
 	let names = $derived([b.creator, b.challenger ?? '???'] as [string, string]);
 	let tag = $derived('#' + b.id.slice(0, 4).toUpperCase());
 
@@ -410,89 +415,6 @@
 		</section>
 		{/if}
 
-		{@const forSale = data.sale.filter((x) => x.status === 'listed' || x.status === 'sold')}
-		{@const mySlot = data.entries.find((e) => e.userId === data.user?.id)?.slot}
-		{@const mine = data.sale.find((x) => x.mine)}
-		{#if forSale.length || mySlot !== undefined}
-			<section class="forsale" id="buy">
-				{#each forSale as s (`${s.slot}-${s.round}`)}
-					<div class="sale" style:--c={COLORS[s.slot]}>
-						<div>
-							<p class="mono small sale-k">{names[s.slot]}'s beat{data.format.rounds > 1 ? ` · round ${s.round}` : ''} · exclusive</p>
-							<p class="display sale-p">{money(s.priceCents)}{#if s.stemsPriceCents}<span class="mono small"> · {money(s.stemsPriceCents)} with stems</span>{/if}</p>
-							<p class="mono small muted">{s.format?.toUpperCase() ?? ''}{s.tagged ? ' (tagged)' : ''} · one buyer, then it's gone</p>
-						</div>
-						{#if s.status === 'sold'}
-							<span class="display soldtag">Sold</span>
-						{:else if !s.buyOpen}
-							<span class="mono small muted locked">Buy unlocks when voting ends</span>
-						{:else if s.mine}
-							<span class="mono small muted locked">Your listing</span>
-						{:else}
-							<button class="primary" disabled title="Checkout is being built">Checkout opens soon</button>
-						{/if}
-					</div>
-					{#if !s.mine && s.status !== 'sold'}
-						<a class="mono ask" href="/messages/new?listing={s.listingId}">✉ Ask {names[s.slot]} privately</a>
-					{/if}
-					<details class="qa" open={s.questions.length <= 3}>
-						<summary class="mono">Questions about this beat · {s.questions.length}</summary>
-						<ul>
-							{#each s.questions as q (q.id)}
-								<li>
-									<p class="q"><a class="mono" href="/u/{q.username}">@{q.username}</a> <Verified label={q.verified_label} compact /> <Flair respect={q.respect} /> <CrewTag crew={q.crew} /> {q.body}</p>
-									{#if q.held}<p class="mono small held">Waiting for review — only you and the producer can see this.</p>{/if}
-									{#if q.answer}
-										<p class="a"><span class="mono">{names[s.slot]}:</span> {q.answer}</p>
-									{:else if s.mine}
-										<form method="POST" action="?/answer" class="ansf" use:enhance={() => async ({ update }) => update({ reset: true })}>
-											<input type="hidden" name="question_id" value={q.id} />
-											<input type="text" name="answer" maxlength="1000" placeholder="Answer publicly…" required />
-											<button class="small-btn">Answer</button>
-										</form>
-										{#if form?.aError && form.aId === q.id}<p class="error small">{form.aError}</p>{/if}
-									{:else}
-										<p class="mono small muted">Not answered yet</p>
-									{/if}
-									<div class="qfoot mono">
-										{ago(q.created_at, now)}
-										{#if data.user && (data.user.id === q.user_id || s.mine || data.user.isMod)}
-											<form method="POST" action="?/hideQuestion" use:enhance><input type="hidden" name="question_id" value={q.id} /><button class="link-btn">Remove</button></form>
-										{:else if data.user}
-											<ReportForm targetType="question" targetId={q.id} />
-										{/if}
-									</div>
-								</li>
-							{/each}
-						</ul>
-						{#if data.user && !s.mine && s.status === 'listed'}
-							<form method="POST" action="?/ask" class="askf" use:enhance={() => async ({ update }) => update({ reset: true })}>
-								<input type="hidden" name="listing_id" value={s.listingId} />
-								<input type="text" name="body" maxlength="500" placeholder="Ask in public — answers help everyone" required value={form?.qListing === s.listingId && form && 'qBody' in form ? String(form.qBody ?? '') : ''} />
-								<button class="small-btn">Ask</button>
-							</form>
-							{#if form?.qError && form.qListing === s.listingId}<p class="error small">{form.qError}</p>{/if}
-						{:else if !data.user && s.status === 'listed'}
-							<p class="mono small muted"><a href="/login?next=/battles/{b.id}%23buy">Log in</a> to ask a question.</p>
-						{/if}
-					</details>
-				{/each}
-				{#if mySlot !== undefined && b.status !== 'removed' && data.format.rounds > 1}
-					<div class="sell-links mono">
-						{#each Array.from({ length: data.format.rounds }, (_, i) => i + 1) as rd (rd)}
-							{@const m = data.sale.find((x) => x.mine && x.round === rd)}
-							{#if m?.status !== 'sold'}
-								<a class="sell-link" href="/battles/{b.id}/sell?round={rd}">{m?.status === 'listed' ? `Edit round ${rd} listing` : m ? `Finish round ${rd} listing` : `Sell round ${rd}`} →</a>
-							{/if}
-						{/each}
-					</div>
-				{:else if mySlot !== undefined && b.status !== 'removed' && mine?.status !== 'sold'}
-					<a class="mono sell-link" href="/battles/{b.id}/sell">
-						{mine?.status === 'listed' ? 'Edit your listing →' : mine ? 'Finish your listing →' : 'Sell this beat →'}
-					</a>
-				{/if}
-			</section>
-		{/if}
 
 		{#if data.credits?.canPromote && !data.promo}
 			{@const cr = data.credits}
@@ -517,6 +439,115 @@
 			{#if form?.promoError}<p class="error small">{form.promoError}</p>{/if}
 		{/if}
 
+	{/if}
+
+	{#if forSale.length || mySlot !== undefined}
+		<section class="forsale" id="buy">
+			{#each forSale as s (`${s.slot}-${s.round}`)}
+				<div class="sale" style:--c={COLORS[s.slot]}>
+					<div>
+						<p class="mono small sale-k">{names[s.slot]}'s beat{data.format.rounds > 1 ? ` · round ${s.round}` : ''} · exclusive</p>
+						<p class="display sale-p">{money(s.priceCents)}{#if s.stemsPriceCents}<span class="mono small"> · {money(s.stemsPriceCents)} with stems</span>{/if}</p>
+						<p class="mono small muted">{s.format?.toUpperCase() ?? ''}{s.tagged ? ' (tagged)' : ''} · one buyer, then it's gone</p>
+					</div>
+					{#if s.status === 'sold'}
+						<span class="display soldtag">Sold</span>
+					{:else if !s.buyOpen}
+						<span class="mono small muted locked">Buy unlocks when voting ends</span>
+					{:else if s.mine}
+						<span class="mono small muted locked">Your listing</span>
+					{:else if !data.checkoutLive}
+						<span class="mono small muted locked">Checkout opens soon</span>
+					{:else if !s.sellerPayouts}
+						<span class="mono small muted locked">Not available yet — {names[s.slot]} is setting up payouts</span>
+					{:else if s.heldUntil}
+						<span class="mono small muted locked">Someone's checking out — back in {Math.max(1, Math.ceil((s.heldUntil - now) / 60_000))} min if they don't finish</span>
+					{:else if !data.user}
+						<a class="btn primary" href="/login?next=/battles/{b.id}%23buy">Log in to buy</a>
+					{/if}
+				</div>
+				{#if data.checkoutLive && s.status === 'listed' && s.buyOpen && !s.mine && s.sellerPayouts && !s.heldUntil && data.user}
+					<details class="buybox" open={form?.buyId === s.listingId}>
+						<summary class="btn primary">Buy the exclusive</summary>
+						<form method="POST" action="?/buy" class="stack buyf" use:enhance={() => { buying = s.listingId; return async ({ update }) => { await update({ reset: false }); buying = null; }; }}>
+							<input type="hidden" name="listing_id" value={s.listingId} />
+							{#if s.stemsPriceCents}
+								<fieldset class="opts">
+									<label><input type="radio" name="stems" value="0" checked /> Beat only — {money(s.priceCents)}</label>
+									<label><input type="radio" name="stems" value="1" /> Beat + stems — {money(s.stemsPriceCents)}</label>
+								</fieldset>
+							{/if}
+							<div>
+								<label for="ln-{s.listingId}">Your full legal name</label>
+								<input id="ln-{s.listingId}" type="text" name="legal_name" maxlength="100" required placeholder="Printed on your license" autocomplete="name" />
+							</div>
+							<label class="agree"><input type="checkbox" name="agree" required /><span>I agree to the <a href="/store/license" target="_blank">Exclusive Beat License</a> and the <a href="/store/terms" target="_blank">Store Terms</a>. Refunds are available until my first download.</span></label>
+							{#if form?.buyError && form?.buyId === s.listingId}<p class="error small">{form.buyError}</p>{/if}
+							<button class="primary full" disabled={buying === s.listingId}>{buying === s.listingId ? 'Opening checkout…' : 'Continue to secure checkout'}</button>
+							<p class="mono small muted">Paid through Stripe. Sales tax is added at checkout where it applies. The beat is held for you for 30 minutes.</p>
+						</form>
+					</details>
+				{/if}
+				{#if !s.mine && s.status !== 'sold'}
+					<a class="mono ask" href="/messages/new?listing={s.listingId}">✉ Ask {names[s.slot]} privately</a>
+				{/if}
+				<details class="qa" open={s.questions.length <= 3}>
+					<summary class="mono">Questions about this beat · {s.questions.length}</summary>
+					<ul>
+						{#each s.questions as q (q.id)}
+							<li>
+								<p class="q"><a class="mono" href="/u/{q.username}">@{q.username}</a> <Verified label={q.verified_label} compact /> <Flair respect={q.respect} /> <CrewTag crew={q.crew} /> {q.body}</p>
+								{#if q.held}<p class="mono small held">Waiting for review — only you and the producer can see this.</p>{/if}
+								{#if q.answer}
+									<p class="a"><span class="mono">{names[s.slot]}:</span> {q.answer}</p>
+								{:else if s.mine}
+									<form method="POST" action="?/answer" class="ansf" use:enhance={() => async ({ update }) => update({ reset: true })}>
+										<input type="hidden" name="question_id" value={q.id} />
+										<input type="text" name="answer" maxlength="1000" placeholder="Answer publicly…" required />
+										<button class="small-btn">Answer</button>
+									</form>
+									{#if form?.aError && form.aId === q.id}<p class="error small">{form.aError}</p>{/if}
+								{:else}
+									<p class="mono small muted">Not answered yet</p>
+								{/if}
+								<div class="qfoot mono">
+									{ago(q.created_at, now)}
+									{#if data.user && (data.user.id === q.user_id || s.mine || data.user.isMod)}
+										<form method="POST" action="?/hideQuestion" use:enhance><input type="hidden" name="question_id" value={q.id} /><button class="link-btn">Remove</button></form>
+									{:else if data.user}
+										<ReportForm targetType="question" targetId={q.id} />
+									{/if}
+								</div>
+							</li>
+						{/each}
+					</ul>
+					{#if data.user && !s.mine && s.status === 'listed'}
+						<form method="POST" action="?/ask" class="askf" use:enhance={() => async ({ update }) => update({ reset: true })}>
+							<input type="hidden" name="listing_id" value={s.listingId} />
+							<input type="text" name="body" maxlength="500" placeholder="Ask in public — answers help everyone" required value={form?.qListing === s.listingId && form && 'qBody' in form ? String(form.qBody ?? '') : ''} />
+							<button class="small-btn">Ask</button>
+						</form>
+						{#if form?.qError && form.qListing === s.listingId}<p class="error small">{form.qError}</p>{/if}
+					{:else if !data.user && s.status === 'listed'}
+						<p class="mono small muted"><a href="/login?next=/battles/{b.id}%23buy">Log in</a> to ask a question.</p>
+					{/if}
+				</details>
+			{/each}
+			{#if mySlot !== undefined && b.status !== 'removed' && data.format.rounds > 1}
+				<div class="sell-links mono">
+					{#each Array.from({ length: data.format.rounds }, (_, i) => i + 1) as rd (rd)}
+						{@const m = data.sale.find((x) => x.mine && x.round === rd)}
+						{#if m?.status !== 'sold'}
+							<a class="sell-link" href="/battles/{b.id}/sell?round={rd}">{m?.status === 'listed' ? `Edit round ${rd} listing` : m ? `Finish round ${rd} listing` : `Sell round ${rd}`} →</a>
+						{/if}
+					{/each}
+				</div>
+			{:else if mySlot !== undefined && b.status !== 'removed' && mine?.status !== 'sold'}
+				<a class="mono sell-link" href="/battles/{b.id}/sell">
+					{mine?.status === 'listed' ? 'Edit your listing →' : mine ? 'Finish your listing →' : 'Sell this beat →'}
+				</a>
+			{/if}
+		</section>
 	{/if}
 
 	<div class="lower" class:solo={b.status !== 'voting'}>
@@ -668,6 +699,15 @@
 </article>
 
 <style>
+	.buybox { margin: 4px 0 8px; }
+	.buybox > summary { list-style: none; display: inline-flex; cursor: pointer; }
+	.buybox > summary::-webkit-details-marker { display: none; }
+	.buybox[open] > summary { display: none; }
+	.buyf { border: 1.5px solid var(--line-2); border-radius: var(--radius); padding: 12px; }
+	.buyf .opts { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
+	.buyf .opts label, .buyf .agree { display: flex; gap: 8px; align-items: flex-start; margin: 0; text-transform: none; letter-spacing: 0; font-family: var(--body); font-weight: 400; color: var(--dim); font-size: 0.92rem; }
+	.buyf input[name=legal_name] { width: 100%; box-sizing: border-box; }
+	.buyf input[type=checkbox], .buyf input[type=radio] { width: 18px; height: 18px; accent-color: var(--pink); flex: none; margin-top: 2px; }
 	.vrow { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 8px 0 0; }
 	.vrow > span { display: inline-flex; align-items: center; gap: 6px; }
 	/* Verified creators' comments stand out so their crowd can find them. */

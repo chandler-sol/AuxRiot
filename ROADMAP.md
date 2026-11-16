@@ -208,7 +208,9 @@ No packs under ~$5: card fees (≈30¢ + 3%) eat small purchases.
 - **Setup:** Connect marketplace on Accounts v2. Sellers get recipient accounts with the Express dashboard; AuxRiot collects fees and covers losses. Destination charges through Checkout, with a 20% fee plus card processing taken from the seller's share.
 - **Payouts:** weekly on **Mondays**, set per account through the Balance Settings API.
 - **Done:** a /settings/payouts page (Stripe-hosted onboarding, status, Express dashboard link), a Stripe health card on Admin → Store, and a payouts prompt on the sell page.
-- **Next:** checkout and webhook (orders, license, downloads, SOLD), then refunds and disputes, then Stripe Tax (pending registration decisions), then services checkout, then AuxRiot Pro (Billing).
+- **Done:** checkout. Buy box (legal name plus license agreement), then Stripe Checkout as a destination charge with a 30-minute hold, fulfilled only from the signed webhook (paid order, SOLD, emails). Includes /purchases, 7-day downloads where the first download makes the sale final, and a signed, printable license. Abandoned or failed checkouts release the hold, and dashboard refunds are mirrored on the order.
+- **Fixed:** the store section was missing on finished battles.
+- **Next:** admin refunds (ordinary and copyright) and dispute handling, then discount codes, then the Stripe Tax switch (pending registration), then services checkout, then AuxRiot Pro (Billing).
 
 ## AuxRiot Pro
 

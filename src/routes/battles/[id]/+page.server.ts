@@ -12,6 +12,8 @@ import {
 	type Scores
 } from '#lib/server/battles.ts';
 import { BADGE_SELECT } from '#lib/server/crews.ts';
+import { cancelPending, startCheckout } from '#lib/server/checkout.ts';
+import { stripeMode } from '#lib/server/stripe.ts';
 import { getEnv, newId, sha256, HOUR } from '#lib/server/util.ts';
 import { getVoterMinAgeHours } from '#lib/server/settings.ts';
 import { previewSlot, promoStatus } from '#lib/server/promos.ts';
@@ -62,7 +64,7 @@ async function getBattle(db: D1Database, id: string) {
 		.first<BattleRow>();
 }
 
-export const load: PageServerLoad = async ({ params, platform, locals }) => {
+export const load: PageServerLoad = async ({ params, platform, locals, url }) => {
 	const env = getEnv(platform);
 	let battle = await getBattle(env.DB, params.id);
 	if (!battle || battle.status === 'removed') error(404, 'Battle not found');
@@ -77,6 +79,7 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 	}
 
 	const user = locals.user;
+	if (user && url.searchParams.get('canceled')) await cancelPending(env.DB, url.searchParams.get('canceled')!, user.id);
 	const newView = await countView(env, battle.id, locals.deviceId);
 	const isBattler = !!user && (user.id === battle.creator_id || user.id === battle.challenger_id);
 	const promo = isBattler || user?.isAdmin ? await promoStatus(env.DB, battle.id, Date.now()) : null;
@@ -251,6 +254,8 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 				: null,
 		promo,
 		sale: await saleInfo(env.DB, battle.id, battle.status, user?.id ?? null),
+		// Checkout needs both Stripe secrets on this Worker.
+		checkoutLive: !!stripeMode(env) && !!env.STRIPE_WEBHOOK_SECRET,
 		views: battle.views + (newView ? 1 : 0),
 		now: Date.now()
 	};
@@ -260,11 +265,12 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 async function saleInfo(db: D1Database, battleId: string, status: string, userId: string | null) {
 	const rows = await db
 		.prepare(
-			`SELECT l.id, l.status, l.price_cents, l.stems_price_cents, l.stems_key IS NOT NULL AS has_stems, l.file_format, l.tagged, l.seller_id, e.slot
-			 FROM listings l JOIN entries e ON e.id = l.entry_id WHERE l.battle_id = ?`
+			`SELECT l.id, l.status, l.price_cents, l.stems_price_cents, l.stems_key IS NOT NULL AS has_stems, l.file_format, l.tagged, l.seller_id, l.held_until, l.held_by, e.slot, e.round,
+			        u.payouts_enabled AS seller_payouts
+			 FROM listings l JOIN entries e ON e.id = l.entry_id JOIN users u ON u.id = l.seller_id WHERE l.battle_id = ?`
 		)
 		.bind(battleId)
-		.all<{ id: string; status: string; price_cents: number | null; stems_price_cents: number | null; has_stems: number; file_format: string | null; tagged: number; seller_id: string; slot: number; round: number }>();
+		.all<{ id: string; status: string; price_cents: number | null; stems_price_cents: number | null; has_stems: number; file_format: string | null; tagged: number; seller_id: string; held_until: number | null; held_by: string | null; slot: number; round: number; seller_payouts: number }>();
 	const open = buyOpen(status);
 	const visible = rows.results.filter((r) => r.status === 'listed' || r.status === 'sold' || r.seller_id === userId);
 	const ids = visible.map((r) => r.id);
@@ -295,7 +301,10 @@ async function saleInfo(db: D1Database, battleId: string, status: string, userId
 			stemsPriceCents: r.has_stems ? r.stems_price_cents : null,
 			format: r.file_format,
 			tagged: !!r.tagged,
-			buyOpen: open
+			buyOpen: open,
+			sellerPayouts: !!r.seller_payouts,
+			// Someone else is mid-checkout on this exclusive.
+			heldUntil: r.held_until && r.held_until > Date.now() && r.held_by !== userId ? r.held_until : null
 		}));
 }
 
@@ -352,6 +361,17 @@ function requireUser(locals: App.Locals, path: string) {
 }
 
 export const actions: Actions = {
+	/** Exclusive purchase: confirm the license here, then pay on Stripe Checkout. */
+	buy: async ({ request, locals, url }) => {
+		const user = requireUser(locals, url.pathname);
+		const f = await request.formData();
+		const listingId = String(f.get('listing_id') ?? '');
+		if (f.get('agree') !== 'on') return fail(400, { buyError: 'Agree to the Exclusive Beat License to continue.', buyId: listingId });
+		const r = await startCheckout(getEnv(), user, listingId, { stems: f.get('stems') === '1', legalName: String(f.get('legal_name') ?? ''), origin: url.origin });
+		if ('error' in r) return fail(400, { buyError: r.error, buyId: listingId });
+		redirect(303, r.url, { external: true });
+	},
+
 	respond: async ({ request, params, locals, platform, url }) => {
 		const user = requireUser(locals, url.pathname);
 		const env = getEnv(platform);
