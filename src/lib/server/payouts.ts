@@ -72,7 +72,6 @@ export async function onboardingLink(env: Env, userId: string, origin: string) {
 		use_case: {
 			type: 'account_onboarding',
 			account_onboarding: {
-				configurations: ['recipient'],
 				refresh_url: `${origin}/settings/payouts?refresh=1`,
 				return_url: `${origin}/settings/payouts?return=1`
 			}
