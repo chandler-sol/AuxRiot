@@ -240,7 +240,9 @@
 	@media (min-width: 640px) { .filters { grid-template-columns: 1fr auto auto; } }
 	.count { margin: 12px 0 8px; font-weight: 400; }
 	.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-	.user { background: var(--ink-2); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+	/* min-width: 0 lets cards shrink to the screen; otherwise a long email widens them past the edge. */
+	.user { background: var(--ink-2); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+	.user .top { min-width: 0; }
 	.top { display: flex; align-items: center; gap: 12px; }
 	.who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 	.name { font-size: 1.5rem; color: var(--paper); text-decoration: none; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
