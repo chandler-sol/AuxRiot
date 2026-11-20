@@ -1,4 +1,5 @@
 import type { Cookies } from '@sveltejs/kit';
+import { notify, plural } from './notifications.ts';
 
 /**
  * Crews: a verified creator shares auxriot.com/with/<name>; anyone who signs up
@@ -35,7 +36,19 @@ export async function applyCrewOnSignup(db: D1Database, cookies: Cookies, userId
 }
 
 export async function setCrew(db: D1Database, userId: string, creatorId: string | null) {
+	const before = await db.prepare('SELECT crew_id, username FROM users WHERE id = ?').bind(userId).first<{ crew_id: string | null; username: string }>();
 	await db.prepare('UPDATE users SET crew_id = ?, crew_joined_at = ? WHERE id = ?').bind(creatorId, creatorId ? Date.now() : null, userId).run();
+	if (creatorId && before && before.crew_id !== creatorId) {
+		const creator = await db.prepare('SELECT username FROM users WHERE id = ?').bind(creatorId).first<{ username: string }>();
+		await notify(db, {
+			userId: creatorId,
+			kind: 'crew_join',
+			actorId: userId,
+			group: `crew:${creatorId}`,
+			text: (n) => (n === 1 ? `@${before.username} joined your crew.` : `${plural(n, 'new member')} joined your crew.`),
+			url: `/u/${creator?.username ?? ''}#crew`
+		});
+	}
 }
 
 /** SQL bits for showing badges: select these after joining users AS u. */

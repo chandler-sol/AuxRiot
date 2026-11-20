@@ -14,6 +14,9 @@ import {
 import { BADGE_SELECT } from '#lib/server/crews.ts';
 import { cancelPending, startCheckout } from '#lib/server/checkout.ts';
 import { stripeMode } from '#lib/server/stripe.ts';
+import { knownUsernames, notifyMentions, tooManyMentions } from '#lib/server/mentions.ts';
+import { notify, notifyEach, plural } from '#lib/server/notifications.ts';
+import { MAX_MENTIONS } from '#lib/mentions.ts';
 import { getEnv, newId, sha256, HOUR } from '#lib/server/util.ts';
 import { getVoterMinAgeHours } from '#lib/server/settings.ts';
 import { previewSlot, promoStatus } from '#lib/server/promos.ts';
@@ -228,6 +231,7 @@ export const load: PageServerLoad = async ({ params, platform, locals, url }) =>
 			listenedMs: listenMap[e.id] ?? 0
 		})),
 		// The voter always sees their own upvote in the count, even when it silently doesn't count.
+		mentionNames: await knownUsernames(env.DB, comments.results.map((c) => c.body)),
 		comments: comments.results.map(({ upvoted, ...c }) => ({
 			...c,
 			mine: upvoted > 0,
@@ -541,19 +545,37 @@ export const actions: Actions = {
 		const env = getEnv(platform);
 		const body = String((await request.formData()).get('body') ?? '').trim();
 		if (body.length < 1 || body.length > 1000) return fail(400, { commentError: 'Comments are 1–1000 characters.' });
+		if (tooManyMentions(body)) return fail(400, { commentError: `Tag up to ${MAX_MENTIONS} people per comment.`, body });
 
 		const last = await env.DB.prepare('SELECT created_at FROM comments WHERE user_id = ? ORDER BY created_at DESC LIMIT 1')
 			.bind(user.id)
 			.first<{ created_at: number }>();
 		if (last && Date.now() - last.created_at < 10_000) return fail(429, { commentError: 'Slow down a little.', body });
 
-		const battle = await env.DB.prepare(`SELECT status FROM battles WHERE id = ?`).bind(params.id).first<{ status: string }>();
+		const battle = await env.DB.prepare(`SELECT status, title, creator_id, challenger_id FROM battles WHERE id = ?`)
+			.bind(params.id)
+			.first<{ status: string; title: string; creator_id: string; challenger_id: string | null }>();
 		if (!battle || battle.status === 'removed') return fail(404, { commentError: 'Battle not found.' });
 
 		const held = matchesBlocked(body, await getBlockedWords(env.DB)) ? 1 : 0;
+		const commentId = newId();
 		await env.DB.prepare('INSERT INTO comments (id, battle_id, user_id, body, created_at, held) VALUES (?, ?, ?, ?, ?, ?)')
-			.bind(newId(), params.id, user.id, body, Date.now(), held)
+			.bind(commentId, params.id, user.id, body, Date.now(), held)
 			.run();
+		if (!held && !user.shadowbanned) {
+			const tagged = await notifyMentions(env.DB, { id: commentId, battleId: params.id, battleTitle: battle.title, body, held: !!held, author: user });
+			// Battlers hear about new comments (merged while unread). Skip anyone already tagged in this one.
+			const taggedNames = new Set(tagged ? (await knownUsernames(env.DB, [body])) : []);
+			const battlers = [battle.creator_id, battle.challenger_id].filter((x): x is string => !!x);
+			const names = await env.DB.prepare(`SELECT id, LOWER(username) AS u FROM users WHERE id IN (${battlers.map(() => '?').join(',')})`).bind(...battlers).all<{ id: string; u: string }>();
+			await notifyEach(env.DB, names.results.filter((b) => !taggedNames.has(b.u)).map((b) => b.id), () => ({
+				kind: 'battle_comment',
+				actorId: user.id,
+				group: `comments:${params.id}`,
+				text: (n) => (n === 1 ? `@${user.username} commented on "${battle.title}"` : `${plural(n, 'new comment')} on "${battle.title}"`),
+				url: `/battles/${params.id}#c-${commentId}`
+			}));
+		}
 		return { commented: true, held: !!held };
 	},
 
@@ -598,6 +620,10 @@ export const actions: Actions = {
 			.prepare('INSERT INTO listing_questions (id, listing_id, user_id, body, held, created_at) VALUES (?, ?, ?, ?, ?, ?)')
 			.bind(newId(), listingId, user.id, body, held, Date.now())
 			.run();
+		if (!held && !user.shadowbanned) {
+			const t = await db.prepare('SELECT title FROM battles WHERE id = ?').bind(params.id).first<{ title: string }>();
+			await notify(db, { userId: l.seller_id, kind: 'listing_question', actorId: user.id, text: `@${user.username} asked about your beat on "${t?.title}": ${body.slice(0, 90)}${body.length > 90 ? '…' : ''}`, url: `/battles/${params.id}#buy` });
+		}
 		return { asked: listingId };
 	},
 
@@ -613,6 +639,11 @@ export const actions: Actions = {
 			.bind(answer, Date.now(), id, user.id)
 			.run();
 		if (!r.meta.changes) return fail(403, { aError: 'Only the producer can answer.', aId: id });
+		const q = await db
+			.prepare('SELECT q.user_id, b.id AS battle_id, b.title FROM listing_questions q JOIN listings l ON l.id = q.listing_id JOIN battles b ON b.id = l.battle_id WHERE q.id = ?')
+			.bind(id)
+			.first<{ user_id: string; battle_id: string; title: string }>();
+		if (q) await notify(db, { userId: q.user_id, kind: 'question_answered', actorId: user.id, text: `@${user.username} answered your question about "${q.title}".`, url: `/battles/${q.battle_id}#buy` });
 		return { answered: id };
 	},
 

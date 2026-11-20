@@ -8,6 +8,8 @@
 	import ReportForm from '#lib/components/ReportForm.svelte';
 	import Flair from '#lib/components/Flair.svelte';
 	import Verified from '#lib/components/Verified.svelte';
+	import MentionTextarea from '#lib/components/MentionTextarea.svelte';
+	import { mentionParts } from '#lib/mentions.ts';
 	import CrewTag from '#lib/components/CrewTag.svelte';
 	import ShareChallenge from '#lib/components/ShareChallenge.svelte';
 	import { money } from '#lib/store.ts';
@@ -31,6 +33,18 @@
 
 	let b = $derived(data.battle);
 	let buying = $state<string | null>(null);
+	// @mentions: real usernames become links; the battlers are suggested first, then the thread.
+	const known = $derived(new Set(data.mentionNames));
+	const mentionPeople = $derived.by(() => {
+		const out: { username: string; avatarKey?: string | null; color?: string | null; tag?: string | null }[] = [];
+		const add = (username: string | null | undefined, tag: string | null, avatarKey: string | null = null, color: string | null = null) => {
+			if (username && username !== data.user?.username && !out.some((x) => x.username === username)) out.push({ username, tag, avatarKey, color });
+		};
+		add(b.creator, 'Battler');
+		add(b.challenger, 'Battler');
+		for (const c of [...data.comments].reverse()) add(c.username, 'In thread', c.avatar_key, c.color);
+		return out;
+	});
 	// Store section (shown for every battle state; buying opens once it's decided).
 	const forSale = $derived(data.sale.filter((x) => x.status === 'listed' || x.status === 'sold'));
 	const mySlot = $derived(data.entries.find((e) => e.userId === data.user?.id)?.slot);
@@ -626,7 +640,7 @@
 						await update({ reset: false });
 					}}
 			>
-				<textarea name="body" maxlength="1000" placeholder="Say something about these beats…" bind:value={commentBody} required></textarea>
+				<MentionTextarea bind:value={commentBody} people={mentionPeople} placeholder="Say something about these beats… type @ to tag someone" />
 				{#if form?.commentError}<p class="error small">{form.commentError}</p>{/if}
 				{#if commentBody.trim()}<div><button>Post comment</button></div>{/if}
 			</form>
@@ -637,7 +651,7 @@
 		<ul class="comments">
 			{#each sortedComments as c (c.id)}
 				{@const v = voteOf(c)}
-				<li class:vip={!!c.verified_label}>
+				<li class:vip={!!c.verified_label} id="c-{c.id}">
 					<div class="cmeta">
 						<span class="whowrap">
 							<a class="mono who" href="/u/{c.username}"><Avatar username={c.username} avatarKey={c.avatar_key} color={c.color} size={28} />@{c.username}</a>
@@ -655,7 +669,7 @@
 							{/if}
 						</span>
 					</div>
-					<p class="body">{c.body}</p>
+					<p class="body">{#each mentionParts(c.body, known) as part, pi (pi)}{#if 'user' in part}<a class="mention" href="/u/{part.user}">@{part.user}</a>{:else}{part.text}{/if}{/each}</p>
 					{#if c.held}<p class="mono small held">Only you can see this until a moderator reviews it.</p>{/if}
 					<div class="cfoot">
 						{#if c.held}
@@ -699,6 +713,8 @@
 </article>
 
 <style>
+	.body :global(.mention), .body .mention { color: var(--cyan, #2bd9f5); text-decoration: none; font-weight: 600; }
+	.comments li:target { outline: 2px solid var(--pink); outline-offset: 4px; border-radius: var(--radius); }
 	.buybox { margin: 4px 0 8px; }
 	.buybox > summary { list-style: none; display: inline-flex; cursor: pointer; }
 	.buybox > summary::-webkit-details-marker { display: none; }

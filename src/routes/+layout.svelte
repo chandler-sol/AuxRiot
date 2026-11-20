@@ -83,6 +83,10 @@
 		<nav>
 			<a class="mono navlink storelink" href="/store">Store</a>
 			{#if data.user}
+				<a class="bell" href="/notifications" aria-label={data.notes ? `Notifications, ${data.notes} unread` : 'Notifications'} class:on={page.route.id === '/notifications'}>
+					<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 4.5 1.5 6.5 2.5 7.5h-17C4.5 15.5 6 13.5 6 9Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><path d="M10 20a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+					{#if data.notes}<span class="mono badge bellbadge">{data.notes > 99 ? '99+' : data.notes}</span>{/if}
+				</a>
 				<details class="account" bind:open={menuOpen} bind:this={menuEl}>
 					<summary class="acct" aria-label="Account menu for {data.user.username}">
 						<Avatar username={data.user.username} avatarKey={data.user.avatarKey} color={data.user.color} size={30} />
@@ -97,6 +101,7 @@
 							<a class="mono mh-cr" href="/credits" onclick={() => (menuOpen = false)}>{data.user.credits.toLocaleString()} credits →</a>
 						</div>
 						<a href="/u/{data.user.username}" onclick={() => (menuOpen = false)}>My profile</a>
+						<a href="/notifications" onclick={() => (menuOpen = false)}>Notifications{#if data.notes}<span class="mono badge inmenu">{data.notes}</span>{/if}</a>
 						<a href="/messages" onclick={() => (menuOpen = false)}>Messages{#if data.unread}<span class="mono badge inmenu">{data.unread}</span>{/if}</a>
 						<a href="/credits" onclick={() => (menuOpen = false)}>Credits</a>
 						<a href="/store" onclick={() => (menuOpen = false)}>Store &amp; services</a>
@@ -211,6 +216,9 @@
 	.chip { color: var(--pink); white-space: nowrap; }
 	.badge { background: var(--pink); color: var(--ink); border-radius: 999px; min-width: 20px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; font-size: 0.66rem; font-weight: 700; }
 	.badge.inmenu { margin-left: 10px; }
+	.bell { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border: 1.5px solid var(--line-2); border-radius: var(--radius); color: var(--paper); flex: none; }
+	.bell:hover, .bell.on { border-color: var(--paper); background: var(--ink-2); }
+	.bellbadge { position: absolute; top: -7px; right: -7px; }
 	.chev { flex: none; transition: transform 0.15s; }
 	.account[open] .chev { transform: rotate(180deg); }
 	@media (max-width: 560px) { .uname { display: none; } }
@@ -239,7 +247,9 @@
 	.vb .mono { color: var(--ink); }
 	.vb .link-btn { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 	.vb .link-btn:hover { color: var(--pink); }
-	.beat { min-height: 38px; padding: 2px 14px 0; font-size: 1.05rem; }
+	.beat { min-height: 38px; padding: 2px 14px 0; font-size: 1.05rem; white-space: nowrap; }
+	/* Narrow phones: the credit balance lives in the menu, so the header fits the bell and + Beat on one line. */
+	@media (max-width: 420px) { .acct .chip { display: none; } .bell { width: 38px; height: 38px; } }
 	footer { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; padding-top: 40px; padding-bottom: 40px; color: var(--muted); }
 	footer a { color: var(--muted); text-decoration: none; }
 	footer a:hover { color: var(--paper); }

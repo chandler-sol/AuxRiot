@@ -4,6 +4,7 @@ import { getEnv } from '#lib/server/util.ts';
 import { logAction, requireMod, setShadowban, setSuspended } from '#lib/server/mod.ts';
 import { voidBattle } from '#lib/server/modtools.ts';
 import { refreshComment } from '#lib/server/respect.ts';
+import { notifyEach } from '#lib/server/notifications.ts';
 
 type Report = { id: string; target_type: string; target_id: string; reason: string; details: string; created_at: number; status: string; reporter: string };
 type Person = { id: string; username: string; shadowbanned: number; suspended_at: number | null; is_mod: number; is_admin: number };
@@ -149,7 +150,13 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 };
 
 async function resolve(db: D1Database, type: string, id: string, status: 'actioned' | 'dismissed') {
-	await db.prepare(`UPDATE reports SET status = ? WHERE target_type = ? AND target_id = ? AND status = 'open'`).bind(status, type, id).run();
+	const done = await db
+		.prepare(`UPDATE reports SET status = ? WHERE target_type = ? AND target_id = ? AND status = 'open' RETURNING reporter_id`)
+		.bind(status, type, id)
+		.all<{ reporter_id: string }>();
+	if (status === 'actioned') {
+		await notifyEach(db, done.results.map((r) => r.reporter_id), () => ({ kind: 'report_actioned', text: 'Thanks for your report. Moderators reviewed it and took action.', url: '/rules' }));
+	}
 }
 
 export const actions: Actions = {

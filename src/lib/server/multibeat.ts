@@ -1,4 +1,5 @@
 import { CATEGORIES, LISTEN_THRESHOLD, ballotWeight, castVote, type Scores } from './battles.ts';
+import { notify, notifyEach } from './notifications.ts';
 
 /**
  * Judging for multi-beat battles. Each round is scored on its own (after hearing
@@ -113,11 +114,30 @@ export async function submitOvertime(
 		return 'You already dropped your overtime beat.';
 	}
 	const both = await db.prepare('SELECT COUNT(*) AS n FROM entries WHERE battle_id = ? AND round = ? AND removed = 0').bind(b.id, round).first<{ n: number }>();
+	const info = await db
+		.prepare('SELECT b.title, u.username FROM battles b JOIN users u ON u.id = ? WHERE b.id = ?')
+		.bind(userId, b.id)
+		.first<{ title: string; username: string }>();
+	const title = info?.title ?? 'your battle';
+	const url = `/battles/${b.id}#overtime`;
 	if ((both?.n ?? 0) >= 2) {
-		await db
+		const opened = await db
 			.prepare(`UPDATE battles SET ot_status = 'voting', ot_ends_at = ? WHERE id = ? AND status = 'overtime' AND ot_status = 'offered'`)
 			.bind(Date.now() + voteHours * 3_600_000, b.id)
 			.run();
+		if (opened.meta.changes) {
+			await notifyEach(db, [b.creator_id, b.challenger_id], () => ({ kind: 'ot_vote_open', text: `Both overtime beats are in on "${title}". The crowd votes for ${voteHours} hours.`, url }));
+			// Everyone who judged the set gets a shot at the deciding round.
+			const judges = await db.prepare('SELECT voter_id FROM votes WHERE battle_id = ? AND weight > 0').bind(b.id).all<{ voter_id: string }>();
+			await notifyEach(db, judges.results.map((j) => j.voter_id).filter((id) => id !== b.creator_id && id !== b.challenger_id), () => ({
+				kind: 'ot_vote_open',
+				text: `"${title}" went to overtime. Score the deciding round: +10 credits.`,
+				url
+			}));
+		}
+	} else {
+		const opponent = userId === b.creator_id ? b.challenger_id : b.creator_id;
+		await notify(db, { userId: opponent, kind: 'ot_opponent_dropped', actorId: userId, text: `@${info?.username ?? 'Your opponent'} dropped their overtime beat on "${title}". Drop yours before the window closes — you can't hear theirs until you do.`, url });
 	}
 	return null;
 }

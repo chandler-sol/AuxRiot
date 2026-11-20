@@ -212,6 +212,23 @@ No packs under ~$5: card fees (≈30¢ + 3%) eat small purchases.
 - **Fixed:** the store section was missing on finished battles.
 - **Next:** admin refunds (ordinary and copyright) and dispute handling, then discount codes, then the Stripe Tax switch (pending registration), then services checkout, then AuxRiot Pro (Billing).
 
+## Notifications and @mentions (built on beta)
+
+- **Bell in the header** with an unread count, plus a /notifications page (Today / This week / Earlier) that marks everything read when opened. Repeat events merge while unread ("3 new comments"). Read items are pruned after 90 days, everything after 180.
+- **@mentions in comments:**
+  - Typing @ suggests the battlers first, then people in the thread, then any user.
+  - Up to 5 tags per comment. Real usernames become profile links.
+  - Tagged people are notified, with an optional email (at most one per battle every 3 hours, "Tag alerts" setting).
+  - No notification for held comments, shadowbanned authors, blocked users or self-tags.
+- **Events in the bell:**
+  - **Battles:** answered, results, expired, still waiting, removed by moderators, recounted.
+  - **Overtime:** offered, opponent dropped their beat, vote open (battlers plus the set's judges).
+  - **Judging:** credits earned, finish-your-ballot reminder.
+  - **Social:** comments on your battle, tags, respect tier reached, crew joins, verified.
+  - **Store:** beat sold, purchase, question on your beat, question answered, refunds, payouts on or paused.
+  - **Other:** credit grants and drops, copyright takedowns, report actioned.
+- **Messages** keep their own inbox and badge.
+
 ## AuxRiot Pro
 
 Launch ad-free with better audio first; add perks as they're built.

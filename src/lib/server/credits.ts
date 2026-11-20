@@ -7,6 +7,7 @@
 import { newId, DAY } from './util.ts';
 import { sharedSignals } from './battles.ts';
 import { formatOf } from '../battleformat.ts';
+import { notify } from './notifications.ts';
 import { getNumberSetting, JUDGE_ROUND_CAP_KEY } from './settings.ts';
 import { bookPromotion } from './promos.ts';
 
@@ -157,9 +158,9 @@ async function judgeRoundsLeft(db: D1Database, userId: string, excludeRef: strin
  */
 export async function awardJudges(db: D1Database, battleId: string) {
 	const b = await db
-		.prepare(`SELECT creator_id, challenger_id, rounds, (SELECT MAX(closed_at) FROM battle_outcomes WHERE battle_id = ?) AS closed_at FROM battles WHERE id = ? AND status = 'closed'`)
+		.prepare(`SELECT title, creator_id, challenger_id, rounds, (SELECT MAX(closed_at) FROM battle_outcomes WHERE battle_id = ?) AS closed_at FROM battles WHERE id = ? AND status = 'closed'`)
 		.bind(battleId, battleId)
-		.first<{ creator_id: string; challenger_id: string; rounds: number; closed_at: number | null }>();
+		.first<{ title: string; creator_id: string; challenger_id: string; rounds: number; closed_at: number | null }>();
 	if (!b) return 0;
 	const closedAt = b.closed_at ?? Date.now();
 	const voters = await db
@@ -174,14 +175,17 @@ export async function awardJudges(db: D1Database, battleId: string) {
 	for (const { voter_id } of voters.results) {
 		const rounds = Math.min(b.rounds || 1, await judgeRoundsLeft(db, voter_id, battleId, closedAt));
 		if (rounds <= 0) continue;
-		if (await addCredits(db, voter_id, CREDITS.judge * rounds, 'judge_reward', battleId, '', closedAt)) paid++;
+		if (await addCredits(db, voter_id, CREDITS.judge * rounds, 'judge_reward', battleId, '', closedAt)) {
+			paid++;
+			await notify(db, { userId: voter_id, kind: 'judge_credits', text: `+${CREDITS.judge * rounds} credits for judging "${b.title}". Results are in.`, url: `/battles/${battleId}` }).catch(() => {});
+		}
 	}
 	return paid;
 }
 
 /** Overtime-round judges: +10 each for counted ballots on that round. */
 export async function awardOtJudges(db: D1Database, battleId: string, otRound: number) {
-	const b = await db.prepare('SELECT creator_id, challenger_id FROM battles WHERE id = ?').bind(battleId).first<{ creator_id: string; challenger_id: string }>();
+	const b = await db.prepare('SELECT title, creator_id, challenger_id FROM battles WHERE id = ?').bind(battleId).first<{ title: string; creator_id: string; challenger_id: string }>();
 	if (!b) return 0;
 	const now = Date.now();
 	const ref = `${battleId}:ot`;
@@ -195,7 +199,10 @@ export async function awardOtJudges(db: D1Database, battleId: string, otRound: n
 	let paid = 0;
 	for (const { voter_id } of voters.results) {
 		if ((await judgeRoundsLeft(db, voter_id, ref, now)) <= 0) continue;
-		if (await addCredits(db, voter_id, CREDITS.judge, 'judge_reward', ref, 'Overtime round', now)) paid++;
+		if (await addCredits(db, voter_id, CREDITS.judge, 'judge_reward', ref, 'Overtime round', now)) {
+			paid++;
+			await notify(db, { userId: voter_id, kind: 'judge_credits', text: `+${CREDITS.judge} credits for judging the overtime round of "${b.title}".`, url: `/battles/${battleId}` }).catch(() => {});
+		}
 	}
 	return paid;
 }

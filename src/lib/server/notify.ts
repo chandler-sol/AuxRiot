@@ -1,6 +1,7 @@
 import * as cf from 'cloudflare:workers';
 import { layout, sendEmail } from './email.ts';
 import { getEnv, sha256, DAY } from './util.ts';
+import { notify } from './notifications.ts';
 
 /**
  * Battle notification emails. Everything here runs after the response is sent
@@ -45,12 +46,13 @@ export function notifyAnswered(db: D1Database, battleId: string) {
 	later(async () => {
 		const b = await db
 			.prepare(
-				`SELECT b.title, b.creator_id, b.vote_hours, ch.username AS challenger
+				`SELECT b.title, b.creator_id, b.challenger_id, b.vote_hours, ch.username AS challenger
 				 FROM battles b JOIN users ch ON ch.id = b.challenger_id WHERE b.id = ?`
 			)
 			.bind(battleId)
-			.first<{ title: string; creator_id: string; vote_hours: number; challenger: string }>();
+			.first<{ title: string; creator_id: string; challenger_id: string; vote_hours: number; challenger: string }>();
 		if (!b) return;
+		await notify(db, { userId: b.creator_id, kind: 'battle_answered', actorId: b.challenger_id, text: `@${b.challenger} answered "${b.title}". Voting is live for ${b.vote_hours} hours.`, url: `/battles/${battleId}` });
 		const to = await recipient(db, b.creator_id);
 		if (!to) return;
 		const url = `${SITE}/battles/${battleId}`;
@@ -91,8 +93,6 @@ export function notifyResult(db: D1Database, battleId: string) {
 			.all<{ user_id: string; score: number; opponent_score: number }>();
 		const url = `${SITE}/battles/${battleId}`;
 		for (const uid of [b.creator_id, b.challenger_id]) {
-			const to = await recipient(db, uid);
-			if (!to) continue;
 			const opp = uid === b.creator_id ? b.challenger : b.creator;
 			const sc = scores.results.find((s) => s.user_id === uid);
 			const card = sc ? `${sc.score.toFixed(2)} to ${sc.opponent_score.toFixed(2)}` : '';
@@ -103,6 +103,14 @@ export function notifyResult(db: D1Database, battleId: string) {
 			const cr = earned?.amount ? ` +${earned.amount} battle credits.` : '';
 			const won = b.winner_id === uid;
 			const tie = b.winner_id === null;
+			await notify(db, {
+				userId: uid,
+				kind: 'battle_result',
+				text: `${tie ? `Dead even vs ${opp}` : won ? `You beat ${opp}` : `${opp} took it`} on "${b.title}"${card ? ` (${card})` : ''}.${cr}`,
+				url: `/battles/${battleId}`
+			});
+			const to = await recipient(db, uid);
+			if (!to) continue;
 			const subject = tie ? `Dead even vs ${opp}` : won ? `You beat ${opp} 🏆` : `Results are in vs ${opp}`;
 			const headline = tie
 				? `Dead <span style="color:#ff3d7f">even.</span>`
@@ -141,6 +149,8 @@ export async function remindWaiting(db: D1Database, expiryDays: number) {
 	if (!due.results.length) return;
 	later(async () => {
 		for (const b of due.results) {
+			const left = Math.max(1, Math.round((b.created_at + expiryDays * DAY - now) / DAY));
+			await notify(db, { userId: b.creator_id, kind: 'battle_waiting', text: `"${b.title}" still needs a challenger. ${left} day${left === 1 ? '' : 's'} left — share your challenge link.`, url: `/c/${b.id}` });
 			const to = await recipient(db, b.creator_id);
 			if (!to) continue;
 			const daysLeft = Math.max(1, Math.round((b.created_at + expiryDays * DAY - now) / DAY));
@@ -179,9 +189,15 @@ export function notifyOvertime(db: D1Database, battleId: string) {
 		if (!b) return;
 		const url = `${SITE}/battles/${battleId}#overtime`;
 		for (const uid of [b.creator_id, b.challenger_id]) {
+			const opp = uid === b.creator_id ? b.challenger : b.creator;
+			await notify(db, {
+				userId: uid,
+				kind: 'ot_offered',
+				text: `Overtime on "${b.title}" vs ${opp}: ${b.ot_mode === 'forced' ? 'the judges want one more round' : 'too close to call'}. Drop one more beat within 24 hours.`,
+				url: `/battles/${battleId}#overtime`
+			});
 			const to = await recipient(db, uid);
 			if (!to) continue;
-			const opp = uid === b.creator_id ? b.challenger : b.creator;
 			const why = b.ot_mode === 'forced' ? 'The judges want one more round.' : 'The set finished too close to call.';
 			const unsub = await unsubscribeUrl(to.id);
 			await sendEmail(getEnv(), {
@@ -235,9 +251,11 @@ export async function remindUnfinishedBallots(db: D1Database) {
 			)
 			.bind(r.voter_id, r.battle_id)
 			.first<{ title: string; rounds: number; voting_ends_at: number; scored: number }>();
-		const to = await recipient(db, r.voter_id);
-		if (!b || !to) continue;
+		if (!b) continue;
 		const mins = Math.max(1, Math.round((b.voting_ends_at - now) / 60_000));
+		await notify(db, { userId: r.voter_id, kind: 'ballot_reminder', text: `Finish your ballot on "${b.title}": ${b.scored} of ${b.rounds} rounds scored, about ${mins} min left.`, url: `/battles/${r.battle_id}` });
+		const to = await recipient(db, r.voter_id);
+		if (!to) continue;
 		const left = b.rounds - b.scored;
 		const url = `${SITE}/battles/${r.battle_id}`;
 		const unsub = await unsubscribeUrl(to.id);
@@ -261,6 +279,35 @@ export async function remindUnfinishedBallots(db: D1Database) {
 	return due.results.length;
 }
 
+/** Someone @mentioned you (throttled by the caller; respects the tag-alert setting). */
+export function notifyMentionEmail(db: D1Database, userId: string, author: string, title: string, snippet: string, path: string) {
+	later(async () => {
+		const to = await db
+			.prepare('SELECT id, username, email FROM users WHERE id = ? AND email_verified_at IS NOT NULL AND notify_mentions = 1 AND suspended_at IS NULL')
+			.bind(userId)
+			.first<Recipient>();
+		if (!to) return;
+		const url = `${SITE}${path}`;
+		const unsub = await unsubscribeUrl(to.id);
+		await sendEmail(getEnv(), {
+			to: to.email,
+			subject: `@${author} tagged you on "${title}"`,
+			html: layout({
+				kicker: `On "${esc(title)}"`,
+				headline: `<span style="color:#ff3d7f">@${esc(author)}</span> tagged you.`,
+				body: `"${esc(snippet)}"`,
+				button: 'See the comment',
+				url,
+				footer: 'You get this because someone mentioned you on AuxRiot. Turn off tag alerts in your profile settings.',
+				unsubscribeUrl: unsub
+			}),
+			text: `@${author} tagged you on "${title}": "${snippet}"\n\n${url}\n\nStop battle emails: ${unsub}`,
+			idempotencyKey: `mention:${userId}:${path}:${Math.floor(Date.now() / 3_600_000)}`,
+			unsubscribeUrl: unsub
+		});
+	});
+}
+
 /** A beat sold: receipt-style note to the buyer (downloads + license) and the good news to the producer. */
 export function notifySale(db: D1Database, orderId: string) {
 	later(async () => {
@@ -275,6 +322,8 @@ export function notifySale(db: D1Database, orderId: string) {
 			.first<{ id: string; buyer_id: string; seller_id: string; amount_cents: number; seller_net_cents: number; includes_stems: number; title: string; battle_id: string; buyer: string; seller: string }>();
 		if (!o) return;
 		const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
+		await notify(db, { userId: o.buyer_id, kind: 'purchase', text: `It's yours: the exclusive on "${o.title}" by ${o.seller}. Download your files and license.`, url: `/purchases?order=${o.id}` });
+		await notify(db, { userId: o.seller_id, kind: 'beat_sold', actorId: o.buyer_id, text: `@${o.buyer} bought "${o.title}". ${usd(o.seller_net_cents)} to you, paid out Monday.`, url: `/battles/${o.battle_id}` });
 		// Purchase emails go to any confirmed address (they're receipts, not marketing).
 		const buyer = await db.prepare('SELECT email FROM users WHERE id = ? AND email_verified_at IS NOT NULL').bind(o.buyer_id).first<{ email: string }>();
 		if (buyer) {

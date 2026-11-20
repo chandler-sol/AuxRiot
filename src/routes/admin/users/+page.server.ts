@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getEnv, newId, DAY } from '#lib/server/util.ts';
 import { addCredits } from '#lib/server/credits.ts';
 import { isVerifiedLabel } from '#lib/verified.ts';
+import { notify } from '#lib/server/notifications.ts';
 import { logAction, requireAdmin, requireMod, setModerator, setShadowban, setSuspended } from '#lib/server/mod.ts';
 
 const SORTS = {
@@ -82,6 +83,7 @@ export const actions: Actions = {
 		const u = await db.prepare('SELECT username FROM users WHERE id = ?').bind(userId).first<{ username: string }>();
 		if (!u) return fail(404, { error: 'User not found.' });
 		await addCredits(db, userId, amount, amount > 0 ? 'admin_grant' : 'admin_clawback', newId(), note || `From ${admin.username}`);
+		if (amount > 0) await notify(db, { userId, kind: 'credits_granted', text: `+${amount.toLocaleString()} credits from AuxRiot${note ? ` — ${note}` : ''}.`, url: '/credits' });
 		await logAction(db, admin, amount > 0 ? 'credits.grant' : 'credits.clawback', 'user', userId, `${u.username} ${amount > 0 ? '+' : ''}${amount}${note ? ' — ' + note : ''}`);
 		return { ok: `${amount > 0 ? 'Gave' : 'Took'} ${Math.abs(amount).toLocaleString()} credits ${amount > 0 ? 'to' : 'from'} ${u.username}.` };
 	},
@@ -127,6 +129,7 @@ export const actions: Actions = {
 		if (!u) return fail(404, { error: 'No such user.' });
 		await db.prepare('UPDATE users SET verified_label = ?, verified_at = ? WHERE id = ?').bind(label || null, label ? Date.now() : null, userId).run();
 		await logAction(db, admin, label ? 'verify' : 'unverify', 'user', userId, label ? `${u.username} as ${label}` : u.username);
+		if (label) await notify(db, { userId, kind: 'verified', text: `You're verified as a ${label} on AuxRiot. Share your crew link so your people can rep you.`, url: `/u/${u.username}#crew` });
 		return { ok: label ? `${u.username} is verified as ${label}. Their crew link: auxriot.com/with/${u.username}` : `Removed ${u.username}'s verification.` };
 	},
 
@@ -158,7 +161,10 @@ export const actions: Actions = {
 			.all<{ id: string; username: string }>();
 		if (!winners.results.length) return fail(400, { error: 'Nobody matches that pool yet (members need a confirmed email).' });
 		const dropId = newId(8);
-		for (const w of winners.results) await addCredits(db, w.id, amount, 'admin_grant', `drop-${dropId}`, note);
+		for (const w of winners.results) {
+			await addCredits(db, w.id, amount, 'admin_grant', `drop-${dropId}`, note);
+			await notify(db, { userId: w.id, kind: 'credits_granted', text: `You won a drop: +${amount.toLocaleString()} credits${note ? ` — ${note}` : ''}.`, url: '/credits' });
+		}
 		await logAction(db, admin, 'credits.drop', 'credits', `drop-${dropId}`, `${amount} each to ${winners.results.map((w) => w.username).join(', ')}`);
 		return {
 			ok: `Dropped ${amount.toLocaleString()} credits on ${winners.results.length} member${winners.results.length === 1 ? '' : 's'}.`,

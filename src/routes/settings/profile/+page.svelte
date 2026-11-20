@@ -39,6 +39,7 @@
 	let newsOn = $state(false);
 	let battleOn = $state(true);
 	let msgOn = $state(true);
+	let mentionOn = $state(true);
 	let newsSeeded = false;
 	$effect.pre(() => {
 		if (newsSeeded) return;
@@ -46,6 +47,7 @@
 		newsOn = data.newsOptIn;
 		battleOn = data.notifyBattles;
 		msgOn = data.notifyMessages;
+		mentionOn = data.notifyMentions;
 	});
 
 	async function pickAvatar(e: Event) {
@@ -170,8 +172,9 @@
 	<button class="primary full" disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</button>
 </form>
 
-<section class="block">
+<section class="block" id="emails">
 	<h2>Email preferences</h2>
+	<p class="small muted">Everything also shows in your <a href="/notifications">notifications</a> — these only control email.</p>
 	<form method="POST" action="?/battleEmails" use:enhance={() => async ({ update }) => update({ reset: false })}>
 		<label class="optin">
 			<input type="checkbox" name="on" bind:checked={battleOn} onchange={(e) => (e.currentTarget as HTMLInputElement).form?.requestSubmit()} />

@@ -4,6 +4,7 @@ import { storeSettings, buyOpen, STORE_DOCS_VERSION } from './store.ts';
 import { getNumberSetting } from './settings.ts';
 import { splitSale } from '#lib/store.ts';
 import { notifySale } from './notify.ts';
+import { notify } from './notifications.ts';
 
 /**
  * Exclusive beat checkout (Stripe Checkout, destination charge):
@@ -210,7 +211,20 @@ export async function refundOrder(env: Env, orderId: string, reason: string) {
 	const o = await db.prepare(`SELECT stripe_payment_intent, status FROM orders WHERE id = ?`).bind(orderId).first<{ stripe_payment_intent: string | null; status: string }>();
 	if (!o?.stripe_payment_intent || o.status !== 'paid') throw new Error('Only paid orders can be refunded.');
 	await stripeV1(env, 'POST', '/v1/refunds', { payment_intent: o.stripe_payment_intent, reverse_transfer: true, refund_application_fee: true, metadata: { order_id: orderId, reason } }, { idempotencyKey: `refund:${orderId}` });
-	await db.prepare(`UPDATE orders SET status = 'refunded', refunded_at = ?, refund_reason = ? WHERE id = ? AND status = 'paid'`).bind(Date.now(), reason, orderId).run();
+	const done = await db.prepare(`UPDATE orders SET status = 'refunded', refunded_at = ?, refund_reason = ? WHERE id = ? AND status = 'paid'`).bind(Date.now(), reason, orderId).run();
+	if (done.meta.changes) await notifyRefund(db, orderId);
+}
+
+/** Both sides hear about a refund (from admin, the webhook, or an automatic one). */
+export async function notifyRefund(db: D1Database, orderId: string) {
+	const o = await db
+		.prepare('SELECT o.buyer_id, o.seller_id, o.amount_cents, b.title FROM orders o JOIN listings l ON l.id = o.listing_id JOIN battles b ON b.id = l.battle_id WHERE o.id = ?')
+		.bind(orderId)
+		.first<{ buyer_id: string; seller_id: string; amount_cents: number; title: string }>();
+	if (!o) return;
+	const usd = `$${(o.amount_cents / 100).toFixed(2)}`;
+	await notify(db, { userId: o.buyer_id, kind: 'order_refunded', text: `Refunded: ${usd} for "${o.title}" is on its way back to your card. The license is void.`, url: `/purchases?order=${orderId}` });
+	await notify(db, { userId: o.seller_id, kind: 'order_refunded', text: `The sale of "${o.title}" was refunded, so its payout was reversed.`, url: `/settings/payouts` });
 }
 
 /** Buyer can download for DOWNLOAD_DAYS after paying. */

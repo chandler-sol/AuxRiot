@@ -5,6 +5,8 @@ import { VOTER_AGE_KEY, getVoterMinAgeHours, setSetting } from '#lib/server/sett
 import { PROMO_MAX_HOURS, PROMO_SLOTS, bookPromotion } from '#lib/server/promos.ts';
 import { MIN_VOTES_KEY, addCredits, backfillCredits, getMinVotes } from '#lib/server/credits.ts';
 import { logAction, requireAdmin, requireMod, setShadowban } from '#lib/server/mod.ts';
+import { notifyCopyrightRemoval } from '#lib/server/modtools.ts';
+import { notify } from '#lib/server/notifications.ts';
 
 export const load: PageServerLoad = async ({ locals, platform }) => {
 	const me = requireMod(locals);
@@ -128,6 +130,7 @@ export const actions: Actions = {
 		const u = await db.prepare('SELECT id FROM users WHERE username = ?').bind(username).first<{ id: string }>();
 		if (!u) return fail(404, { error: `No user "${username}".` });
 		await addCredits(db, u.id, amount, amount > 0 ? 'admin_grant' : 'admin_clawback', newId(), note || `by ${admin.username}`);
+		if (amount > 0) await notify(db, { userId: u.id, kind: 'credits_granted', text: `+${amount.toLocaleString()} credits from AuxRiot${note ? ` — ${note}` : ''}.`, url: '/credits' });
 		await logAction(db, admin, amount > 0 ? 'credits.grant' : 'credits.clawback', 'user', u.id, `${username} ${amount > 0 ? '+' : ''}${amount}${note ? ' — ' + note : ''}`);
 		return { ok: `${amount > 0 ? 'Gave' : 'Took'} ${Math.abs(amount).toLocaleString()} credits ${amount > 0 ? 'to' : 'from'} ${username}.` };
 	},
@@ -203,6 +206,7 @@ export const actions: Actions = {
 				await env.AUDIO.delete(entry.audio_key);
 				await env.DB.prepare('UPDATE entries SET removed = 1 WHERE id = ?').bind(entry.id).run();
 			}
+			if (entries.results.length) await notifyCopyrightRemoval(env.DB, req.battle_id, slot);
 		}
 		// A battle missing a beat can't be fairly judged; pull it if it hasn't finished.
 		await env.DB.prepare(`UPDATE battles SET status = 'removed' WHERE id = ? AND status IN ('open', 'voting')`).bind(req.battle_id).run();

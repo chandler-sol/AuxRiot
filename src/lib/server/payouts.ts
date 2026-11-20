@@ -1,4 +1,5 @@
 import { StripeError, stripeV1, stripeV2 } from './stripe.ts';
+import { notify } from './notifications.ts';
 
 /**
  * Seller payouts through Stripe Connect (Accounts v2, marketplace setup):
@@ -32,7 +33,15 @@ export async function payoutStatus(env: Env, userId: string): Promise<PayoutStat
 	try {
 		const s = toStatus(await stripeV2<V2Account>(env, 'GET', `/v2/core/accounts/${row.stripe_account_id}`, undefined, { include: INCLUDE }));
 		const enabled = s.state === 'active' ? 1 : 0;
-		if (enabled !== row.payouts_enabled) await db.prepare('UPDATE users SET payouts_enabled = ? WHERE id = ?').bind(enabled, userId).run();
+		if (enabled !== row.payouts_enabled) {
+			await db.prepare('UPDATE users SET payouts_enabled = ? WHERE id = ?').bind(enabled, userId).run();
+			await notify(db, {
+				userId,
+				kind: 'payouts_status',
+				text: enabled ? 'Payouts are on. Your beats and services can sell, and money lands in your bank every Monday.' : 'Payouts are paused: Stripe needs something from you before it can pay you.',
+				url: '/settings/payouts'
+			});
+		}
 		return s;
 	} catch (e) {
 		return { state: 'unavailable', due: 0, accountId: row.stripe_account_id, error: e instanceof Error ? e.message : String(e) };

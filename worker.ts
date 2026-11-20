@@ -6,6 +6,7 @@
 import sk from './.svelte-kit/cloudflare/_worker.js';
 import { finalizeDue } from '#lib/server/battles.ts';
 import { remindUnfinishedBallots } from '#lib/server/notify.ts';
+import { pruneNotifications } from '#lib/server/notifications.ts';
 
 type Handler = { fetch: (req: Request, env: Env, ctx: ExecutionContext) => Promise<Response> };
 
@@ -17,6 +18,7 @@ export default {
 				// Close anything due first, so reminders never go to a battle that just ended.
 				await finalizeDue(env.DB, Number(env.OPEN_BATTLE_EXPIRY_DAYS) || 5).catch((e) => console.error('[cron] finalize', e));
 				await remindUnfinishedBallots(env.DB).catch((e) => console.error('[cron] remind', e));
+				await pruneNotifications(env.DB).catch((e) => console.error('[cron] prune', e));
 			})()
 		);
 	}

@@ -2,6 +2,7 @@ import { newId, DAY, HOUR } from './util';
 import { notifyOvertime, notifyResult, remindWaiting } from './notify.ts';
 import { parseMp3 } from './mp3';
 import { awardBattle, awardJudges, awardOtJudges } from './credits.ts';
+import { notify, notifyEach, plural } from './notifications.ts';
 import { getNumberSetting, OT_MARGIN_KEY } from './settings.ts';
 import { OT_FORCE_MIN_JUDGES, OT_SUBMIT_HOURS } from '../battleformat.ts';
 
@@ -77,13 +78,16 @@ export async function storeAudio(bucket: R2Bucket, file: File, peaksRaw: string)
 
 export async function finalizeDue(db: D1Database, openExpiryDays: number) {
 	const now = Date.now();
-	await db.batch([
+	const [, expired] = await db.batch([
 		db.prepare(
 			`UPDATE promotions SET cancelled = 1 WHERE cancelled = 0 AND battle_id IN
 			   (SELECT id FROM battles WHERE status = 'open' AND created_at < ?)`
 		).bind(now - openExpiryDays * DAY),
-		db.prepare(`UPDATE battles SET status = 'expired' WHERE status = 'open' AND created_at < ?`).bind(now - openExpiryDays * DAY)
+		db.prepare(`UPDATE battles SET status = 'expired' WHERE status = 'open' AND created_at < ? RETURNING id, creator_id, title`).bind(now - openExpiryDays * DAY)
 	]);
+	for (const b of (expired?.results ?? []) as { id: string; creator_id: string; title: string }[]) {
+		await notify(db, { userId: b.creator_id, kind: 'battle_expired', text: `"${b.title}" expired without a challenger. Post it again or call someone out directly.`, url: `/battles/${b.id}` }).catch(() => {});
+	}
 
 	const due = await db
 		.prepare(`SELECT id FROM battles WHERE status = 'voting' AND voting_ends_at <= ? LIMIT 25`)

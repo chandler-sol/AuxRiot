@@ -1,4 +1,5 @@
-import { RESPECT_PER_FAN } from '../flair.ts';
+import { RESPECT_PER_FAN, flairFor } from '../flair.ts';
+import { notify } from './notifications.ts';
 import { sharedSignals } from './battles.ts';
 
 /** Recount a comment's visible upvotes and its author's respect. */
@@ -58,6 +59,16 @@ export async function toggleUpvote(db: D1Database, voter: SessionUser, commentId
 			.run();
 		on = true;
 	}
+	const before = on ? await db.prepare('SELECT respect FROM users WHERE id = ?').bind(c.user_id).first<{ respect: number }>() : null;
 	await refreshComment(db, commentId);
+	if (before) {
+		const after = await db.prepare('SELECT respect FROM users WHERE id = ?').bind(c.user_id).first<{ respect: number }>();
+		const was = flairFor(before.respect);
+		const now = flairFor(after?.respect);
+		if (now && (!was || now.tier > was.tier)) {
+			const u = await db.prepare('SELECT username FROM users WHERE id = ?').bind(c.user_id).first<{ username: string }>();
+			await notify(db, { userId: c.user_id, kind: 'respect_tier', text: `You earned ${now.label} flair: ${now.min}+ respect from upvoted comments. It shows next to your name now.`, url: `/u/${u?.username ?? ''}` });
+		}
+	}
 	return { on };
 }

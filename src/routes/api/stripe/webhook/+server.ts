@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types';
 import { getEnv } from '#lib/server/util.ts';
 import { verifyWebhook } from '#lib/server/stripe.ts';
-import { onAsyncSucceeded, onSessionClosed, onSessionCompleted } from '#lib/server/checkout.ts';
+import { notifyRefund, onAsyncSucceeded, onSessionClosed, onSessionCompleted } from '#lib/server/checkout.ts';
 
 /**
  * Stripe webhook. Signature-checked against STRIPE_WEBHOOK_SECRET; the only
@@ -34,11 +34,12 @@ export const POST: RequestHandler = async ({ request }) => {
 				// Refunds issued from the Stripe dashboard: mirror them on the order.
 				const c = event.data.object as { payment_intent?: string; refunded?: boolean };
 				if (c.refunded && c.payment_intent) {
-					await env.DB.prepare(
-						`UPDATE orders SET status = 'refunded', refunded_at = ?, refund_reason = COALESCE(refund_reason, 'stripe_dashboard') WHERE stripe_payment_intent = ? AND status = 'paid'`
+					const r = await env.DB.prepare(
+						`UPDATE orders SET status = 'refunded', refunded_at = ?, refund_reason = COALESCE(refund_reason, 'stripe_dashboard') WHERE stripe_payment_intent = ? AND status = 'paid' RETURNING id`
 					)
 						.bind(Date.now(), c.payment_intent)
-						.run();
+						.all<{ id: string }>();
+					for (const o of r.results) await notifyRefund(env.DB, o.id);
 				}
 				break;
 			}

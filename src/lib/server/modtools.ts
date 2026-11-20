@@ -1,5 +1,6 @@
 import { finalizeBattle } from './battles.ts';
 import { CREDITS, addCredits } from './credits.ts';
+import { notify, notifyEach } from './notifications.ts';
 
 /**
  * Battle-level moderation: changing the clock, ending early, recounting after
@@ -76,12 +77,25 @@ async function reverseResult(db: D1Database, battleId: string) {
 	return outcomes.results.length > 0;
 }
 
+async function notifyBattlers(db: D1Database, battleId: string, kind: string, text: (title: string) => string) {
+	const b = await db.prepare('SELECT title, creator_id, challenger_id FROM battles WHERE id = ?').bind(battleId).first<{ title: string; creator_id: string; challenger_id: string | null }>();
+	if (!b) return;
+	await notifyEach(db, [b.creator_id, b.challenger_id].filter((x): x is string => !!x), () => ({ kind, text: text(b.title), url: `/battles/${battleId}` }));
+}
+
+/** Tell a producer their beat came down after a copyright notice. */
+export async function notifyCopyrightRemoval(db: D1Database, battleId: string, slot: number) {
+	const b = await db.prepare(`SELECT title, CASE WHEN ? = 0 THEN creator_id ELSE challenger_id END AS uid FROM battles WHERE id = ?`).bind(slot, battleId).first<{ title: string; uid: string | null }>();
+	if (b?.uid) await notify(db, { userId: b.uid, kind: 'battle_removed', text: `Your beat in "${b.title}" was removed after a copyright notice. See the DMCA page for how counter-notices work.`, url: '/dmca' });
+}
+
 /** Re-score a closed battle (after ballots were changed) and pay out again under the current rules. */
 export async function recount(db: D1Database, battleId: string) {
 	const b = await db.prepare('SELECT status FROM battles WHERE id = ?').bind(battleId).first<{ status: string }>();
 	if (b?.status !== 'closed') return false;
 	await reverseResult(db, battleId);
 	await finalizeBattle(db, battleId);
+	await notifyBattlers(db, battleId, 'result_reversed', (t) => `Moderators recounted "${t}" after removing unfair votes. The scorecard and credits were updated.`);
 	return true;
 }
 
@@ -96,6 +110,7 @@ export async function voidBattle(db: D1Database, battleId: string) {
 		// Its beats come off the store too (sold ones stay sold; the buyer keeps their files).
 		db.prepare(`UPDATE listings SET status = 'removed', updated_at = ? WHERE battle_id = ? AND status != 'sold'`).bind(Date.now(), battleId)
 	]);
+	await notifyBattlers(db, battleId, 'battle_removed', (t) => `"${t}" was taken down by moderators.${b.status === 'closed' ? ' Its result and credits were undone.' : ''} Questions? hello@auxriot.com`);
 	return true;
 }
 
@@ -131,6 +146,7 @@ export async function removeBeat(db: D1Database, bucket: R2Bucket, battleId: str
 		await bucket.delete(e.audio_key);
 		await db.prepare('UPDATE entries SET removed = 1 WHERE id = ?').bind(e.id).run();
 	}
+	await notifyCopyrightRemoval(db, battleId, slot);
 	await voidBattle(db, battleId);
 	return true;
 }
