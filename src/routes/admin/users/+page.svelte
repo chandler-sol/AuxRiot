@@ -9,6 +9,7 @@
 	let { data, form }: PageProps = $props();
 	let openGrant = $state<string | null>(null);
 	let openSuspend = $state<string | null>(null);
+	let openVerify = $state<string | null>(null);
 	let openMenu = $state<string | null>(null);
 	// Keep the current search/filter/sort on form actions (a bare "?/grant" would drop them).
 	const act = (name: string) => {
@@ -139,14 +140,7 @@
 								</form>
 							{/if}
 							{#if data.isAdmin}
-								<form method="POST" action={act('verify')} use:enhance={keepClose} class="vform">
-									<input type="hidden" name="user_id" value={u.id} />
-									<select name="label" aria-label="Verify {u.username} as">
-										<option value="">{u.verified_label ? 'Remove verification' : 'Verify as…'}</option>
-										{#each VERIFIED_LABELS as l (l)}<option value={l} selected={u.verified_label === l}>{l}</option>{/each}
-									</select>
-									<button>{u.verified_label ? 'Update' : 'Verify'}</button>
-								</form>
+								<button type="button" onclick={() => { openVerify = u.id; openGrant = null; openSuspend = null; openMenu = null; }}>{u.verified_label ? `Verified: ${u.verified_label}…` : 'Verify…'}</button>
 							{/if}
 							<a href="/u/{u.username}">View profile</a>
 						</div>
@@ -187,6 +181,30 @@
 					<div class="row"><button class="small-btn danger">Suspend {u.username}</button><button type="button" class="small-btn ghost" onclick={() => (openSuspend = null)}>Cancel</button></div>
 				</form>
 			{/if}
+			{#if openVerify === u.id}
+				<form
+					method="POST"
+					action={act('verify')}
+					class="grant"
+					use:enhance={() =>
+						async ({ result, update }) => {
+							await update({ reset: false });
+							if (result.type === 'success') openVerify = null;
+						}}
+				>
+					<input type="hidden" name="user_id" value={u.id} />
+					<p class="small muted vhint">Verify {u.username} as — they get a badge and a crew link:</p>
+					<div class="quick">
+						{#each VERIFIED_LABELS as l (l)}
+							<button name="label" value={l} class="small-btn" class:primary={u.verified_label === l}>{u.verified_label === l ? `✓ ${l}` : l}</button>
+						{/each}
+					</div>
+					<div class="row">
+						{#if u.verified_label}<button name="label" value="" class="small-btn danger">Remove verification</button>{/if}
+						<button type="button" class="small-btn ghost" onclick={() => (openVerify = null)}>Cancel</button>
+					</div>
+				</form>
+			{/if}
 			{#if openGrant === u.id}
 				<form
 					method="POST"
@@ -219,9 +237,7 @@
 </ul>
 
 <style>
-	.vform { display: flex; gap: 6px; padding: 4px 0; }
-	.vform select { min-height: 34px; padding: 4px 8px; font-size: 0.8rem; flex: 1; min-width: 0; }
-	.vform button { flex: none; }
+	.vhint { margin: 0; }
 	.tag.cyan { border-color: var(--cyan, #2bd9f5); color: var(--cyan, #2bd9f5); }
 	.kicker { margin: 8px 0 10px; }
 	.kicker a { color: var(--muted); }
