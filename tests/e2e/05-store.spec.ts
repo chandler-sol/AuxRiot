@@ -20,17 +20,18 @@ test('store: buy box, paid order, downloads, license, SOLD', async ({ browser, b
 	await expect(admin.page.locator('#buy')).toBeVisible();
 
 	// No buying from a producer without payouts.
-	await expect(admin.page.locator('#buy')).toContainText(/setting up payouts|checkout opens soon/i);
+	await expect(admin.page.locator('#buy')).toContainText(/not for sale yet|opens soon/i);
 	sql(`UPDATE users SET payouts_enabled = 1, stripe_account_id = 'acct_robot' WHERE id = '${l.seller_id}'`);
 	await admin.page.reload();
-	const live = (await admin.page.locator('.buybox summary').count()) > 0;
+	const buy = admin.page.locator('.sale-act').getByRole('button', { name: 'Buy' });
+	const live = (await buy.count()) > 0;
 	if (live) {
 		// Checkout is configured: the buy box asks for a legal name and the license.
-		await admin.page.locator('.buybox summary').first().click();
+		await buy.first().click();
 		await expect(admin.page.locator('.buyf input[name=legal_name]').first()).toBeVisible();
 		await expect(admin.page.locator('.buyf input[name=agree]').first()).toBeVisible();
 	} else {
-		await expect(admin.page.locator('#buy')).toContainText(/checkout opens soon/i);
+		await expect(admin.page.locator('#buy')).toContainText(/opens soon/i);
 	}
 
 	// What startCheckout writes, then Stripe's "paid" event.
@@ -104,4 +105,23 @@ test('store: abandoned checkout frees the beat; chargebacks', async ({ browser, 
 	});
 	await admin.page.goto('/admin/orders?status=disputed');
 	await expect(admin.page.locator('.order').first()).toContainText(/chargeback/i);
+});
+
+test('test lab: give test producers payouts (borrowing the admin account)', async ({ browser }) => {
+	const admin = await signup(browser, 'tpA', { admin: true });
+	// Before the admin has payouts, the button explains what to do.
+	await admin.page.goto('/admin/seed');
+	await admin.page.getByRole('button', { name: 'Give test producers payouts' }).click();
+	await expect(admin.page.locator('.log .err').first()).toContainText(/set up your own payouts/i);
+	// With the admin's (test) payouts on, every test producer can take payments, including new ones.
+	sql(`UPDATE users SET payouts_enabled = 1, stripe_account_id = 'acct_robot_admin' WHERE id = '${admin.id}'`);
+	await admin.page.getByRole('button', { name: 'Give test producers payouts' }).click();
+	await expect(admin.page.locator('.log .ok').first()).toContainText(/can now take test payments/i);
+	expect(one<{ n: number }>(`SELECT COUNT(*) AS n FROM users WHERE is_test = 1 AND (payouts_enabled = 0 OR stripe_account_id != 'acct_robot_admin')`).n).toBe(0);
+	await admin.page.getByRole('button', { name: 'Create producers' }).click();
+	await admin.page.waitForFunction(() => !document.querySelector('.log .spin'));
+	expect(one<{ n: number }>(`SELECT COUNT(*) AS n FROM users WHERE is_test = 1 AND payouts_enabled = 0`).n).toBe(0);
+	// Reset so other tests start from "no payouts".
+	sql(`UPDATE users SET payouts_enabled = 0, stripe_account_id = NULL WHERE is_test = 1`);
+	sql(`DELETE FROM settings WHERE key = 'seed_payout_account'`);
 });

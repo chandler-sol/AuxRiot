@@ -29,8 +29,27 @@ const int = (lo: number, hi: number) => lo + Math.floor(Math.random() * (hi - lo
 
 export type TestUser = { id: string; username: string; created_at: number; color: string | null };
 
+const PAYOUT_KEY = 'seed_payout_account';
+
+/**
+ * Beta only: let test producers take real test-mode payments by routing their
+ * payouts to the admin's own Stripe test account (fake producers can't do
+ * Stripe's identity check). New test producers get it too.
+ */
+export async function enableTestPayouts(db: D1Database, adminId: string) {
+	const me = await db.prepare('SELECT stripe_account_id, payouts_enabled FROM users WHERE id = ?').bind(adminId).first<{ stripe_account_id: string | null; payouts_enabled: number }>();
+	if (!me?.stripe_account_id || !me.payouts_enabled) throw new Error('Set up your own payouts first (Menu → Payouts). Test producers borrow your Stripe test account.');
+	await db
+		.prepare(`INSERT INTO settings (key, value, updated_at, updated_by) VALUES (?, ?, ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`)
+		.bind(PAYOUT_KEY, me.stripe_account_id, Date.now(), adminId)
+		.run();
+	const r = await db.prepare('UPDATE users SET stripe_account_id = ?, payouts_enabled = 1 WHERE is_test = 1').bind(me.stripe_account_id).run();
+	return r.meta.changes;
+}
+
 export async function createTestUsers(db: D1Database, n: number): Promise<TestUser[]> {
 	const out: TestUser[] = [];
+	const payout = await db.prepare('SELECT value FROM settings WHERE key = ?').bind(PAYOUT_KEY).first<{ value: string }>();
 	for (let i = 0; i < n; i++) {
 		for (let tries = 0; tries < 8; tries++) {
 			const username = `${pick(ADJ)}${pick(NOUN)}${int(1, 99)}`.slice(0, 20);
@@ -39,10 +58,10 @@ export async function createTestUsers(db: D1Database, n: number): Promise<TestUs
 			const color = pick(PALETTE).key;
 			const res = await db
 				.prepare(
-					`INSERT OR IGNORE INTO users (id, username, email, password_hash, created_at, terms_accepted_at, email_verified_at, color, is_test, notify_battles, legal_name)
-					 VALUES (?, ?, ?, '!test', ?, ?, ?, ?, 1, 0, ?)`
+					`INSERT OR IGNORE INTO users (id, username, email, password_hash, created_at, terms_accepted_at, email_verified_at, color, is_test, notify_battles, legal_name, stripe_account_id, payouts_enabled)
+					 VALUES (?, ?, ?, '!test', ?, ?, ?, ?, 1, 0, ?, ?, ?)`
 				)
-				.bind(id, username, `${username.toLowerCase()}@test.invalid`, created, created, created, color, `Test Producer ${username}`)
+				.bind(id, username, `${username.toLowerCase()}@test.invalid`, created, created, created, color, `Test Producer ${username}`, payout?.value ?? null, payout ? 1 : 0)
 				.run();
 			if (res.meta.changes) {
 				out.push({ id, username, created_at: created, color });

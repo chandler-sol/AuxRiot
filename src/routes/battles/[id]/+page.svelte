@@ -33,6 +33,12 @@
 
 	let b = $derived(data.battle);
 	let buying = $state<string | null>(null);
+	let buyOpen = $state<string | null>(null);
+	let qaOpen = $state<string | null>(null);
+	$effect(() => {
+		if (form?.buyId) buyOpen = form.buyId;
+		if (form && 'qListing' in form && form.qListing) qaOpen = String(form.qListing);
+	});
 	// @mentions: real usernames become links; the battlers are suggested first, then the thread.
 	const known = $derived(new Set(data.mentionNames));
 	const mentionPeople = $derived.by(() => {
@@ -457,57 +463,66 @@
 
 	{#if forSale.length || mySlot !== undefined}
 		<section class="forsale" id="buy">
-			{#each forSale as s (`${s.slot}-${s.round}`)}
-				<div class="sale" style:--c={COLORS[s.slot]}>
-					<div>
-						<p class="mono small sale-k">{names[s.slot]}'s beat{data.format.rounds > 1 ? ` · round ${s.round}` : ''} · exclusive</p>
-						<p class="display sale-p">{money(s.priceCents)}{#if s.stemsPriceCents}<span class="mono small"> · {money(s.stemsPriceCents)} with stems</span>{/if}</p>
-						<p class="mono small muted">{s.format?.toUpperCase() ?? ''}{s.tagged ? ' (tagged)' : ''} · one buyer, then it's gone</p>
-					</div>
-					{#if s.status === 'sold'}
-						<span class="display soldtag">Sold</span>
-					{:else if !s.buyOpen}
-						<span class="mono small muted locked">Buy unlocks when voting ends</span>
-					{:else if s.mine}
-						<span class="mono small muted locked">Your listing</span>
-					{:else if !data.checkoutLive}
-						<span class="mono small muted locked">Checkout opens soon</span>
-					{:else if !s.sellerPayouts}
-						<span class="mono small muted locked">Not available yet — {names[s.slot]} is setting up payouts</span>
-					{:else if s.heldUntil}
-						<span class="mono small muted locked">Someone's checking out — back in {Math.max(1, Math.ceil((s.heldUntil - now) / 60_000))} min if they don't finish</span>
-					{:else if !data.user}
-						<a class="btn primary" href="/login?next=/battles/{b.id}%23buy">Log in to buy</a>
-					{/if}
+			{#if forSale.length}
+				<div class="fs-head">
+					<h2 class="display">Buy the beats</h2>
+					<span class="mono small muted">Exclusive · one buyer each</span>
 				</div>
-				{#if data.checkoutLive && s.status === 'listed' && s.buyOpen && !s.mine && s.sellerPayouts && !s.heldUntil && data.user}
-					<details class="buybox" open={form?.buyId === s.listingId}>
-						<summary class="btn primary">Buy the exclusive</summary>
-						<form method="POST" action="?/buy" class="stack buyf" use:enhance={() => { buying = s.listingId; return async ({ update }) => { await update({ reset: false }); buying = null; }; }}>
-							<input type="hidden" name="listing_id" value={s.listingId} />
-							{#if s.stemsPriceCents}
-								<fieldset class="opts">
-									<label><input type="radio" name="stems" value="0" checked /> Beat only — {money(s.priceCents)}</label>
-									<label><input type="radio" name="stems" value="1" /> Beat + stems — {money(s.stemsPriceCents)}</label>
-								</fieldset>
+			{/if}
+			{#each forSale as s (`${s.slot}-${s.round}`)}
+				{@const canBuy = data.checkoutLive && s.status === 'listed' && s.buyOpen && !s.mine && s.sellerPayouts && !s.heldUntil && !!data.user}
+				<article class="sale" style:--c={COLORS[s.slot]}>
+					<div class="sale-row">
+						<div class="sale-info">
+							<span class="mono sale-k">{names[s.slot]}{data.format.rounds > 1 ? ` · round ${s.round}` : ''}</span>
+							<span class="sale-line"><span class="display sale-p">{money(s.priceCents)}</span>{#if s.stemsPriceCents && s.priceCents}<span class="mono small muted">stems +{money(s.stemsPriceCents - s.priceCents)}</span>{/if}</span>
+							<span class="mono small muted">{s.format?.toUpperCase() ?? 'MP3'}{s.tagged ? ' · tagged' : ''}</span>
+						</div>
+						<div class="sale-act">
+							{#if s.status === 'sold'}
+								<span class="display soldtag">Sold</span>
+							{:else if canBuy}
+								<button type="button" class="btn primary" onclick={() => (buyOpen = buyOpen === s.listingId ? null : s.listingId)}>{buyOpen === s.listingId ? 'Close' : 'Buy'}</button>
+							{:else if s.status === 'listed' && s.buyOpen && !data.user}
+								<a class="btn primary" href="/login?next=/battles/{b.id}%23buy">Log in to buy</a>
+							{:else}
+								<span
+									class="mono chip"
+									title={!s.buyOpen ? 'Buying opens when voting ends' : s.mine ? 'This is your listing' : !data.checkoutLive ? 'Checkout opens soon' : !s.sellerPayouts ? `${names[s.slot]} is still setting up payouts` : 'Someone is checking out right now'}
+								>
+									{!s.buyOpen ? 'After voting' : s.mine ? 'Your listing' : !data.checkoutLive ? 'Opens soon' : !s.sellerPayouts ? 'Not for sale yet' : `Held · ${Math.max(1, Math.ceil(((s.heldUntil ?? now) - now) / 60_000))} min`}
+								</span>
 							{/if}
-							<div>
-								<label for="ln-{s.listingId}">Your full legal name</label>
-								<input id="ln-{s.listingId}" type="text" name="legal_name" maxlength="100" required placeholder="Printed on your license" autocomplete="name" />
-							</div>
-							<label class="agree"><input type="checkbox" name="agree" required /><span>I agree to the <a href="/store/license" target="_blank">Exclusive Beat License</a> and the <a href="/store/terms" target="_blank">Store Terms</a>. Refunds are available until my first download.</span></label>
-							{#if form?.buyError && form?.buyId === s.listingId}<p class="error small">{form.buyError}</p>{/if}
-							<button class="primary full" disabled={buying === s.listingId}>{buying === s.listingId ? 'Opening checkout…' : 'Continue to secure checkout'}</button>
-							<p class="mono small muted">Paid through Stripe. Sales tax is added at checkout where it applies. The beat is held for you for 30 minutes.</p>
-						</form>
-					</details>
-				{/if}
-				{#if !s.mine && s.status !== 'sold'}
-					<a class="mono ask" href="/messages/new?listing={s.listingId}">✉ Ask {names[s.slot]} privately</a>
-				{/if}
-				<details class="qa" open={s.questions.length <= 3}>
-					<summary class="mono">Questions about this beat · {s.questions.length}</summary>
-					<ul>
+						</div>
+					</div>
+					{#if canBuy && buyOpen === s.listingId}
+					<form method="POST" action="?/buy" class="stack buyf" use:enhance={() => { buying = s.listingId; return async ({ update }) => { await update({ reset: false }); buying = null; }; }}>
+						<input type="hidden" name="listing_id" value={s.listingId} />
+						{#if s.stemsPriceCents}
+							<fieldset class="opts">
+								<label><input type="radio" name="stems" value="0" checked /> Beat only — {money(s.priceCents)}</label>
+								<label><input type="radio" name="stems" value="1" /> Beat + stems — {money(s.stemsPriceCents)}</label>
+							</fieldset>
+						{/if}
+						<div>
+							<label for="ln-{s.listingId}">Your full legal name</label>
+							<input id="ln-{s.listingId}" type="text" name="legal_name" maxlength="100" required placeholder="Printed on your license" autocomplete="name" />
+						</div>
+						<label class="agree"><input type="checkbox" name="agree" required /><span>I agree to the <a href="/store/license" target="_blank">Exclusive Beat License</a> and the <a href="/store/terms" target="_blank">Store Terms</a>. Refunds are available until my first download.</span></label>
+						{#if form?.buyError && form?.buyId === s.listingId}<p class="error small">{form.buyError}</p>{/if}
+						<button class="primary full" disabled={buying === s.listingId}>{buying === s.listingId ? 'Opening checkout…' : 'Continue to secure checkout'}</button>
+						<p class="mono small muted">Paid through Stripe. Sales tax is added at checkout where it applies. The beat is held for you for 30 minutes.</p>
+					</form>
+					{/if}
+					<div class="sale-foot mono">
+						<button type="button" class="link-btn" onclick={() => (qaOpen = qaOpen === s.listingId ? null : s.listingId)} aria-expanded={qaOpen === s.listingId}>
+							Questions{s.questions.length ? ` (${s.questions.length})` : ''} {qaOpen === s.listingId ? '▴' : '▾'}
+						</button>
+						{#if !s.mine && s.status !== 'sold'}<span aria-hidden="true">·</span><a href="/messages/new?listing={s.listingId}">Message {names[s.slot]}</a>{/if}
+					</div>
+					{#if qaOpen === s.listingId}
+						<div class="qa">
+						<ul>
 						{#each s.questions as q (q.id)}
 							<li>
 								<p class="q"><a class="mono" href="/u/{q.username}">@{q.username}</a> <Verified label={q.verified_label} compact /> <Flair respect={q.respect} /> <CrewTag crew={q.crew} /> {q.body}</p>
@@ -545,7 +560,9 @@
 					{:else if !data.user && s.status === 'listed'}
 						<p class="mono small muted"><a href="/login?next=/battles/{b.id}%23buy">Log in</a> to ask a question.</p>
 					{/if}
-				</details>
+						</div>
+					{/if}
+				</article>
 			{/each}
 			{#if mySlot !== undefined && b.status !== 'removed' && data.format.rounds > 1}
 				<div class="sell-links mono">
@@ -715,10 +732,6 @@
 <style>
 	.body :global(.mention), .body .mention { color: var(--cyan, #2bd9f5); text-decoration: none; font-weight: 600; }
 	.comments li:target { outline: 2px solid var(--pink); outline-offset: 4px; border-radius: var(--radius); }
-	.buybox { margin: 4px 0 8px; }
-	.buybox > summary { list-style: none; display: inline-flex; cursor: pointer; }
-	.buybox > summary::-webkit-details-marker { display: none; }
-	.buybox[open] > summary { display: none; }
 	.buyf { border: 1.5px solid var(--line-2); border-radius: var(--radius); padding: 12px; }
 	.buyf .opts { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
 	.buyf .opts label, .buyf .agree { display: flex; gap: 8px; align-items: flex-start; margin: 0; text-transform: none; letter-spacing: 0; font-family: var(--body); font-weight: 400; color: var(--dim); font-size: 0.92rem; }
@@ -728,21 +741,26 @@
 	.vrow > span { display: inline-flex; align-items: center; gap: 6px; }
 	/* Verified creators' comments stand out so their crowd can find them. */
 	.comments li.vip { border-left: 3px solid var(--cyan, #2bd9f5); padding-left: 10px; background: linear-gradient(90deg, rgba(43, 217, 245, 0.06), transparent 70%); }
-	.forsale { display: grid; gap: 8px; }
-	.sale { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--ink-2); border-left: 6px solid var(--c); border-radius: var(--radius); padding: 12px 14px; }
-	.sale p { margin: 0; }
-	.sale-k { color: var(--dim); }
-	.sale-p { font-size: 1.8rem; line-height: 1.05; }
-	.sale-p .mono { color: var(--dim); font-size: 0.7rem; }
-	.soldtag { background: var(--pink); color: var(--ink); padding: 4px 12px; transform: rotate(-4deg); font-size: 1.3rem; }
-	.locked { text-align: right; max-width: 140px; }
+	.forsale { display: grid; gap: 10px; }
+	.fs-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+	.fs-head h2 { margin: 0; font-size: 1.6rem; }
+	.sale { background: var(--ink-2); border-left: 5px solid var(--c); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 10px; min-width: 0; }
+	.sale-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+	.sale-info { display: grid; gap: 2px; min-width: 0; }
+	.sale-k { color: var(--c); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.sale-line { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+	.sale-p { font-size: 1.9rem; line-height: 1; }
+	.sale-act { flex: none; }
+	.sale-act .btn { min-height: 40px; padding: 4px 18px; }
+	.chip { display: inline-block; border: 1.5px solid var(--line-2); border-radius: 999px; padding: 6px 12px; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); white-space: nowrap; }
+	.soldtag { background: var(--pink); color: var(--ink); padding: 4px 12px; transform: rotate(-4deg); font-size: 1.3rem; display: inline-block; }
+	.sale-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 0.7rem; color: var(--dim); border-top: 1px dashed var(--line-2); padding-top: 8px; }
+	.sale-foot a, .sale-foot .link-btn { color: var(--paper); text-decoration: none; font-size: 0.7rem; }
+	.sale-foot a:hover, .sale-foot .link-btn:hover { color: var(--pink); }
+	.qa { display: grid; gap: 8px; }
 	.sell-link { justify-self: end; color: var(--pink); text-decoration: none; }
 	.sell-links { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: flex-end; }
-	.ask { justify-self: start; color: var(--paper); text-decoration: none; font-size: 0.72rem; padding: 4px 0; }
-	.ask:hover { color: var(--pink); }
-	.qa { background: var(--ink-2); border-radius: var(--radius); padding: 10px 14px; }
-	.qa summary { cursor: pointer; color: var(--dim); font-size: 0.7rem; }
-	.qa ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 12px; }
+	.qa ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 	.qa li { border-top: 1px solid var(--line); padding-top: 10px; }
 	.qa .q { margin: 0; }
 	.qa .q a { color: var(--paper); text-decoration: none; }

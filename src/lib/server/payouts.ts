@@ -10,18 +10,26 @@ import { notify } from './notifications.ts';
 export type PayoutState = 'none' | 'pending' | 'active' | 'restricted' | 'unavailable';
 export type PayoutStatus = { state: PayoutState; due: number; accountId: string | null; error?: string };
 
+type Entry = { awaiting_action_from?: string; minimum_deadline?: { status?: string }; errors?: unknown[] };
 type V2Account = {
 	id: string;
 	configuration?: { recipient?: { capabilities?: { stripe_balance?: { stripe_transfers?: { status?: string } } } } };
-	requirements?: { entries?: { minimum_deadline?: { status?: string } }[] };
+	requirements?: { entries?: Entry[] };
 };
 
 const INCLUDE = ['configuration.recipient', 'requirements'];
 
+/**
+ * Only count what Stripe needs from the person *now*. Right after onboarding,
+ * Stripe verifies the details for a moment (seconds in test mode): that's
+ * "reviewing", not "paused", and we must not send them back to re-enter it all.
+ */
 function toStatus(a: V2Account): PayoutStatus {
 	const cap = a.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers?.status;
-	const due = (a.requirements?.entries ?? []).filter((e) => ['currently_due', 'past_due'].includes(e.minimum_deadline?.status ?? '')).length;
-	const state: PayoutState = cap === 'active' ? 'active' : cap === 'restricted' || cap === 'unsupported' ? 'restricted' : 'pending';
+	const due = (a.requirements?.entries ?? []).filter(
+		(e) => (e.awaiting_action_from ? e.awaiting_action_from === 'user' : true) && ['currently_due', 'past_due'].includes(e.minimum_deadline?.status ?? '')
+	).length;
+	const state: PayoutState = cap === 'active' ? 'active' : due > 0 ? 'restricted' : 'pending';
 	return { state, due, accountId: a.id };
 }
 

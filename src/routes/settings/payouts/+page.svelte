@@ -1,9 +1,17 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
 	let busy = $state(false);
 	const s = $derived(data.status);
+	// While Stripe reviews (no action needed), check again every few seconds for about a minute.
+	$effect(() => {
+		if (s.state !== 'pending' || s.due) return;
+		let n = 0;
+		const t = setInterval(() => (++n > 12 ? clearInterval(t) : invalidateAll()), 5000);
+		return () => clearInterval(t);
+	});
 	const go = () => {
 		busy = true;
 		return async ({ update }: { update: () => Promise<void> }) => {
@@ -35,11 +43,14 @@
 			<form method="POST" action="?/dashboard" use:enhance={go}><button disabled={busy}>Open my Stripe dashboard</button></form>
 		</div>
 	{:else if s.state === 'pending'}
-		<p class="display big">{data.returned ? 'Almost there' : 'Finish setting up'}</p>
-		<p class="muted">
-			{#if s.due}Stripe still needs {s.due} detail{s.due === 1 ? '' : 's'} from you.{:else}Stripe is reviewing your details — this usually takes a few minutes. Refresh to check.{/if}
-		</p>
-		<form method="POST" action="?/start" use:enhance={go}><button class="primary" disabled={busy}>{s.due ? 'Continue with Stripe' : 'Review my details'}</button></form>
+		{#if s.due}
+			<p class="display big">Finish setting up</p>
+			<p class="muted">Stripe still needs {s.due} detail{s.due === 1 ? '' : 's'} from you.</p>
+			<form method="POST" action="?/start" use:enhance={go}><button class="primary" disabled={busy}>Continue with Stripe</button></form>
+		{:else}
+			<p class="display big">Stripe is reviewing</p>
+			<p class="muted">You're all done — Stripe is confirming your details, which usually takes a few seconds to a few minutes. This page updates by itself; nothing to re-enter.</p>
+		{/if}
 	{:else if s.state === 'restricted'}
 		<p class="display big bad">Payouts paused</p>
 		<p class="muted">Stripe needs something before it can pay you{s.due ? ` (${s.due} item${s.due === 1 ? '' : 's'})` : ''}. Your sales are safe; payouts resume once it's sorted.</p>

@@ -213,6 +213,10 @@
 		<input type="number" min="1" max="50" bind:value={newUsers} aria-label="How many producers" />
 		<button disabled={busy} onclick={() => task(() => post('users', { count: newUsers }))}>Create producers</button>
 	</div>
+	<div class="inline">
+		<button disabled={busy} onclick={() => task(() => post('payouts', {}))}>Give test producers payouts</button>
+		<span class="small muted">{data.stats?.paying ?? 0} of {data.stats?.users ?? 0} can take payments. Their sales go to <em>your</em> Stripe test account, so you can buy from them with a test card.</span>
+	</div>
 	<p class="small muted">
 		"Log in as" switches you into that account (a bar lets you come back). Judges and opponents are pulled from this pool, and more are made when it runs short.
 	</p>

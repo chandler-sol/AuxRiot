@@ -6,7 +6,7 @@ import { createSession } from '#lib/server/auth.ts';
 import { isRounds } from '#lib/battleformat.ts';
 import {
 	guardSeed, createTestUsers, seedBattle, addJudges, endNow, answerWithTestUser, dropOvertime, listTestBeats,
-	wipeTestData, returnCookie, type Stage, type Lean
+	wipeTestData, enableTestPayouts, returnCookie, type Stage, type Lean
 } from '#lib/server/seed.ts';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -29,8 +29,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 		).all<{ id: string; title: string; status: string; rounds: number; ot_status: string | null; voting_ends_at: number | null; votes: number }>(),
 		db.prepare(
 			`SELECT (SELECT COUNT(*) FROM users WHERE is_test = 1) AS users,
+			   (SELECT COUNT(*) FROM users WHERE is_test = 1 AND payouts_enabled = 1) AS paying,
 			   (SELECT COUNT(*) FROM listings l JOIN users u ON u.id = l.seller_id WHERE u.is_test = 1 AND l.status = 'listed') AS listed`
-		).first<{ users: number; listed: number }>()
+		).first<{ users: number; paying: number; listed: number }>()
 	]);
 	return { users: users.results, battles: battles.results, stats };
 };
@@ -130,6 +131,12 @@ export const actions: Actions = {
 		guardSeed(env, locals);
 		const id = String((await request.formData()).get('battle') ?? '').trim();
 		return run(async () => ({ ok: `Listed ${await listTestBeats(env.DB, id || undefined, env.AUDIO)} test beats in the store.` }));
+	},
+
+	payouts: async ({ locals }) => {
+		const env = getEnv();
+		const admin = guardSeed(env, locals);
+		return run(async () => ({ ok: `${await enableTestPayouts(env.DB, admin.id)} test producers can now take test payments (paid into your Stripe test account).` }));
 	},
 
 	loginAs: async ({ request, locals, cookies, url }) => {
