@@ -210,7 +210,8 @@ No packs under ~$5: card fees (≈30¢ + 3%) eat small purchases.
 - **Done:** a /settings/payouts page (Stripe-hosted onboarding, status, Express dashboard link), a Stripe health card on Admin → Store, and a payouts prompt on the sell page.
 - **Done:** checkout. Buy box (legal name plus license agreement), then Stripe Checkout as a destination charge with a 30-minute hold, fulfilled only from the signed webhook (paid order, SOLD, emails). Includes /purchases, 7-day downloads where the first download makes the sale final, and a signed, printable license. Abandoned or failed checkouts release the hold, and dashboard refunds are mirrored on the order.
 - **Fixed:** the store section was missing on finished battles.
-- **Next:** admin refunds (ordinary and copyright) and dispute handling, then discount codes, then the Stripe Tax switch (pending registration), then services checkout, then AuxRiot Pro (Billing).
+- **Done:** Admin → Orders (sales totals, per-order money breakdown, refunds by reason). Copyright refunds take the beat off the store; ordinary refunds can relist it. Refunds after download need an override. Chargebacks pull the producer's transfer back, alert admins and the seller, repay the producer if the dispute is won, and reverse the sale if it's lost.
+- **Next:** discount codes, then the Stripe Tax switch (pending registration), then services checkout, then AuxRiot Pro (Billing).
 
 ## Notifications and @mentions (built on beta)
 

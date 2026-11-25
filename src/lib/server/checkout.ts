@@ -201,18 +201,110 @@ export async function onAsyncSucceeded(env: Env, s: Session) {
 	if (s.metadata?.order_id) await fulfill(env, s.metadata.order_id, s);
 }
 
+export type RefundReason = 'buyer_request' | 'defect' | 'copyright' | 'unavailable' | 'other';
+
 /**
- * Full refund. Pulls back the producer's transfer and returns AuxRiot's fee
- * (the ordinary refund in the Store Terms). Copyright refunds follow the same
- * money path for now; recovering the fee from the seller is handled by admins.
+ * Full refund (Store Terms §7). The buyer gets everything back, including tax.
+ * Money: the producer's transfer is pulled back and AuxRiot returns its fee.
+ * The beat afterwards:
+ *  - copyright: off the market for good ("refunded beats stay off the market");
+ *  - relist: back on the store (an ordinary refund before download);
+ *  - otherwise: unlisted, and the producer decides.
  */
-export async function refundOrder(env: Env, orderId: string, reason: string) {
+export async function refundOrder(env: Env, orderId: string, reason: RefundReason | string, opts: { relist?: boolean } = {}) {
 	const db = env.DB;
-	const o = await db.prepare(`SELECT stripe_payment_intent, status FROM orders WHERE id = ?`).bind(orderId).first<{ stripe_payment_intent: string | null; status: string }>();
+	const o = await db
+		.prepare(`SELECT stripe_payment_intent, status, listing_id, transfer_reversed FROM orders WHERE id = ?`)
+		.bind(orderId)
+		.first<{ stripe_payment_intent: string | null; status: string; listing_id: string; transfer_reversed: number }>();
 	if (!o?.stripe_payment_intent || o.status !== 'paid') throw new Error('Only paid orders can be refunded.');
-	await stripeV1(env, 'POST', '/v1/refunds', { payment_intent: o.stripe_payment_intent, reverse_transfer: true, refund_application_fee: true, metadata: { order_id: orderId, reason } }, { idempotencyKey: `refund:${orderId}` });
-	const done = await db.prepare(`UPDATE orders SET status = 'refunded', refunded_at = ?, refund_reason = ? WHERE id = ? AND status = 'paid'`).bind(Date.now(), reason, orderId).run();
-	if (done.meta.changes) await notifyRefund(db, orderId);
+	await stripeV1(
+		env,
+		'POST',
+		'/v1/refunds',
+		{
+			payment_intent: o.stripe_payment_intent,
+			// Already pulled back during a dispute: don't try to reverse it twice.
+			...(o.transfer_reversed ? {} : { reverse_transfer: true }),
+			refund_application_fee: true,
+			metadata: { order_id: orderId, reason }
+		},
+		{ idempotencyKey: `refund:${orderId}` }
+	);
+	const now = Date.now();
+	const done = await db.prepare(`UPDATE orders SET status = 'refunded', refunded_at = ?, refund_reason = ?, transfer_reversed = 1 WHERE id = ? AND status = 'paid'`).bind(now, reason, orderId).run();
+	if (!done.meta.changes) return;
+	const next = reason === 'copyright' ? 'removed' : opts.relist ? 'listed' : 'unlisted';
+	await db
+		.prepare(`UPDATE listings SET status = ?, buyer_id = NULL, sold_at = NULL, held_until = NULL, held_by = NULL, updated_at = ? WHERE id = ? AND status = 'sold'`)
+		.bind(next, now, o.listing_id)
+		.run();
+	await notifyRefund(db, orderId);
+}
+
+// ---------------------------------------------------------------------------
+// Disputes (chargebacks). AuxRiot carries dispute losses, so while a dispute is
+// open the producer's transfer is pulled back; if we win, they're paid again.
+
+type Dispute = { id: string; charge: string; payment_intent?: string | null; status: string; amount: number };
+
+async function orderForDispute(db: D1Database, d: Dispute) {
+	return db
+		.prepare(
+			`SELECT o.id, o.seller_id, o.seller_net_cents, o.transfer_reversed, o.listing_id, b.title, u.stripe_account_id
+			 FROM orders o JOIN listings l ON l.id = o.listing_id JOIN battles b ON b.id = l.battle_id JOIN users u ON u.id = o.seller_id
+			 WHERE o.stripe_payment_intent = ?`
+		)
+		.bind(d.payment_intent ?? '')
+		.first<{ id: string; seller_id: string; seller_net_cents: number; transfer_reversed: number; listing_id: string; title: string; stripe_account_id: string | null }>();
+}
+
+export async function onDisputeCreated(env: Env, d: Dispute) {
+	const db = env.DB;
+	const o = await orderForDispute(db, d);
+	if (!o) return;
+	await db.prepare('UPDATE orders SET dispute_status = ?, disputed_at = COALESCE(disputed_at, ?) WHERE id = ?').bind(d.status, Date.now(), o.id).run();
+	if (!o.transfer_reversed) {
+		const charge = await stripeV1<{ transfer?: string | null }>(env, 'GET', `/v1/charges/${d.charge}`);
+		if (charge.transfer) {
+			await stripeV1(env, 'POST', `/v1/transfers/${charge.transfer}/reversals`, { metadata: { order_id: o.id, reason: 'dispute' } }, { idempotencyKey: `dispute-reversal:${o.id}` });
+			await db.prepare('UPDATE orders SET transfer_reversed = 1 WHERE id = ?').bind(o.id).run();
+		}
+	}
+	await notify(db, { userId: o.seller_id, kind: 'order_refunded', text: `A buyer disputed the charge for "${o.title}" with their bank. Your payout for it is on hold while AuxRiot responds.`, url: '/settings/payouts' });
+	await notifyAdmins(db, `Chargeback opened on "${o.title}" ($${(d.amount / 100).toFixed(2)}). Respond in Stripe → Disputes before the deadline.`, '/admin/orders?status=disputed');
+}
+
+export async function onDisputeClosed(env: Env, d: Dispute) {
+	const db = env.DB;
+	const o = await orderForDispute(db, d);
+	if (!o) return;
+	await db.prepare('UPDATE orders SET dispute_status = ? WHERE id = ?').bind(d.status, o.id).run();
+	if (d.status === 'won' && o.transfer_reversed && o.stripe_account_id) {
+		// We kept the money: pay the producer their share again.
+		await stripeV1(
+			env,
+			'POST',
+			'/v1/transfers',
+			{ amount: o.seller_net_cents, currency: 'usd', destination: o.stripe_account_id, source_transaction: d.charge, metadata: { order_id: o.id, reason: 'dispute_won' } },
+			{ idempotencyKey: `dispute-repay:${o.id}` }
+		);
+		await db.prepare('UPDATE orders SET transfer_reversed = 0 WHERE id = ?').bind(o.id).run();
+		await notify(db, { userId: o.seller_id, kind: 'order_refunded', text: `Good news: the dispute on "${o.title}" was decided in your favor. Your payout is back on its way.`, url: '/settings/payouts' });
+	} else if (d.status === 'lost') {
+		await db
+			.prepare(`UPDATE orders SET status = 'refunded', refunded_at = ?, refund_reason = 'dispute_lost' WHERE id = ? AND status = 'paid'`)
+			.bind(Date.now(), o.id)
+			.run();
+		await db.prepare(`UPDATE listings SET status = 'unlisted', buyer_id = NULL, sold_at = NULL, updated_at = ? WHERE id = ? AND status = 'sold'`).bind(Date.now(), o.listing_id).run();
+		await notify(db, { userId: o.seller_id, kind: 'order_refunded', text: `The dispute on "${o.title}" was lost, so the sale was reversed. The beat is off the store; relist it if you like.`, url: '/settings/payouts' });
+	}
+	await notifyAdmins(db, `Chargeback on "${o.title}" closed: ${d.status}.`, '/admin/orders?status=disputed');
+}
+
+async function notifyAdmins(db: D1Database, text: string, url: string) {
+	const admins = await db.prepare('SELECT id FROM users WHERE is_admin = 1').all<{ id: string }>();
+	for (const a of admins.results) await notify(db, { userId: a.id, kind: 'report_actioned', text, url }).catch(() => {});
 }
 
 /** Both sides hear about a refund (from admin, the webhook, or an automatic one). */

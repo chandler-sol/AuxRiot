@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types';
 import { getEnv } from '#lib/server/util.ts';
 import { verifyWebhook } from '#lib/server/stripe.ts';
-import { notifyRefund, onAsyncSucceeded, onSessionClosed, onSessionCompleted } from '#lib/server/checkout.ts';
+import { notifyRefund, onAsyncSucceeded, onDisputeClosed, onDisputeCreated, onSessionClosed, onSessionCompleted } from '#lib/server/checkout.ts';
 
 /**
  * Stripe webhook. Signature-checked against STRIPE_WEBHOOK_SECRET; the only
@@ -44,8 +44,10 @@ export const POST: RequestHandler = async ({ request }) => {
 				break;
 			}
 			case 'charge.dispute.created':
+				await onDisputeCreated(env, obj);
+				break;
 			case 'charge.dispute.closed':
-				console.warn('[stripe] dispute event', event.type, JSON.stringify(event.data.object).slice(0, 500));
+				await onDisputeClosed(env, obj);
 				break;
 		}
 	} catch (e) {
