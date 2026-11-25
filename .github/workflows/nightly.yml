@@ -1,0 +1,54 @@
+name: Nightly robot
+
+# Every night: the full test robot on a fresh copy, plus a quick check that the
+# real sites are up. If anything fails, GitHub emails you.
+on:
+  schedule:
+    - cron: '17 8 * * *' # ~3-4am Eastern
+  workflow_dispatch:
+
+jobs:
+  live-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Live site pages
+        run: |
+          for p in / /battles /store /services /rules /faq; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "https://auxriot.com$p")
+            echo "auxriot.com$p → $code"
+            [ "$code" -lt 400 ] || exit 1
+          done
+      - name: Stripe webhooks answer (beta must have its secret)
+        run: |
+          beta=$(curl -s -o /dev/null -w '%{http_code}' -X POST https://beta.auxriot.com/api/stripe/webhook -H 'content-type: application/json' -H 'stripe-signature: t=1,v1=00' --data '{}')
+          live=$(curl -s -o /dev/null -w '%{http_code}' -X POST https://auxriot.com/api/stripe/webhook -H 'content-type: application/json' -H 'stripe-signature: t=1,v1=00' --data '{}')
+          echo "beta webhook → $beta (400 = secret set), live webhook → $live (503 until Stripe goes live)"
+          [ "$beta" = "400" ] || exit 1
+          [ "$live" = "400" ] || [ "$live" = "503" ] || exit 1
+
+  robot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: beta
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: |
+          printf 'BETA_PASSWORD=local-test-pw\nSTRIPE_WEBHOOK_SECRET=whsec_localtest123\nSTRIPE_SECRET_KEY=sk_test_robot_not_real\n' > .dev.vars.beta
+      - run: npx wrangler d1 migrations apply auxriot-beta --local --env beta
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-robot-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
