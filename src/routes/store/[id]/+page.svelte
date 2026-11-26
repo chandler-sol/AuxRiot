@@ -37,7 +37,7 @@
 	<header class="head">
 		<h1 class="display title">{it.title}{#if it.rounds > 1}<span class="mono rnd"> · round {it.round}</span>{/if}</h1>
 		<div class="by">
-			<a class="seller" href="/u/{it.seller.username}#store">
+			<a class="seller" href="/u/{it.seller.username}">
 				<Avatar username={it.seller.username} avatarKey={it.seller.avatarKey} color={it.seller.color} size={28} />
 				<span class="mono">@{it.seller.username}</span>
 			</a>

@@ -13,7 +13,7 @@
 	{#if sold}<span class="stamp display">Sold</span>{/if}
 	<div class="top">
 		{#if showSeller}
-			<a class="seller mono" href="/u/{item.seller.username}#store">
+			<a class="seller mono" href="/u/{item.seller.username}">
 				<Avatar username={item.seller.username} avatarKey={item.seller.avatarKey} color={item.seller.color} size={26} />@{item.seller.username}
 			</a>
 		{/if}

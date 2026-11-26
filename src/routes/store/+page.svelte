@@ -79,7 +79,7 @@
 			<ul>
 				{#each data.sellers as s (s.username)}
 					<li>
-						<a href="/u/{s.username}#store">
+						<a href="/u/{s.username}">
 							<Avatar username={s.username} avatarKey={s.avatar_key} color={s.color} size={36} />
 							<span class="stext">
 								<span class="sname display">{s.username}</span>
