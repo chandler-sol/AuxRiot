@@ -97,11 +97,12 @@
 					</summary>
 					<div class="menu">
 						<div class="menu-head">
-							<span class="display mh-name">{data.user.username}</span>
-							<a class="mono mh-cr" href="/credits" onclick={() => (menuOpen = false)}>{data.user.credits.toLocaleString()} credits →</a>
+							<div class="mh-who">
+								<span class="display mh-name">{data.user.username}</span>
+								<a class="mono mh-cr" href="/credits" onclick={() => (menuOpen = false)}>{data.user.credits.toLocaleString()} credits →</a>
+							</div>
+							<a class="mh-profile" href="/u/{data.user.username}" onclick={() => (menuOpen = false)}>My profile</a>
 						</div>
-						<a href="/u/{data.user.username}" onclick={() => (menuOpen = false)}>My profile</a>
-						<a href="/notifications" onclick={() => (menuOpen = false)}>Notifications{#if data.notes}<span class="mono badge inmenu">{data.notes}</span>{/if}</a>
 						<a href="/messages" onclick={() => (menuOpen = false)}>Messages{#if data.unread}<span class="mono badge inmenu">{data.unread}</span>{/if}</a>
 						<a href="/credits" onclick={() => (menuOpen = false)}>Credits</a>
 						<a href="/store" onclick={() => (menuOpen = false)}>Store &amp; services</a>
@@ -232,18 +233,22 @@
 	}
 	@media (max-width: 560px) {
 		.menu { position: fixed; left: 12px; right: 12px; top: 64px; width: auto; max-height: calc(100dvh - 112px); }
-		.menu a:not(.mh-cr), .menu .logout { min-height: 46px; font-size: 1.2rem; }
+		.menu a:not(.mh-cr):not(.mh-profile), .menu .logout { min-height: 44px; font-size: 1.2rem; }
 		.menu-head { padding: 10px 20px; }
 	}
-	.menu-head { display: flex; flex-direction: column; gap: 4px; padding: 14px 20px 14px; border-bottom: 1.5px dashed var(--line-2); margin-bottom: 4px; }
+	.menu-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-bottom: 1.5px dashed var(--line-2); margin-bottom: 4px; }
+	.mh-who { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+	/* Small outlined button next to the name (not a full menu row). */
+	.menu a.mh-profile { flex: none; display: inline-flex; align-items: center; width: auto; min-height: 36px; padding: 4px 12px; border: 1.5px solid var(--line-2); border-radius: var(--radius); font-family: var(--display); font-size: 0.95rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--paper); text-decoration: none; white-space: nowrap; }
+	.menu a.mh-profile:hover { border-color: var(--paper); background: var(--ink-3); }
 	.mh-name { font-size: 1.8rem; line-height: 1; color: var(--paper); overflow-wrap: anywhere; }
 	.mh-cr { color: var(--pink); text-decoration: none; font-size: 0.75rem; }
-	.menu a:not(.mh-cr), .menu .logout {
+	.menu a:not(.mh-cr):not(.mh-profile), .menu .logout {
 		display: flex; align-items: center; justify-content: flex-start; width: 100%; min-height: 52px; padding: 0 20px; text-align: left;
 		color: var(--paper); text-decoration: none; background: none; border: 0; border-radius: 0;
 		font-family: var(--display); font-size: 1.3rem; font-weight: 400; letter-spacing: 0.04em; text-transform: uppercase;
 	}
-	.menu a:not(.mh-cr):hover, .menu .logout:hover { background: var(--ink-3); color: var(--pink); }
+	.menu a:not(.mh-cr):not(.mh-profile):hover, .menu .logout:hover { background: var(--ink-3); color: var(--pink); }
 	.menu form { border-top: 1.5px dashed var(--line-2); margin-top: 4px; padding-top: 4px; }
 	.menu .logout { color: var(--dim); }
 	.verify-bar { background: var(--paper); color: var(--ink); }
