@@ -31,7 +31,7 @@ export async function startCheckout(
 	env: Env,
 	buyer: SessionUser,
 	listingId: string,
-	opts: { stems: boolean; legalName: string; origin: string }
+	opts: { stems: boolean; legalName: string; origin: string; returnPath?: string }
 ): Promise<{ url: string } | { error: string }> {
 	const db = env.DB;
 	if (!buyer.emailVerified) return { error: 'Confirm your email before buying — check your inbox for the link.' };
@@ -114,7 +114,7 @@ export async function startCheckout(
 				metadata: { order_id: orderId, listing_id: l.id },
 				expires_at: Math.floor((now + HOLD_MS) / 1000) + 60,
 				success_url: `${opts.origin}/purchases?order=${orderId}`,
-				cancel_url: `${opts.origin}/battles/${l.battle_id}?canceled=${orderId}#buy`
+				cancel_url: `${opts.origin}${opts.returnPath ?? `/battles/${l.battle_id}`}?canceled=${orderId}#buy`
 			},
 			{ idempotencyKey: `checkout:${orderId}` }
 		);

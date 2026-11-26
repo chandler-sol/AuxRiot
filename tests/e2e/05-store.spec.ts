@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { labBattle, one, signup, sql, stripeEvent, uid, eventually } from './helpers';
+import { eventually, expectNoHorizontalScroll, labBattle, one, signup, sql, stripeEvent, uid } from './helpers';
 
 // Selling and buying: listings, the buy box, Stripe's webhook turning a payment
 // into an order, downloads, the license, abandoned checkouts, refunds, chargebacks.
@@ -124,4 +124,45 @@ test('test lab: give test producers payouts (borrowing the admin account)', asyn
 	// Reset so other tests start from "no payouts".
 	sql(`UPDATE users SET payouts_enabled = 0, stripe_account_id = NULL WHERE is_test = 1`);
 	sql(`DELETE FROM settings WHERE key = 'seed_payout_account'`);
+});
+
+test('store → beat page: honest Buy button, details, battle link, questions', async ({ browser }) => {
+	const admin = await signup(browser, 'bpA', { admin: true });
+	const battleId = await labBattle(admin.page, 'Store shelf');
+	const l = one<{ id: string; seller_id: string }>(`SELECT id, seller_id FROM listings WHERE battle_id = '${battleId}' AND status = 'listed' LIMIT 1`);
+	sql(`UPDATE users SET payouts_enabled = 0, stripe_account_id = NULL WHERE id = '${l.seller_id}'`);
+	const buyer = await signup(browser, 'bpB');
+	const page = buyer.page;
+
+	// On the store, a producer without payouts never shows "Buy".
+	await page.goto('/store');
+	const card = page.locator('article.item', { has: page.locator(`a[href="/store/${l.id}"]`) }).first();
+	await expect(card).toBeVisible();
+	await expect(card.getByRole('link', { name: 'Buy', exact: true })).toHaveCount(0);
+
+	// The beat page: details, status instead of a dead buy button, and the battle it came from.
+	await card.locator(`a.title`).click();
+	await page.waitForURL(`**/store/${l.id}`);
+	await expect(page.locator('h1.title')).toBeVisible();
+	await expect(page.locator('.facts')).toContainText(/file/i);
+	await expect(page.locator('#buy .status')).toContainText(/not for sale yet|opens soon/i);
+	await expect(page.locator('a.battled')).toHaveAttribute('href', `/battles/${battleId}`);
+	await expectNoHorizontalScroll(page);
+
+	// With payouts on (and checkout configured), the page offers the real buy form.
+	sql(`UPDATE users SET payouts_enabled = 1, stripe_account_id = 'acct_robot' WHERE id = '${l.seller_id}'`);
+	await page.reload();
+	if (await page.locator('.buyf').count()) {
+		await expect(page.locator('.buyf input[name=legal_name]')).toBeVisible();
+		await page.goto('/store');
+		await expect(page.locator('article.item', { has: page.locator(`a[href="/store/${l.id}"]`) }).first().getByRole('link', { name: 'Buy', exact: true })).toHaveAttribute('href', `/store/${l.id}#buy`);
+		await page.goto(`/store/${l.id}`);
+	}
+
+	// Ask a public question: it shows up and the producer is notified.
+	await page.locator('#qa input[name=body]').fill('Is the sample cleared?');
+	await page.locator('#qa').getByRole('button', { name: 'Ask' }).click();
+	await expect(page.locator('#qa')).toContainText('Is the sample cleared?');
+	await eventually(`SELECT 1 FROM notifications WHERE user_id = '${l.seller_id}' AND kind = 'listing_question' AND url = '/store/${l.id}#qa'`, 1);
+	sql(`UPDATE users SET payouts_enabled = 0, stripe_account_id = NULL WHERE id = '${l.seller_id}'`);
 });

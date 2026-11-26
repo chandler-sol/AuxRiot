@@ -3,7 +3,8 @@ import type { Actions, PageServerLoad } from './$types';
 import { BADGE_SELECT, setCrew, verifiedCreator } from '#lib/server/crews.ts';
 import { getEnv } from '#lib/server/util.ts';
 import { parseSocials } from '#lib/server/profile.ts';
-import { ITEM_SELECT, toItem, type ItemRow } from '#lib/server/storequery.ts';
+import { ITEM_SELECT, toItem, withBuy, type ItemRow } from '#lib/server/storequery.ts';
+import { checkoutLive } from '#lib/server/stripe.ts';
 import { loadServices } from '#lib/server/services.ts';
 
 export const load: PageServerLoad = async ({ params, platform, locals }) => {
@@ -88,7 +89,7 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 			const r = result_json ? (JSON.parse(result_json) as { slots: { total: number }[] }) : null;
 			return { ...b, score: r ? ([r.slots[0].total, r.slots[1].total] as [number, number]) : null };
 		}),
-		store: store.results.map(toItem),
+		store: withBuy(store.results.map(toItem), checkoutLive(getEnv()), locals.user?.id ?? null),
 		services,
 		judged: judged?.n ?? 0,
 		meId: locals.user?.id ?? null,

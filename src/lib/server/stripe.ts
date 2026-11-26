@@ -18,6 +18,9 @@ export function stripeMode(env: Env): 'test' | 'live' | null {
 	return k.startsWith('sk_live_') || k.startsWith('rk_live_') ? 'live' : k.startsWith('sk_test_') || k.startsWith('rk_test_') ? 'test' : null;
 }
 
+/** Checkout needs both Stripe secrets on this Worker. */
+export const checkoutLive = (env: Env) => !!stripeMode(env) && !!env.STRIPE_WEBHOOK_SECRET;
+
 function key(env: Env) {
 	if (!env.STRIPE_SECRET_KEY) throw new StripeError('Stripe is not configured yet.', 503, 'not_configured');
 	return env.STRIPE_SECRET_KEY;

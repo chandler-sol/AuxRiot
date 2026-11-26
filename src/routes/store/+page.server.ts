@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
-import { ITEM_SELECT, toItem, type ItemRow } from '#lib/server/storequery.ts';
+import { ITEM_SELECT, toItem, withBuy, type ItemRow } from '#lib/server/storequery.ts';
+import { checkoutLive } from '#lib/server/stripe.ts';
 import { GENRES, KEYS } from '#lib/store.ts';
 
 const SORTS = {
@@ -10,7 +11,7 @@ const SORTS = {
 	winners: "(b.status = 'closed' AND b.winner_id = l.seller_id) DESC, l.updated_at DESC"
 } as const;
 
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async ({ url, locals }) => {
 	const db = getEnv().DB;
 	const p = url.searchParams;
 	const q = (p.get('q') ?? '').trim().slice(0, 60);
@@ -51,7 +52,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		.all<{ username: string; avatar_key: string | null; color: string | null; wins: number; losses: number; n: number; from_cents: number }>();
 
 	return {
-		items: rows.results.map(toItem),
+		items: withBuy(rows.results.map(toItem), checkoutLive(getEnv()), locals.user?.id ?? null),
 		sellers: sellers.results,
 		filters: { q, genre, key, bpmMin, bpmMax, maxPrice, stemsOnly, sort },
 		options: { genres: GENRES, keys: KEYS },

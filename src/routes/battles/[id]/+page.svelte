@@ -519,6 +519,7 @@
 							Questions{s.questions.length ? ` (${s.questions.length})` : ''} {qaOpen === s.listingId ? '▴' : '▾'}
 						</button>
 						{#if !s.mine && s.status !== 'sold'}<span aria-hidden="true">·</span><a href="/messages/new?listing={s.listingId}">Message {names[s.slot]}</a>{/if}
+						<span aria-hidden="true">·</span><a href="/store/{s.listingId}">Beat page</a>
 					</div>
 					{#if qaOpen === s.listingId}
 						<div class="qa">

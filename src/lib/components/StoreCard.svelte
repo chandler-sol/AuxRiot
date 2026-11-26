@@ -19,7 +19,7 @@
 		{/if}
 		{#if item.won}<span class="won mono">★ Battle winner</span>{/if}
 	</div>
-	<a class="title display" href="/battles/{item.battleId}">{item.title}</a>
+	<a class="title display" href="/store/{item.id}">{item.title}{#if item.rounds > 1}<span class="mono rnd"> · round {item.round}</span>{/if}</a>
 	{#if meta.length || item.moods.length}
 		<p class="meta mono">{meta.join(' · ')}{#if item.moods.length}<span class="moods">{meta.length ? ' · ' : ''}{item.moods.join(' / ')}</span>{/if}</p>
 	{/if}
@@ -32,10 +32,10 @@
 		</div>
 		{#if sold}
 			<span class="mono small muted">Off the market</span>
-		{:else if !item.buyOpen}
-			<a class="btn locked" href="/battles/{item.battleId}">Battle live — buy after</a>
+		{:else if item.buy === 'buy'}
+			<a class="btn primary" href="/store/{item.id}#buy">Buy</a>
 		{:else}
-			<a class="btn primary" href="/battles/{item.battleId}#buy">Buy</a>
+			<a class="btn ghost" href="/store/{item.id}">{item.buy === 'after' ? 'Battle live' : item.buy === 'mine' ? 'Your beat' : item.buy === 'held' ? 'On hold' : item.buy === 'unavailable' ? 'Not for sale yet' : item.buy === 'soon' ? 'Opens soon' : 'View'}</a>
 		{/if}
 	</div>
 	{#if !sold}<a class="ask mono" href="/messages/new?listing={item.id}">✉ Ask @{item.seller.username}</a>{/if}
@@ -57,7 +57,8 @@
 	.prices { display: flex; flex-direction: column; gap: 2px; }
 	.price { font-size: 1.9rem; line-height: 1; color: var(--paper); }
 	.btn { min-height: 42px; padding: 2px 16px 0; font-size: 1.05rem; white-space: nowrap; }
-	.locked { color: var(--dim); font-size: 0.85rem; }
+	.btn.ghost { color: var(--dim); font-size: 0.85rem; }
+	.rnd { font-size: 0.7rem; color: var(--dim); }
 	.nowrap { white-space: nowrap; }
 	.ask { color: var(--dim); text-decoration: none; font-size: 0.66rem; justify-self: start; }
 	.ask:hover { color: var(--paper); }

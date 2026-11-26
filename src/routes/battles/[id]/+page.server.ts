@@ -13,7 +13,8 @@ import {
 } from '#lib/server/battles.ts';
 import { BADGE_SELECT } from '#lib/server/crews.ts';
 import { cancelPending, startCheckout } from '#lib/server/checkout.ts';
-import { stripeMode } from '#lib/server/stripe.ts';
+import { checkoutLive } from '#lib/server/stripe.ts';
+import { answerQuestion, askQuestion, listQuestions } from '#lib/server/questions.ts';
 import { knownUsernames, notifyMentions, tooManyMentions } from '#lib/server/mentions.ts';
 import { notify, notifyEach, plural } from '#lib/server/notifications.ts';
 import { MAX_MENTIONS } from '#lib/mentions.ts';
@@ -259,7 +260,7 @@ export const load: PageServerLoad = async ({ params, platform, locals, url }) =>
 		promo,
 		sale: await saleInfo(env.DB, battle.id, battle.status, user?.id ?? null),
 		// Checkout needs both Stripe secrets on this Worker.
-		checkoutLive: !!stripeMode(env) && !!env.STRIPE_WEBHOOK_SECRET,
+		checkoutLive: checkoutLive(env),
 		views: battle.views + (newView ? 1 : 0),
 		now: Date.now()
 	};
@@ -279,20 +280,7 @@ async function saleInfo(db: D1Database, battleId: string, status: string, userId
 	const visible = rows.results.filter((r) => r.status === 'listed' || r.status === 'sold' || r.seller_id === userId);
 	const ids = visible.map((r) => r.id);
 	// Public Q&A per listing. Held (blocked words) questions show only to their author and the producer.
-	const qs = ids.length
-		? (
-				await db
-					.prepare(
-						`SELECT q.id, q.listing_id, q.body, q.answer, q.answered_at, q.created_at, q.held, q.user_id, u.username, u.avatar_key, u.color, u.respect, ${BADGE_SELECT}
-						 FROM listing_questions q JOIN users u ON u.id = q.user_id
-						 WHERE q.listing_id IN (${ids.map(() => '?').join(',')}) AND q.hidden = 0
-						   AND ((q.held = 0 AND u.shadowbanned = 0) OR q.user_id = ? OR EXISTS (SELECT 1 FROM listings l WHERE l.id = q.listing_id AND l.seller_id = ?))
-						 ORDER BY q.created_at ASC LIMIT 200`
-					)
-					.bind(...ids, userId ?? '', userId ?? '')
-					.all<{ id: string; listing_id: string; body: string; answer: string | null; answered_at: number | null; created_at: number; held: number; user_id: string; username: string; avatar_key: string | null; color: string | null; respect: number; verified_label: string | null; crew: string | null }>()
-			).results
-		: [];
+	const qs = await listQuestions(db, ids, userId);
 	return visible
 		.map((r) => ({
 			listingId: r.id,
@@ -602,48 +590,22 @@ export const actions: Actions = {
 		return { upvoted: res.on, upvoteId: id };
 	},
 
-	ask: async ({ request, params, locals, url }) => {
+	ask: async ({ request, locals, url }) => {
 		const user = requireUser(locals, url.pathname);
-		const db = getEnv().DB;
 		const f = await request.formData();
 		const listingId = String(f.get('listing_id') ?? '');
 		const body = String(f.get('body') ?? '').trim();
-		if (!user.emailVerified) return fail(403, { qError: 'Confirm your email to ask questions.', qListing: listingId });
-		if (body.length < 3 || body.length > 500) return fail(400, { qError: 'Questions are 3–500 characters.', qListing: listingId, qBody: body });
-		const l = await db.prepare(`SELECT seller_id, status FROM listings WHERE id = ? AND battle_id = ?`).bind(listingId, params.id).first<{ seller_id: string; status: string }>();
-		if (!l || (l.status !== 'listed' && l.status !== 'sold')) return fail(404, { qError: 'That beat is not for sale.', qListing: listingId });
-		if (l.seller_id === user.id) return fail(400, { qError: 'Answer questions instead of asking them 😄', qListing: listingId });
-		const last = await db.prepare('SELECT created_at FROM listing_questions WHERE user_id = ? ORDER BY created_at DESC LIMIT 1').bind(user.id).first<{ created_at: number }>();
-		if (last && Date.now() - last.created_at < 20_000) return fail(429, { qError: 'Slow down a little.', qListing: listingId, qBody: body });
-		const held = matchesBlocked(body, await getBlockedWords(db)) ? 1 : 0;
-		await db
-			.prepare('INSERT INTO listing_questions (id, listing_id, user_id, body, held, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-			.bind(newId(), listingId, user.id, body, held, Date.now())
-			.run();
-		if (!held && !user.shadowbanned) {
-			const t = await db.prepare('SELECT title FROM battles WHERE id = ?').bind(params.id).first<{ title: string }>();
-			await notify(db, { userId: l.seller_id, kind: 'listing_question', actorId: user.id, text: `@${user.username} asked about your beat on "${t?.title}": ${body.slice(0, 90)}${body.length > 90 ? '…' : ''}`, url: `/battles/${params.id}#buy` });
-		}
+		const err = await askQuestion(getEnv().DB, user, listingId, body);
+		if (err) return fail(400, { qError: err, qListing: listingId, qBody: body });
 		return { asked: listingId };
 	},
 
 	answer: async ({ request, locals, url }) => {
 		const user = requireUser(locals, url.pathname);
-		const db = getEnv().DB;
 		const f = await request.formData();
 		const id = String(f.get('question_id') ?? '');
-		const answer = String(f.get('answer') ?? '').trim();
-		if (answer.length < 1 || answer.length > 1000) return fail(400, { aError: 'Answers are 1–1000 characters.', aId: id });
-		const r = await db
-			.prepare(`UPDATE listing_questions SET answer = ?, answered_at = ? WHERE id = ? AND listing_id IN (SELECT id FROM listings WHERE seller_id = ?)`)
-			.bind(answer, Date.now(), id, user.id)
-			.run();
-		if (!r.meta.changes) return fail(403, { aError: 'Only the producer can answer.', aId: id });
-		const q = await db
-			.prepare('SELECT q.user_id, b.id AS battle_id, b.title FROM listing_questions q JOIN listings l ON l.id = q.listing_id JOIN battles b ON b.id = l.battle_id WHERE q.id = ?')
-			.bind(id)
-			.first<{ user_id: string; battle_id: string; title: string }>();
-		if (q) await notify(db, { userId: q.user_id, kind: 'question_answered', actorId: user.id, text: `@${user.username} answered your question about "${q.title}".`, url: `/battles/${q.battle_id}#buy` });
+		const err = await answerQuestion(getEnv().DB, user, id, String(f.get('answer') ?? '').trim());
+		if (err) return fail(400, { aError: err, aId: id });
 		return { answered: id };
 	},
 
