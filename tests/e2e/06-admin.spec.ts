@@ -50,3 +50,30 @@ test('test lab builds a live battle and fast-forwards it', async ({ browser }) =
 	await expect.poll(() => one<{ status: string }>(`SELECT status FROM battles WHERE id = '${id}'`).status).toBe('closed');
 	await eventually(`SELECT 1 FROM notifications WHERE user_id = '${admin.id}' AND kind = 'battle_result'`, 1);
 });
+
+test('test lab: services market, then wipe removes everything cleanly', async ({ browser }) => {
+	const admin = await signup(browser, 'svc', { admin: true });
+	const page = admin.page;
+	await page.goto('/admin/seed');
+	await page.getByRole('button', { name: 'List services' }).click();
+	await page.waitForFunction(() => !document.querySelector('.log .spin'));
+	await expect(page.locator('.log .ok').first()).toContainText(/listed \d+ services/i);
+	const made = one<{ n: number; withSamples: number }>(
+		`SELECT COUNT(*) AS n, SUM(EXISTS (SELECT 1 FROM service_samples x WHERE x.service_id = s.id)) AS withSamples FROM services s JOIN users u ON u.id = s.user_id WHERE u.is_test = 1`
+	);
+	expect(made.n).toBeGreaterThan(0);
+	expect(made.withSamples, 'services have samples (earlier tests made beats)').toBeGreaterThan(0);
+	await page.goto('/services');
+	await expectNoHorizontalScroll(page);
+	expect(await page.locator('main a[href*="#services"], main .svc, main article').count()).toBeGreaterThan(0);
+
+	// Wipe: every test account and everything they touched goes, with no broken links left.
+	await page.goto('/admin/seed');
+	await page.fill('input[placeholder="Type WIPE"]', 'WIPE');
+	await page.getByRole('button', { name: 'Wipe' }).click();
+	await page.waitForFunction(() => !document.querySelector('.log .spin'), null, { timeout: 120_000 });
+	await expect(page.locator('.log .ok').first()).toContainText(/wiped/i);
+	expect(one<{ n: number }>(`SELECT COUNT(*) AS n FROM users WHERE is_test = 1`).n).toBe(0);
+	expect(one<{ n: number }>(`SELECT COUNT(*) AS n FROM services s LEFT JOIN users u ON u.id = s.user_id WHERE u.id IS NULL`).n).toBe(0);
+	expect(sql('PRAGMA foreign_key_check').length, 'no broken links after wipe').toBe(0);
+});

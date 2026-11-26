@@ -6,7 +6,7 @@ import { createSession } from '#lib/server/auth.ts';
 import { isRounds } from '#lib/battleformat.ts';
 import {
 	guardSeed, createTestUsers, seedBattle, addJudges, endNow, answerWithTestUser, dropOvertime, listTestBeats,
-	wipeTestData, enableTestPayouts, returnCookie, type Stage, type Lean
+	wipeTestData, enableTestPayouts, seedServices, returnCookie, type Stage, type Lean
 } from '#lib/server/seed.ts';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -30,8 +30,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 		db.prepare(
 			`SELECT (SELECT COUNT(*) FROM users WHERE is_test = 1) AS users,
 			   (SELECT COUNT(*) FROM users WHERE is_test = 1 AND payouts_enabled = 1) AS paying,
+			   (SELECT COUNT(*) FROM services s JOIN users u ON u.id = s.user_id WHERE u.is_test = 1 AND s.status = 'active') AS services,
 			   (SELECT COUNT(*) FROM listings l JOIN users u ON u.id = l.seller_id WHERE u.is_test = 1 AND l.status = 'listed') AS listed`
-		).first<{ users: number; paying: number; listed: number }>()
+		).first<{ users: number; paying: number; services: number; listed: number }>()
 	]);
 	return { users: users.results, battles: battles.results, stats };
 };
@@ -131,6 +132,16 @@ export const actions: Actions = {
 		guardSeed(env, locals);
 		const id = String((await request.formData()).get('battle') ?? '').trim();
 		return run(async () => ({ ok: `Listed ${await listTestBeats(env.DB, id || undefined, env.AUDIO)} test beats in the store.` }));
+	},
+
+	services: async ({ request, locals }) => {
+		const env = getEnv();
+		guardSeed(env, locals);
+		const n = num((await request.formData()).get('count'), 1, 20, 4);
+		return run(async () => {
+			const r = await seedServices(env.DB, n);
+			return { ok: `Listed ${r.made} services from test producers${r.samples ? ', with samples' : ' (no samples yet: make some battles first)'}. See /services.` };
+		});
 	},
 
 	payouts: async ({ locals }) => {

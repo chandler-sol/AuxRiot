@@ -92,6 +92,7 @@
 	];
 
 	let newUsers = $state(5);
+	let newServices = $state(4);
 	let confirmWipe = $state('');
 	const STATUS: Record<string, string> = { open: 'Open', voting: 'Live', overtime: 'Overtime', closed: 'Closed', expired: 'Expired' };
 </script>
@@ -212,6 +213,11 @@
 	<div class="inline">
 		<input type="number" min="1" max="50" bind:value={newUsers} aria-label="How many producers" />
 		<button disabled={busy} onclick={() => task(() => post('users', { count: newUsers }))}>Create producers</button>
+	</div>
+	<div class="inline">
+		<input type="number" min="1" max="20" bind:value={newServices} aria-label="How many producers get services" />
+		<button disabled={busy} onclick={() => task(() => post('services', { count: newServices }))}>List services</button>
+		<span class="small muted">{data.stats?.services ?? 0} test services live on <a href="/services">/services</a> (mixing, mastering, custom beats…)</span>
 	</div>
 	<div class="inline">
 		<button disabled={busy} onclick={() => task(() => post('payouts', {}))}>Give test producers payouts</button>

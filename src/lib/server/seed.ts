@@ -11,6 +11,7 @@ import { STORE_DOCS_VERSION } from './store.ts';
 import { PALETTE, creatorColor, challengerColor } from '#lib/colors.ts';
 import { FORMATS, OT_VOTE_HOURS, type Rounds } from '#lib/battleformat.ts';
 import { GENRES, KEYS, MOODS } from '#lib/store.ts';
+import { SERVICE_CATEGORIES, MAX_SERVICES, type ServiceCategory } from '#lib/services.ts';
 
 const DAY = 86_400_000;
 
@@ -304,6 +305,58 @@ export async function listTestBeats(db: D1Database, battleId?: string, bucket?: 
 		]);
 	}
 	return rows.results.length;
+}
+
+// ---------------------------------------------------------------------------
+// Services
+
+const SERVICE_COPY: Record<ServiceCategory, { titles: string[]; desc: string; price: [number, number]; days: [number, number] }> = {
+	mixing: { titles: ['Full mix, radio ready', 'Hip-hop mixdown', 'Mix + stem cleanup'], desc: 'Send your stems and a reference. I balance, EQ, compress and add space so it hits on phones, cars and clubs.', price: [60, 250], days: [3, 7] },
+	mastering: { titles: ['Streaming-ready master', 'Loud & clean master', 'Master for release'], desc: 'Loudness for Spotify and Apple Music, translation checks on five systems, and a clean WAV plus MP3.', price: [25, 90], days: [1, 3] },
+	custom_beat: { titles: ['Custom beat from scratch', 'Beat made to your reference', 'Exclusive custom production'], desc: 'Tell me the vibe and send a reference. You get a beat built for you, with stems and full ownership.', price: [100, 400], days: [5, 10] },
+	vocal_mix: { titles: ['Vocal mix + tuning', 'Vocal chain & comping', 'Clean vocal tuning'], desc: 'Comping, tuning, de-essing and a vocal chain that sits right on the beat.', price: [40, 150], days: [2, 5] },
+	feature: { titles: ['16-bar verse', 'Hook writing + vocals', 'Live guitar on your track'], desc: 'Send the beat and your concept. I write and record, delivered dry and wet.', price: [80, 300], days: [3, 7] }
+};
+
+/** Give test producers service listings (with stream-only samples reused from their test beats). */
+export async function seedServices(db: D1Database, count: number) {
+	const producers = await testPool(db, count);
+	const audio = await db
+		.prepare(`SELECT e.audio_key, e.duration_ms, e.peaks FROM entries e JOIN users u ON u.id = e.user_id WHERE u.is_test = 1 AND e.removed = 0 ORDER BY RANDOM() LIMIT 40`)
+		.all<{ audio_key: string; duration_ms: number; peaks: string }>();
+	const now = Date.now();
+	let made = 0;
+	for (const p of producers) {
+		const have = await db.prepare(`SELECT COUNT(*) AS n FROM services WHERE user_id = ? AND status != 'removed'`).bind(p.id).first<{ n: number }>();
+		const room = MAX_SERVICES - (have?.n ?? 0);
+		const cats = [...SERVICE_CATEGORIES].sort(() => Math.random() - 0.5).slice(0, Math.min(room, int(1, 2)));
+		for (const c of cats) {
+			const copy = SERVICE_COPY[c.key];
+			const id = newId();
+			const stmts = [
+				db.prepare('UPDATE users SET provider = 1 WHERE id = ?').bind(p.id),
+				db.prepare(
+					`INSERT INTO services (id, user_id, category, title, description, price_from_cents, turnaround_days, revisions, status, created_at, updated_at)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
+				).bind(id, p.id, c.key, pick(copy.titles), copy.desc, int(copy.price[0] / 5, copy.price[1] / 5) * 500, int(...copy.days), int(1, 3), now - int(0, 20) * DAY, now)
+			];
+			// One or two samples; mixing-type services get a before/after pair.
+			const samples = audio.results.length ? int(1, 2) : 0;
+			for (let i = 0; i < samples; i++) {
+				const a = pick(audio.results);
+				const before = c.beforeAfter ? pick(audio.results) : null;
+				stmts.push(
+					db.prepare(
+						`INSERT INTO service_samples (id, service_id, title, audio_key, duration_ms, peaks, before_key, before_duration_ms, before_peaks, created_at)
+						 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+					).bind(newId(), id, c.beforeAfter ? `Client track ${i + 1}` : `Sample ${i + 1}`, a.audio_key, a.duration_ms, a.peaks, before?.audio_key ?? null, before?.duration_ms ?? null, before?.peaks ?? null, now)
+				);
+			}
+			await db.batch(stmts);
+			made++;
+		}
+	}
+	return { made, samples: audio.results.length > 0 };
 }
 
 // ---------------------------------------------------------------------------
