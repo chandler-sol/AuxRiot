@@ -46,3 +46,16 @@ test('Stripe webhook rejects unsigned requests', async ({ baseURL }) => {
 	const r = await fetch(`${baseURL}/api/stripe/webhook`, { method: 'POST', body: '{}', headers: { 'content-type': 'application/json', 'stripe-signature': 't=1,v1=00' } });
 	expect([400, 503]).toContain(r.status);
 });
+
+test('account menu scrolls on a short phone so Log out is reachable', async ({ browser }) => {
+	// Admins have the longest menu; an iPhone SE-sized screen is the shortest common one.
+	const { page } = await signup(browser, 'mnu', { admin: true });
+	await page.setViewportSize({ width: 375, height: 600 });
+	await page.goto('/battles');
+	await page.locator('summary.acct').click();
+	const menu = page.locator('.menu');
+	const box = await menu.boundingBox();
+	expect(box!.y + box!.height, 'menu fits on screen').toBeLessThanOrEqual(600);
+	await page.getByRole('button', { name: 'Log out' }).click(); // scrolls inside the menu
+	await expect(page.locator('header')).toContainText(/log in/i);
+});

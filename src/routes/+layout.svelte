@@ -227,9 +227,13 @@
 		display: flex; flex-direction: column;
 		background: var(--ink-2); border: 1.5px solid var(--line-2); border-radius: var(--radius);
 		box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6); padding: 6px 0; z-index: 30;
+		/* Never taller than the screen: scroll inside the menu so Log out is always reachable. */
+		max-height: calc(100dvh - 90px); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
 	}
 	@media (max-width: 560px) {
-		.menu { position: fixed; left: 12px; right: 12px; top: 64px; width: auto; }
+		.menu { position: fixed; left: 12px; right: 12px; top: 64px; width: auto; max-height: calc(100dvh - 112px); }
+		.menu a:not(.mh-cr), .menu .logout { min-height: 46px; font-size: 1.2rem; }
+		.menu-head { padding: 10px 20px; }
 	}
 	.menu-head { display: flex; flex-direction: column; gap: 4px; padding: 14px 20px 14px; border-bottom: 1.5px dashed var(--line-2); margin-bottom: 4px; }
 	.mh-name { font-size: 1.8rem; line-height: 1; color: var(--paper); overflow-wrap: anywhere; }
