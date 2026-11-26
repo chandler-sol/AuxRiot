@@ -4,6 +4,7 @@ import { getEnv } from '#lib/server/util.ts';
 import { ITEM_SELECT, toItem, withBuy, type ItemRow } from '#lib/server/storequery.ts';
 import { checkoutLive } from '#lib/server/stripe.ts';
 import { startCheckout } from '#lib/server/checkout.ts';
+import doc from '#lib/legal/store-license.md?raw';
 
 /**
  * Checkout step for one beat: order summary, legal name and the license
@@ -17,7 +18,16 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const [item] = withBuy([toItem(row)], checkoutLive(env), locals.user.id);
 	if (item.buy !== 'buy') redirect(303, `/store/${params.id}`);
 	const legal = await env.DB.prepare('SELECT legal_name FROM users WHERE id = ?').bind(locals.user.id).first<{ legal_name: string | null }>();
-	return { item, stems: url.searchParams.get('stems') === '1' && item.hasStems, legalName: legal?.legal_name ?? '' };
+	// What the license preview needs (the producer signed it when they listed the beat).
+	const lic = await env.DB.prepare('SELECT producer_signature, producer_signed_at, sample_disclosure FROM listings WHERE id = ?')
+		.bind(params.id)
+		.first<{ producer_signature: string | null; producer_signed_at: number | null; sample_disclosure: string | null }>();
+	return {
+		item,
+		stems: url.searchParams.get('stems') === '1' && item.hasStems,
+		legalName: legal?.legal_name ?? '',
+		license: { doc, producerName: lic?.producer_signature ?? null, producerSignedAt: lic?.producer_signed_at ?? null, samples: lic?.sample_disclosure ?? null }
+	};
 };
 
 export const actions: Actions = {

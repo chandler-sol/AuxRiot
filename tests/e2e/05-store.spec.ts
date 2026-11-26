@@ -29,9 +29,21 @@ test('store: buy box, paid order, downloads, license, SOLD', async ({ browser, b
 		// Checkout is configured: Buy opens the checkout step, which asks for a legal name and the license.
 		await buy.first().click();
 		await admin.page.waitForURL(/\/store\/[^/]+\/checkout/);
-		await expect(admin.page.locator('.buyf input[name=legal_name]')).toBeVisible();
-		await expect(admin.page.locator('.buyf input[name=agree]')).toBeVisible();
+		const co = admin.page.locator('form.co');
+		await expect(co.locator('input[name=legal_name]')).toBeVisible();
+		await expect(co.locator('input[name=agree]')).toBeVisible();
 		await expect(admin.page.locator('.summary')).toContainText(/exclusive license/i);
+		// The license is shown before paying: key points up front, the full text filled in with their name as they type.
+		await expect(admin.page.locator('.keys li').first()).toBeVisible();
+		const pay = co.locator('button.pay');
+		await co.locator('input[name=legal_name]').fill('Robo Tester');
+		await expect(pay).toBeDisabled(); // not until they agree
+		await co.locator('input[name=agree]').check();
+		await expect(pay).toBeEnabled();
+		await expect(co.locator('.agree')).toContainText('Robo Tester');
+		await co.locator('details.full summary').click();
+		await expect(co.locator('.doc')).toContainText('Robo Tester');
+		await expect(co.locator('.doc')).not.toContainText('{buyer_signature_and_date}');
 		await expectNoHorizontalScroll(admin.page);
 	} else {
 		await expect(admin.page.locator('#buy')).toContainText(/opens soon/i);
@@ -63,6 +75,9 @@ test('store: buy box, paid order, downloads, license, SOLD', async ({ browser, b
 	const html = await admin.page.locator('.legal').innerHTML();
 	expect(html).toContain('&lt;b&gt;Buyer&lt;/b&gt;'); // names are escaped, never rendered as HTML
 	expect(html).toContain(order.toUpperCase());
+	expect(html).not.toMatch(/\{\w+\}/); // every blank is filled, signatures included
+	expect(html).toContain('signed electronically');
+	await expectNoHorizontalScroll(admin.page);
 
 	// The battle wears a SOLD stamp.
 	await admin.page.goto(`/battles/${battleId}`);
@@ -160,7 +175,7 @@ test('store → beat page: honest Buy button, details, battle link, questions', 
 		await expect(page.locator('input[name=legal_name]')).toHaveCount(0);
 		await page.locator('a.buybtn').click();
 		await page.waitForURL(`**/store/${l.id}/checkout`);
-		await expect(page.locator('.buyf input[name=legal_name]')).toBeVisible();
+		await expect(page.locator('form.co input[name=legal_name]')).toBeVisible();
 		await page.goto('/store');
 		await expect(page.locator('article.item', { has: page.locator(`a[href="/store/${l.id}"]`) }).first().getByRole('link', { name: 'Buy', exact: true })).toHaveAttribute('href', `/store/${l.id}#buy`);
 		await page.goto(`/store/${l.id}`);

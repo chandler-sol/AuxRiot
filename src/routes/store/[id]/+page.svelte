@@ -75,7 +75,7 @@
 			<span class="mono small muted">Battled in</span>
 			<span class="bt"><span class="display">{b.title}</span></span>
 			<span class="mono small res">
-				{#if b.outcome === 'won'}<span class="w">Won</span>{:else if b.outcome === 'lost'}Lost{:else if b.outcome === 'tie'}Tied{:else}Live now{/if}{#if b.opponent} vs @{b.opponent}{/if}{#if b.score} · {b.score[0].toFixed(1)}–{b.score[1].toFixed(1)}{/if}
+				{#if b.outcome === 'won'}<span class="w">Won</span>{:else if b.outcome === 'lost'}Lost{:else if b.outcome === 'tie'}Tied{:else}Live now{/if}{#if b.opponent}{` vs @${b.opponent}`}{/if}{#if b.score}{` · ${b.score[0].toFixed(1)}–${b.score[1].toFixed(1)}`}{/if}
 				<span class="go">Hear it →</span>
 			</span>
 		</a>
