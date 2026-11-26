@@ -32,11 +32,8 @@
 	const COLORS = ['var(--a)', 'var(--b)'];
 
 	let b = $derived(data.battle);
-	let buying = $state<string | null>(null);
-	let buyOpen = $state<string | null>(null);
 	let qaOpen = $state<string | null>(null);
 	$effect(() => {
-		if (form?.buyId) buyOpen = form.buyId;
 		if (form && 'qListing' in form && form.qListing) qaOpen = String(form.qListing);
 	});
 	// @mentions: real usernames become links; the battlers are suggested first, then the thread.
@@ -482,7 +479,7 @@
 							{#if s.status === 'sold'}
 								<span class="display soldtag">Sold</span>
 							{:else if canBuy}
-								<button type="button" class="btn primary" onclick={() => (buyOpen = buyOpen === s.listingId ? null : s.listingId)}>{buyOpen === s.listingId ? 'Close' : 'Buy'}</button>
+								<a class="btn primary" href="/store/{s.listingId}/checkout">Buy</a>
 							{:else if s.status === 'listed' && s.buyOpen && !data.user}
 								<a class="btn primary" href="/login?next=/battles/{b.id}%23buy">Log in to buy</a>
 							{:else}
@@ -495,25 +492,6 @@
 							{/if}
 						</div>
 					</div>
-					{#if canBuy && buyOpen === s.listingId}
-					<form method="POST" action="?/buy" class="stack buyf" use:enhance={() => { buying = s.listingId; return async ({ update }) => { await update({ reset: false }); buying = null; }; }}>
-						<input type="hidden" name="listing_id" value={s.listingId} />
-						{#if s.stemsPriceCents}
-							<fieldset class="opts">
-								<label><input type="radio" name="stems" value="0" checked /> Beat only — {money(s.priceCents)}</label>
-								<label><input type="radio" name="stems" value="1" /> Beat + stems — {money(s.stemsPriceCents)}</label>
-							</fieldset>
-						{/if}
-						<div>
-							<label for="ln-{s.listingId}">Your full legal name</label>
-							<input id="ln-{s.listingId}" type="text" name="legal_name" maxlength="100" required placeholder="Printed on your license" autocomplete="name" />
-						</div>
-						<label class="agree"><input type="checkbox" name="agree" required /><span>I agree to the <a href="/store/license" target="_blank">Exclusive Beat License</a> and the <a href="/store/terms" target="_blank">Store Terms</a>. Refunds are available until my first download.</span></label>
-						{#if form?.buyError && form?.buyId === s.listingId}<p class="error small">{form.buyError}</p>{/if}
-						<button class="primary full" disabled={buying === s.listingId}>{buying === s.listingId ? 'Opening checkout…' : 'Continue to secure checkout'}</button>
-						<p class="mono small muted">Paid through Stripe. Sales tax is added at checkout where it applies. The beat is held for you for 30 minutes.</p>
-					</form>
-					{/if}
 					<div class="sale-foot mono">
 						<button type="button" class="link-btn" onclick={() => (qaOpen = qaOpen === s.listingId ? null : s.listingId)} aria-expanded={qaOpen === s.listingId}>
 							Questions{s.questions.length ? ` (${s.questions.length})` : ''} {qaOpen === s.listingId ? '▴' : '▾'}
@@ -733,11 +711,6 @@
 <style>
 	.body :global(.mention), .body .mention { color: var(--cyan, #2bd9f5); text-decoration: none; font-weight: 600; }
 	.comments li:target { outline: 2px solid var(--pink); outline-offset: 4px; border-radius: var(--radius); }
-	.buyf { border: 1.5px solid var(--line-2); border-radius: var(--radius); padding: 12px; }
-	.buyf .opts { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
-	.buyf .opts label, .buyf .agree { display: flex; gap: 8px; align-items: flex-start; margin: 0; text-transform: none; letter-spacing: 0; font-family: var(--body); font-weight: 400; color: var(--dim); font-size: 0.92rem; }
-	.buyf input[name=legal_name] { width: 100%; box-sizing: border-box; }
-	.buyf input[type=checkbox], .buyf input[type=radio] { width: 18px; height: 18px; accent-color: var(--pink); flex: none; margin-top: 2px; }
 	.vrow { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 8px 0 0; }
 	.vrow > span { display: inline-flex; align-items: center; gap: 6px; }
 	/* Verified creators' comments stand out so their crowd can find them. */

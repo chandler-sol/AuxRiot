@@ -23,13 +23,16 @@ test('store: buy box, paid order, downloads, license, SOLD', async ({ browser, b
 	await expect(admin.page.locator('#buy')).toContainText(/not for sale yet|opens soon/i);
 	sql(`UPDATE users SET payouts_enabled = 1, stripe_account_id = 'acct_robot' WHERE id = '${l.seller_id}'`);
 	await admin.page.reload();
-	const buy = admin.page.locator('.sale-act').getByRole('button', { name: 'Buy' });
+	const buy = admin.page.locator('.sale-act').getByRole('link', { name: 'Buy', exact: true });
 	const live = (await buy.count()) > 0;
 	if (live) {
-		// Checkout is configured: the buy box asks for a legal name and the license.
+		// Checkout is configured: Buy opens the checkout step, which asks for a legal name and the license.
 		await buy.first().click();
-		await expect(admin.page.locator('.buyf input[name=legal_name]').first()).toBeVisible();
-		await expect(admin.page.locator('.buyf input[name=agree]').first()).toBeVisible();
+		await admin.page.waitForURL(/\/store\/[^/]+\/checkout/);
+		await expect(admin.page.locator('.buyf input[name=legal_name]')).toBeVisible();
+		await expect(admin.page.locator('.buyf input[name=agree]')).toBeVisible();
+		await expect(admin.page.locator('.summary')).toContainText(/exclusive license/i);
+		await expectNoHorizontalScroll(admin.page);
 	} else {
 		await expect(admin.page.locator('#buy')).toContainText(/opens soon/i);
 	}
@@ -46,7 +49,7 @@ test('store: buy box, paid order, downloads, license, SOLD', async ({ browser, b
 	expect((await stripeEvent(baseURL!, 'checkout.session.completed', session)).status).toBe(200); // Stripe retries are harmless
 	expect(one(`SELECT status FROM orders WHERE id = '${order}'`)).toEqual({ status: 'paid' });
 	expect(one(`SELECT status, held_until FROM listings WHERE id = '${l.id}'`)).toEqual({ status: 'sold', held_until: null });
-	await eventually(`SELECT 1 FROM notifications WHERE user_id = '${l.seller_id}' AND kind = 'beat_sold'`, 1);
+	await eventually(`SELECT 1 FROM notifications WHERE user_id = '${l.seller_id}' AND kind = 'beat_sold' AND actor_id = '${admin.id}' AND url = '/battles/${battleId}'`, 1);
 
 	// The buyer's purchases page, download (makes the sale final) and license.
 	await admin.page.goto(`/purchases?order=${order}`);
@@ -144,7 +147,7 @@ test('store → beat page: honest Buy button, details, battle link, questions', 
 	await card.locator(`a.title`).click();
 	await page.waitForURL(`**/store/${l.id}`);
 	await expect(page.locator('h1.title')).toBeVisible();
-	await expect(page.locator('.facts')).toContainText(/file/i);
+	await expect(page.locator('.details')).toContainText(/MP3|WAV/);
 	await expect(page.locator('#buy .status')).toContainText(/not for sale yet|opens soon/i);
 	await expect(page.locator('a.battled')).toHaveAttribute('href', `/battles/${battleId}`);
 	await expectNoHorizontalScroll(page);
@@ -152,7 +155,11 @@ test('store → beat page: honest Buy button, details, battle link, questions', 
 	// With payouts on (and checkout configured), the page offers the real buy form.
 	sql(`UPDATE users SET payouts_enabled = 1, stripe_account_id = 'acct_robot' WHERE id = '${l.seller_id}'`);
 	await page.reload();
-	if (await page.locator('.buyf').count()) {
+	if (await page.locator('a.buybtn').count()) {
+		// The beat page stays simple: price choice + Buy. Legal name and license live on the checkout step.
+		await expect(page.locator('input[name=legal_name]')).toHaveCount(0);
+		await page.locator('a.buybtn').click();
+		await page.waitForURL(`**/store/${l.id}/checkout`);
 		await expect(page.locator('.buyf input[name=legal_name]')).toBeVisible();
 		await page.goto('/store');
 		await expect(page.locator('article.item', { has: page.locator(`a[href="/store/${l.id}"]`) }).first().getByRole('link', { name: 'Buy', exact: true })).toHaveAttribute('href', `/store/${l.id}#buy`);

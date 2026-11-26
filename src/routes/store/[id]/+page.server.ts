@@ -3,7 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
 import { ITEM_SELECT, toItem, withBuy, type ItemRow } from '#lib/server/storequery.ts';
 import { checkoutLive } from '#lib/server/stripe.ts';
-import { cancelPending, startCheckout } from '#lib/server/checkout.ts';
+import { cancelPending } from '#lib/server/checkout.ts';
 import { answerQuestion, askQuestion, listQuestions } from '#lib/server/questions.ts';
 import { money } from '#lib/store.ts';
 
@@ -54,19 +54,6 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 };
 
 export const actions: Actions = {
-	buy: async ({ request, locals, params, url }) => {
-		if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(url.pathname)}`);
-		const f = await request.formData();
-		if (f.get('agree') !== 'on') return fail(400, { buyError: 'Agree to the Exclusive Beat License to continue.' });
-		const r = await startCheckout(getEnv(), locals.user, params.id, {
-			stems: f.get('stems') === '1',
-			legalName: String(f.get('legal_name') ?? ''),
-			origin: url.origin,
-			returnPath: `/store/${params.id}`
-		});
-		if ('error' in r) return fail(400, { buyError: r.error });
-		redirect(303, r.url, { external: true });
-	},
 	ask: async ({ request, locals, params, url }) => {
 		if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(url.pathname)}`);
 		const body = String((await request.formData()).get('body') ?? '').trim();
