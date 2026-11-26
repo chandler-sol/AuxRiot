@@ -61,6 +61,17 @@
 
 	const SCENARIOS: { label: string; note: string; run: () => Promise<void> }[] = [
 		{
+			label: 'Ready to buy',
+			note: 'Beats for sale from producers with payouts on, then opens the store',
+			run: async () => {
+				say('Turning on payouts for test producers…');
+				if (!(await post('payouts', {}))) return;
+				await makeBattles({ ...spec, rounds: 1, stage: 'results', judges: 3, lean: 'a', me: 'none', sell: true }, 2);
+				say('Done. Opening the store: pick a beat and hit Buy (card 4242 4242 4242 4242).', 'ok');
+				await goto('/store');
+			}
+		},
+		{
 			label: 'Fill the feed',
 			note: '3 open, 3 live, 3 finished (with store listings)',
 			run: async () => {
