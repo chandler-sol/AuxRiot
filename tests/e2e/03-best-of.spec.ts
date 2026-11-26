@@ -30,11 +30,14 @@ async function answerBo3(page: Page, id: string) {
 }
 
 async function dropOvertime(page: Page, id: string, file: string) {
+	const before = sql(`SELECT 1 FROM entries WHERE battle_id = '${id}' AND round > 3`).length;
 	await page.goto(`/battles/${id}`);
 	await page.locator('.otcard input[type=file]').setInputFiles(file);
 	await expect(page.locator('.otcard .preview')).toBeVisible({ timeout: 60_000 });
 	await page.check('.otcard input[name=ack_rights]');
 	await page.click('.otcard button.primary');
+	// Wait until the upload is saved (slow CI machines take a few seconds).
+	await expect.poll(() => sql(`SELECT 1 FROM entries WHERE battle_id = '${id}' AND round > 3`).length, { timeout: 60_000 }).toBe(before + 1);
 }
 
 test('best of 3: rounds, tie, overtime, results', async ({ browser }) => {
