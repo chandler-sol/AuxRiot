@@ -223,8 +223,10 @@
 	<ul class="people">
 		{#each data.users as u (u.id)}
 			<li>
-				<a href="/u/{u.username}" class="display">{u.username}</a>
-				<span class="mono small muted">{u.beats} beats · {u.listed} listed</span>
+				<div class="pwho">
+					<a href="/u/{u.username}" class="display">{u.username}</a>
+					<span class="mono small muted">{u.beats} beats · {u.listed} listed</span>
+				</div>
 				<form method="POST" action="?/loginAs"><input type="hidden" name="user" value={u.id} /><button class="small-btn">Log in as</button></form>
 			</li>
 		{:else}
@@ -275,7 +277,8 @@
 	.warn { border-color: var(--warn); color: var(--warn); }
 	.inline { display: flex; gap: 8px; flex-wrap: wrap; }
 	.inline input { width: 140px; }
-	.people li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; border-top: 1px dashed var(--line-2); padding-top: 8px; }
+	.people li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; border-top: 1px dashed var(--line-2); padding-top: 8px; }
+	.pwho { display: grid; gap: 2px; min-width: 0; }
+	.pwho .display { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.people .display { font-size: 1.1rem; }
-	.people form { margin-left: auto; }
 </style>

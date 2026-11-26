@@ -43,6 +43,9 @@ test('test lab builds a live battle and fast-forwards it', async ({ browser }) =
 	const id = ((await page.locator('.log p.ok').first().textContent()) ?? '').match(/battles\/(\S+)/)![1];
 	expect(one(`SELECT status FROM battles WHERE id = '${id}'`)).toEqual({ status: 'voting' });
 	await page.reload();
+	// The lab fits a phone: no sideways scroll, and each producer row keeps its button on the same line.
+	await expectNoHorizontalScroll(page);
+	for (const row of await page.locator('.people li').all()) expect((await row.boundingBox())!.height, 'producer row on one line').toBeLessThan(80);
 	await page.locator('.rows li', { has: page.locator(`a[href="/battles/${id}"]`) }).getByRole('button', { name: 'End voting now' }).click();
 	await expect.poll(() => one<{ status: string }>(`SELECT status FROM battles WHERE id = '${id}'`).status).toBe('closed');
 	await eventually(`SELECT 1 FROM notifications WHERE user_id = '${admin.id}' AND kind = 'battle_result'`, 1);
