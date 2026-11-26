@@ -47,15 +47,17 @@ test('Stripe webhook rejects unsigned requests', async ({ baseURL }) => {
 	expect([400, 503]).toContain(r.status);
 });
 
-test('account menu scrolls on a short phone so Log out is reachable', async ({ browser }) => {
-	// Admins have the longest menu; an iPhone SE-sized screen is the shortest common one.
-	const { page } = await signup(browser, 'mnu', { admin: true });
-	await page.setViewportSize({ width: 375, height: 600 });
-	await page.goto('/battles');
-	await page.locator('summary.acct').click();
-	const menu = page.locator('.menu');
-	const box = await menu.boundingBox();
-	expect(box!.y + box!.height, 'menu fits on screen').toBeLessThanOrEqual(600);
-	await page.getByRole('button', { name: 'Log out' }).click(); // scrolls inside the menu
-	await expect(page.locator('header')).toContainText(/log in/i);
-});
+// Admins have the longest menu. Heights are the visible area once Safari's bars take their share:
+// an iPhone SE, and an iPhone 17 Pro Max (where this bug was first reported).
+for (const [label, width, height] of [['short phone', 375, 600], ['iPhone 17 Pro Max with Safari bars', 440, 780]] as const) {
+	test(`account menu: Log out reachable on ${label}`, async ({ browser }) => {
+		const { page } = await signup(browser, 'mnu', { admin: true });
+		await page.setViewportSize({ width, height });
+		await page.goto('/battles');
+		await page.locator('summary.acct').click();
+		const box = await page.locator('.menu').boundingBox();
+		expect(box!.y + box!.height, 'menu fits on screen').toBeLessThanOrEqual(height);
+		await page.getByRole('button', { name: 'Log out' }).click(); // scrolls inside the menu if needed
+		await expect(page.locator('header')).toContainText(/log in/i);
+	});
+}
