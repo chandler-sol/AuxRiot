@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { recordAcceptance, TERMS_VERSION } from '#lib/server/acceptances.ts';
 import type { Actions, PageServerLoad } from './$types';
 import { USERNAME_RE, createSession, hashPassword, recordSignals, verifyTurnstile } from '#lib/server/auth.ts';
 import { getEnv, newId } from '#lib/server/util.ts';
@@ -59,10 +60,11 @@ export const actions: Actions = {
 		const id = newId();
 		const news = form.get('news') === 'on';
 		await env.DB.prepare(
-			'INSERT INTO users (id, username, email, password_hash, created_at, news_opt_in, news_opt_in_at, terms_accepted_at, email_verified_at, provider) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+			'INSERT INTO users (id, username, email, password_hash, created_at, news_opt_in, news_opt_in_at, terms_accepted_at, email_verified_at, provider, terms_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 		)
-			.bind(id, username, email, await hashPassword(password), Date.now(), news ? 1 : 0, news ? Date.now() : null, Date.now(), env.ENVIRONMENT === 'beta' ? Date.now() : null, form.get('provider') === 'on' ? 1 : 0)
+			.bind(id, username, email, await hashPassword(password), Date.now(), news ? 1 : 0, news ? Date.now() : null, Date.now(), env.ENVIRONMENT === 'beta' ? Date.now() : null, form.get('provider') === 'on' ? 1 : 0, TERMS_VERSION)
 			.run();
+		await recordAcceptance(env, { kind: 'site_terms', userId: id, docVersion: TERMS_VERSION, statement: "I'm 18 or older and agree to the Terms and Privacy Policy.", request });
 		await recordSignals(env.DB, id, locals.ip, locals.deviceId, env.SIGNAL_SALT ?? 'dev-salt');
 		await applyCrewOnSignup(env.DB, cookies, id);
 		await recordAttempt(env.DB, locals.ip, salt, 'signup');

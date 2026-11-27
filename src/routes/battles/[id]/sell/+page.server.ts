@@ -2,7 +2,18 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
 import { STORE_DOCS_VERSION, buyOpen, getOrCreateListing, missingForListing, storeSettings, type ListingRow } from '#lib/server/store.ts';
-import { GENRES, KEYS, MOODS } from '#lib/store.ts';
+import { GENRES, KEYS, MOODS, splitSale } from '#lib/store.ts';
+import { clean, recordAcceptance } from '#lib/server/acceptances.ts';
+import { LISTING_ITEMS, SELLER_ACCOUNT_ITEMS, RIGHTS_LABELS, type RightsSchedule } from '#lib/checklist.ts';
+
+const RIGHT_KEYS = Object.keys(RIGHTS_LABELS) as (keyof RightsSchedule)[];
+const parseRights = (s: string | null): RightsSchedule | null => {
+	try {
+		return s ? (JSON.parse(s) as RightsSchedule) : null;
+	} catch {
+		return null;
+	}
+};
 
 async function context(locals: App.Locals, battleId: string, path: string, round = 1) {
 	if (!locals.user) redirect(303, `/login?next=${encodeURIComponent(path)}`);
@@ -33,9 +44,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const { db, battle, listing } = await context(locals, params.id, url.pathname, roundOf(url));
 	const settings = await storeSettings(db);
 	const seller = await db
-		.prepare('SELECT legal_name, seller_agreed_at, seller_agreement_version, payouts_enabled FROM users WHERE id = ?')
+		.prepare('SELECT username, legal_name, seller_agreed_at, seller_agreement_version, payouts_enabled FROM users WHERE id = ?')
 		.bind(locals.user!.id)
-		.first<{ legal_name: string | null; seller_agreed_at: number | null; seller_agreement_version: string | null; payouts_enabled: number }>();
+		.first<{ username: string; legal_name: string | null; seller_agreed_at: number | null; seller_agreement_version: string | null; payouts_enabled: number }>();
 	const opponent = listing.seller_id === battle.creator_id ? battle.challenger : battle.creator;
 	return {
 		battle: { id: battle.id, title: battle.title, status: battle.status, opponent, buyOpen: buyOpen(battle.status), rounds: battle.rounds, round: roundOf(url) },
@@ -49,8 +60,16 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			genre: listing.genre,
 			moods: listing.moods ? listing.moods.split(',') : [],
 			tagged: !!listing.tagged,
-			sampleDisclosure: listing.sample_disclosure ?? '',
-			signed: listing.producer_signed_at ? { name: listing.producer_signature!, at: listing.producer_signed_at } : null,
+			rights: parseRights(listing.rights_schedule),
+			credit: listing.producer_credit ?? seller?.username ?? '',
+			entity: listing.producer_entity ?? '',
+			capacity: listing.producer_capacity ?? 'self',
+			version: listing.listing_version,
+			signed:
+				listing.producer_signed_at && listing.license_version === STORE_DOCS_VERSION
+					? { name: listing.producer_signature!, at: listing.producer_signed_at, version: listing.listing_version }
+					: null,
+			staleSignature: !!listing.producer_signed_at && listing.license_version !== STORE_DOCS_VERSION,
 			file: listing.file_key ? { name: listing.file_name!, size: listing.file_size!, format: listing.file_format } : null,
 			stems: listing.stems_key ? { name: listing.stems_name!, size: listing.stems_size! } : null,
 			missing: missingForListing(listing)
@@ -61,7 +80,8 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			payoutsOn: !!seller?.payouts_enabled,
 			legalName: seller?.legal_name ?? ''
 		},
-		options: { genres: GENRES, keys: KEYS, moods: MOODS }
+		options: { genres: GENRES, keys: KEYS, moods: MOODS },
+		checklist: { account: SELLER_ACCOUNT_ITEMS, listing: LISTING_ITEMS, rightsLabels: RIGHTS_LABELS, licenseVersion: STORE_DOCS_VERSION }
 	};
 };
 
@@ -72,8 +92,12 @@ function locked(l: ListingRow) {
 export const actions: Actions = {
 	agree: async ({ request, locals, params, url }) => {
 		const { db, user } = await context(locals, params.id, url.pathname, roundOf(url));
-		const ticked = (await request.formData()).getAll('item');
-		if (ticked.length < 10) return fail(400, { agreeError: 'Tick every point to enable selling.' });
+		const ticked = new Set((await request.formData()).getAll('item').map(String));
+		if (SELLER_ACCOUNT_ITEMS.some((_, i) => !ticked.has(String(i)))) return fail(400, { agreeError: 'Tick every point to enable selling.' });
+		await recordAcceptance(getEnv(), {
+			kind: 'seller_account', userId: user.id, docVersion: STORE_DOCS_VERSION, request,
+			statement: `Agree and enable selling:\n- ${SELLER_ACCOUNT_ITEMS.join('\n- ')}`
+		});
 		await db
 			.prepare('UPDATE users SET seller_agreed_at = ?, seller_agreement_version = ? WHERE id = ?')
 			.bind(Date.now(), STORE_DOCS_VERSION, user.id)
@@ -100,35 +124,76 @@ export const actions: Actions = {
 		const genre = String(f.get('genre') ?? '');
 		const moods = f.getAll('moods').map(String).filter((m) => MOODS.includes(m)).slice(0, 3);
 		const now = Date.now();
-		const disclosure = String(f.get('sample_disclosure') ?? '').trim().slice(0, 1000);
-		const legalName = String(f.get('legal_name') ?? '').trim().replace(/\s+/g, ' ').slice(0, 120);
-		const signName = String(f.get('signature') ?? '').trim().replace(/\s+/g, ' ');
-		const wantsSign = f.get('sign') === 'on';
+		const legalName = clean(f.get('legal_name'));
+		const credit = clean(f.get('credit'), 60) || user.username;
+		const forEntity = f.get('signing_as') === 'entity';
+		const entity = forEntity ? clean(f.get('entity'), 120) : '';
+		const capacity = forEntity ? clean(f.get('capacity'), 60) : 'self';
+		if (forEntity && (entity.length < 2 || capacity.length < 2)) return fail(400, { error: 'Name the company and your role in it (e.g. Owner).' });
+		// Rights schedule: every line answered, "none" included (License §5).
+		const rights = {} as RightsSchedule;
+		for (const k of RIGHT_KEYS) {
+			const has = k === 'writers' ? true : f.get(`${k}_has`) === 'yes';
+			const v = clean(f.get(k), 600);
+			if (has && !v) return fail(400, { error: `Describe the ${RIGHTS_LABELS[k].toLowerCase()} (or choose none).` });
+			rights[k] = has ? v : 'none';
+		}
+		const tagged = f.get('tagged') === 'on' ? 1 : 0;
+		// Material terms of the offer. Any change needs a fresh signature (License §7).
+		const material = (x: { price: number | null; stems: number | null; tagged: number; credit: string; entity: string; capacity: string; rights: string; file: string | null; stemsFile: string | null }) => JSON.stringify(x);
+		const before = material({ price: listing.price_cents, stems: listing.stems_price_cents, tagged: listing.tagged, credit: listing.producer_credit ?? user.username, entity: listing.producer_entity ?? '', capacity: listing.producer_capacity ?? 'self', rights: listing.rights_schedule ?? '', file: listing.file_key, stemsFile: listing.stems_key });
+		const after = material({ price, stems, tagged, credit, entity, capacity, rights: JSON.stringify(rights), file: listing.file_key, stemsFile: listing.stems_key });
+		const changed = before !== after;
+		// "Sign and list this beat" signs and publishes in one step.
+		const wantsSign = f.get('go') === 'sign';
+		const signName = clean(f.get('signature'));
 		if (wantsSign) {
+			const ticked = new Set(f.getAll('commit').map(String));
+			if (LISTING_ITEMS.some((_, i) => !ticked.has(String(i)))) return fail(400, { error: 'Tick each commitment to sign the listing.' });
 			if (legalName.length < 3) return fail(400, { error: 'Enter your full legal name to sign.' });
 			if (signName.toLowerCase() !== legalName.toLowerCase()) return fail(400, { error: 'Type your full legal name exactly as above to sign.' });
-			if (!disclosure) return fail(400, { error: 'Fill in the sample disclosure before signing ("none" if there are no samples).' });
+			if (!price || !listing.file_key) return fail(400, { error: 'Add a price and the file buyers get before signing.' });
+		} else if (listing.status === 'listed' && changed) {
+			return fail(400, { error: 'Changing the price, files, credit or rights changes the signed offer. Tick the boxes and sign again to save it.' });
 		}
 		if (legalName) await db.prepare('UPDATE users SET legal_name = ? WHERE id = ?').bind(legalName, listing.seller_id).run();
-		// Changing what's disclosed changes what was signed, so it needs a fresh signature.
-		const disclosureChanged = (listing.sample_disclosure ?? '') !== disclosure;
-		const keepSig = listing.producer_signed_at && !disclosureChanged;
+		const stillSigned = !!listing.producer_signed_at && listing.license_version === STORE_DOCS_VERSION && !changed;
+
+		let acceptanceId: string | null = stillSigned ? listing.producer_acceptance_id : null;
+		let version = listing.listing_version;
+		if (wantsSign) {
+			version = listing.listing_version + 1;
+			const { feePct } = await storeSettings(db);
+			const snapshot = {
+				beat_id: listing.id, entry_id: listing.entry_id, battle_id: listing.battle_id, listing_version: version, license_version: STORE_DOCS_VERSION,
+				files: { file: listing.file_key ? { name: listing.file_name, size: listing.file_size, format: listing.file_format, tagged: !!tagged } : null, stems: listing.stems_key ? { name: listing.stems_name, size: listing.stems_size } : null },
+				packages: { exclusive: price, exclusive_stems: stems },
+				fee_pct: feePct, estimated_net: { exclusive: price ? splitSale(price, feePct).netCents : null, exclusive_stems: stems ? splitSale(stems, feePct).netCents : null },
+				credit, rights_schedule: rights, preview: `entry:${listing.entry_id}`
+			};
+			acceptanceId = await recordAcceptance(getEnv(), {
+				kind: 'listing', userId: user.id, subjectId: listing.id, docVersion: STORE_DOCS_VERSION, signerName: signName, capacity, entity: entity || null, request, snapshot,
+				statement: `Sign and list this beat (version ${version}):\n- ${LISTING_ITEMS.join('\n- ')}`
+			});
+		}
 		await db
 			.prepare(
 				`UPDATE listings SET price_cents = ?, stems_price_cents = ?, bpm = ?, music_key = ?, genre = ?, moods = ?, tagged = ?, sample_disclosure = ?,
+				   producer_credit = ?, producer_entity = ?, producer_capacity = ?, rights_schedule = ?, listing_version = ?, producer_acceptance_id = ?,
 				   producer_signature = ?, producer_signed_at = ?, license_version = ?, attested_at = ?, updated_at = ? WHERE id = ?`
 			)
 			.bind(
-				price, stems, bpm, KEYS.includes(key) ? key : null, GENRES.includes(genre) ? genre : null, moods.join(','), f.get('tagged') === 'on' ? 1 : 0, disclosure || null,
-				wantsSign ? signName : keepSig ? listing.producer_signature : null,
-				wantsSign ? now : keepSig ? listing.producer_signed_at : null,
-				wantsSign ? STORE_DOCS_VERSION : keepSig ? listing.license_version : null,
-				wantsSign ? now : keepSig ? listing.attested_at : null,
+				price, stems, bpm, KEYS.includes(key) ? key : null, GENRES.includes(genre) ? genre : null, moods.join(','), tagged, rights.samples,
+				credit, entity || null, capacity, JSON.stringify(rights), version, acceptanceId,
+				wantsSign ? signName : stillSigned ? listing.producer_signature : null,
+				wantsSign ? now : stillSigned ? listing.producer_signed_at : null,
+				wantsSign ? STORE_DOCS_VERSION : stillSigned ? listing.license_version : null,
+				wantsSign ? now : stillSigned ? listing.attested_at : null,
 				now, listing.id
 			)
 			.run();
 
-		if (f.get('publish') === '1') {
+		if (f.get('publish') === '1' || wantsSign) {
 			const fresh = (await db.prepare('SELECT * FROM listings WHERE id = ?').bind(listing.id).first<ListingRow>())!;
 			const missing = missingForListing(fresh);
 			if (missing.length) return fail(400, { error: `Before it can go on sale, add ${missing.join(', ')}.` });
@@ -148,9 +213,10 @@ export const actions: Actions = {
 	removeStems: async ({ locals, params, url }) => {
 		const { db, listing } = await context(locals, params.id, url.pathname, roundOf(url));
 		if (locked(listing)) return fail(400, { error: "This beat can't be changed anymore." });
+		if (listing.status === 'listed') return fail(400, { error: 'Take the beat off the store to change its files.' });
 		if (listing.stems_key) await getEnv().AUDIO.delete(listing.stems_key);
 		await db
-			.prepare('UPDATE listings SET stems_key = NULL, stems_name = NULL, stems_size = NULL, stems_price_cents = NULL, updated_at = ? WHERE id = ?')
+			.prepare('UPDATE listings SET stems_key = NULL, stems_name = NULL, stems_size = NULL, stems_price_cents = NULL, producer_signed_at = NULL, updated_at = ? WHERE id = ?')
 			.bind(Date.now(), listing.id)
 			.run();
 		return { ok: 'Stems removed. It now sells as the exclusive only.' };

@@ -1,104 +1,89 @@
-Last updated: November 14, 2026
-
 # AuxRiot Terms of Service
 
-## The short version
+*Rules for accounts, beat battles and community activity*
 
-- You must be 18 or older. Keep your account secure and play fairly.
-- Your beats stay yours. Upload only music you own or have permission to use.
-- Beats are for streaming on AuxRiot. Uploading does not give other users permission to download, sample or reuse them.
-- Battle Credits currently cost nothing, have no cash value and only buy temporary feed promotion.
-- We can moderate content, correct results and suspend accounts to protect the community.
-- Questions, appeals or deletion requests? Email [hello@auxriot.com](mailto:hello@auxriot.com).
+Version 5 · Last updated November 27, 2026
 
-## 1. Who we are and your agreement
+### 1 Who we are and your agreement
 
-AuxRiot, at https://auxriot.com, is operated by Chandler Solomon, based in Waxhaw, North Carolina, USA. Contact: [hello@auxriot.com](mailto:hello@auxriot.com).
+AuxRiot, at https://auxriot.com, is operated by Chandler Solomon in Waxhaw, North Carolina, USA. Contact hello@auxriot.com. You accept these Terms when you affirmatively agree at signup or another acceptance screen. Public visitors may listen to authorized previews. The Privacy Policy explains our data practices. The Store Terms and signed Exclusive Beat License also apply to store transactions.
 
-By creating an account or using AuxRiot, you agree to these Terms. Our [Privacy Policy](https://auxriot.com/privacy) explains our data practices.
+You must be at least 18 and legally able to enter this agreement to have an account. Give accurate account information, protect your login and tell us about unauthorized access. Use one account per person unless we approve otherwise.
 
-You must be at least 18 and legally able to enter this agreement. Give accurate account information, protect your login and tell us about unauthorized access.
+### 2 How battles work
 
-## 2. How battles work
+Upload an instrumental beat of up to two minutes and choose a 24-or 48-hour voting period. Your browser trims and converts the battle audio to MP3 before upload. The first producer to answer takes the opposing slot and starts voting. Unanswered challenges expire after five days.
 
-Upload an instrumental beat of up to two minutes and choose a 24- or 48-hour voting period. Your browser trims and converts it to MP3 before upload. The first producer to answer takes the opposing slot and starts voting. Unanswered challenges expire after five days.
+Logged-in voters must listen to at least 75% of each beat before scoring Drums, Melody, Mix and Overall from 1 to 5. Scores stay hidden until voting closes. The result appears on both producers’ records, subject to moderation corrections. Comment upvotes earn respect, which unlocks profile flair. Rankings, records, respect and flair are site features with no guaranteed rewards.
 
-Logged-in voters must listen to at least 75% of each beat before scoring Drums, Melody, Mix and Overall from 1 to 5. Scores stay hidden until voting closes. The result appears on both producers' records, subject to moderation corrections.
+### 3 Your content and our permission to use it
 
-Comments can receive upvotes. Upvotes earn respect, which unlocks profile flair. Rankings, records, respect and flair are site features, not property or guaranteed rewards.
+You retain ownership of your uploads. You promise you own or have cleared the necessary rights in the recordings, compositions, artwork, samples and collaborators’ contributions for the uses you authorize. You grant AuxRiot a nonexclusive, worldwide, royalty-free license to reproduce, host, store, transmit, publicly perform and display content as needed to run the service and promote it on AuxRiot or through social share images or links. We may authorize our providers to perform those functions for us.
 
-## 3. Your content and our permission to use it
+For battle uploads this includes on-demand public streaming of the recording and composition. It lasts while the material is on AuxRiot plus a reasonable period for nonpublic backups. For a store listing, you also authorize private storage and reproduction of the full files, delivery and re-delivery to the authorized buyer, recordkeeping and claim handling. That private authority survives unlisting or account deletion as needed for completed sales, subject to lawful removal. After a sale, public use of the Beat is limited to the previews in Exclusive Beat License § 3.
 
-You keep ownership of your beats and other uploads. You promise you own or have cleared every necessary right, including samples, compositions, recordings, artwork and collaborators' contributions. No uncleared samples. Your permissions must cover streaming and the uses described here.
+Other users may stream battle previews. Do not extract, redistribute, sample or reuse someone else’s beat without permission. Only an authorized purchaser may download private purchase files under the Store Terms. Keep your own originals. Request content removal by email. We stop new public uses of removed content. Cached or previously shared copies may take time to disappear.
 
-You give us a nonexclusive, worldwide, royalty-free license to host, store, stream and display your content, and promote it on AuxRiot and through social share images or links. We may let service providers perform those tasks for us, only as needed to run AuxRiot.
+## Battle conduct and credits
 
-This license lasts while the content is on AuxRiot, plus a reasonable period for nonpublic backups. Finished battles normally remain as part of the record unless removed. Email [hello@auxriot.com](mailto:hello@auxriot.com) to request content removal or account deletion. We stop new public uses of removed content; cached or previously shared copies may take time to disappear.
+### 4 Fair play and community rules
 
-Other users may stream battle beats through AuxRiot; battle streams aren't downloadable. Beats bought in our store are delivered as downloads under the [Store Terms](/store/terms). Do not copy, extract, redistribute, sample or reuse someone else's beat without separate permission. Keep your own originals; AuxRiot is not a backup service.
+Do not use alternate accounts, bots, coordinated votes, purchased engagement or other methods to manipulate results, respect or Credits. Do not bypass listening checks, security controls, moderation or suspensions.
 
-## 4. Fair play and community rules
+Do not harass, threaten or impersonate people, post private information, or upload unlawful or infringing content, including intimate images shared without the depicted person’s consent. Do not spam, abuse reports, attack the service or collect users’ data without permission. You are responsible for what you upload and post.
 
-Do not:
+### 5 Moderation and appeals
 
-- Use alternate accounts, bots, coordinated votes, purchased engagement or other methods to manipulate results, respect or Credits.
-- Bypass listening checks, security controls, moderation or suspensions.
-- Harass, threaten, impersonate people, post private information or upload unlawful or infringing content.
-- Spam, abuse reports, attack the service or collect other users' data without permission.
+You can report battles and comments. Moderators and administrators may hide comments, discount or remove votes, remove beats or battles, reverse results or Credits and suspend accounts. Suspension blocks login and leaves an existing paid license in place. Email hello@auxriot.com to appeal or ask for human review. Verified buyers can also request order records and any purchased files still available to them under Store Terms § 6.
 
-Use one account per person unless we approve otherwise. You are responsible for what you upload and post.
+We may silently discount votes and hide a restricted account’s comments from others. Automated checks look for linked accounts and vote rigging using device or IP matches and voting patterns. Sharing a connection or device does not by itself establish cheating. We may act without advance notice where appropriate, subject to applicable law, and may withhold details that would facilitate evasion where the law permits.
 
-## 5. Moderation and appeals
+### 6 Battle Credits
 
-You can report battles and comments. Moderators and admins may hide comments, discount or remove votes, remove beats or battles, reverse results or Credits, and suspend accounts. Suspended accounts cannot log in.
+Credits are earned by finishing battles, whether you win, tie or lose, and by judging battles with a vote that counts. We may also award them in administrator giveaways. Credits can only promote a battle to the top of the feed for the displayed period. Promotion does not change scoring or guarantee listeners, votes or wins.
 
-We may also shadowban an account: its votes are silently discounted and its comments hidden from others. Automated checks look for linked accounts and vote rigging using device or IP matches and voting patterns. Sharing a connection or device does not, by itself, prove cheating.
-
-We may act without advance notice where appropriate, subject to applicable law. Email [hello@auxriot.com](mailto:hello@auxriot.com) to appeal or request human review. We may withhold details that would help people evade anti-cheat controls, unless disclosure is required by law.
-
-## 6. Battle Credits
-
-Credits are earned by finishing battles, whether you win, tie or lose, and by judging battles with a vote that counts, and may be awarded in admin giveaways. They can only promote a battle to the top of the feed for the displayed period. Promotion does not affect scoring or guarantee listeners, votes or wins.
-
-Credits cannot currently be purchased. They have no cash value and cannot be sold, transferred, traded, wagered or cashed out. AuxRiot offers no gambling, betting or prizes of real-world value.
+Credits are currently free. They have no cash value and cannot be sold, transferred, traded, wagered or cashed out. They cannot be used to buy store beats. AuxRiot offers no betting or real-world prizes for battles.
 
 We may change earning rates or promotion prices for future activity and remove Credits connected to cheating or errors. We display the Credit cost and promotion duration before you spend them. Unused Credits end when your account or the service ends, subject to applicable law.
 
-If we introduce paid packs, we will first provide purchase terms covering prices, taxes, refunds, cancellation rights and any expiration rules. These Terms do not authorize charges or make future purchases nonrefundable.
+If we introduce paid packs, we will first provide purchase terms covering prices, taxes, refunds, cancellation rights and any expiration rules. The present Terms authorize no charge for Credits.
 
-## 7. Copyright notices and counter-notices
+## Copyright complaints and counter notices
 
-Submit copyright complaints through https://auxriot.com/dmca or to our designated agent:
+### 7 Report a copyright infringement
 
-- Name: Chandler Solomon, AuxRiot
-- Mailing address: 8304 Waxhaw Hwy, Waxhaw, NC 28173
-- Telephone: (336) 307-9911
-- Email: [dmca@auxriot.com](mailto:dmca@auxriot.com)
+Use https://auxriot.com/dmca or contact Chandler Solomon, AuxRiot, 8304 Waxhaw Hwy, Waxhaw, NC 28173, USA. Telephone (336) 307-9911. Email dmca@auxriot.com.
 
-A notice must include your signature; the copyrighted work; the material's location; your contact details; a good-faith statement that the use is unauthorized by the owner, its agent or law; and a statement that the information is accurate and, under penalty of perjury, you are authorized to act for the owner.
+Send a physical or electronic signature of the owner or a person authorized to act for the owner. Identify the copyrighted work or, for multiple works on one site, provide a representative list. Identify the material to remove or disable and give enough information to find it, such as its URL or order ID. Include contact information reasonably sufficient for us to reach you, such as an address, telephone number and available email.
 
-We promptly remove or disable access on valid notices and notify the uploader. We terminate repeat infringers in appropriate circumstances and may act on a single serious violation.
+State your good-faith belief that the use is unauthorized by the owner, its agent or law. State that the information is accurate and, under penalty of perjury, that you are authorized to act for the owner of the exclusive right allegedly infringed.
 
-If removal resulted from a mistake or misidentification, send our agent a counter-notice with:
+We expeditiously remove or disable access on a compliant notice and promptly notify the uploader. We also act when we have knowledge of infringement or facts making it apparent as provided by law. Affected access may include the listing, public preview and private delivery. We terminate repeat infringers in appropriate circumstances, may act on a single serious violation and accommodate applicable standard technical measures. We retain records needed to administer this policy.
 
-- Your signature, name, address and telephone number.
-- The removed material and its previous location.
-- A statement under penalty of perjury that you believe in good faith the removal resulted from mistake or misidentification.
-- Consent to the federal district court for your address, or, outside the USA, any district where we may be found, and agreement to accept service from the original complainant or their agent.
+### If your material was removed by mistake
 
-We forward a compliant counter-notice to the complainant. We restore access 10 to 14 business days after receiving it unless our agent receives notice of a filed court action seeking to restrain the alleged infringement. Content may remain unavailable for a separate Terms violation.
+Send our copyright agent your physical or electronic signature, name, address and telephone number. Identify the removed material and its former location. State under penalty of perjury that you have a good-faith belief the material was removed or disabled by mistake or misidentification.
 
-## 8. Changes, deletion and service availability
+Consent to the jurisdiction of the federal district court for the judicial district where your address is located or, if outside the United States, any judicial district where AuxRiot may be found. Agree to accept service of process from the original notifier or their agent. We forward a compliant counter-notice, including the required contact details, to the original notifier.
 
-We may change features or end AuxRiot. We will give reasonable notice where practical and legally required. We will notify you of material Terms changes before they take effect; changes apply prospectively. If new acceptance is legally required, we will request it.
+We inform the notifier that we will restore access. We restore material between 10 and 14 business days after receiving a compliant counter-notice unless our agent first receives timely notice of a filed action seeking to restrain the alleged infringement, including a qualifying Copyright Claims Board proceeding concerning that material under 17 U.S.C. § 1507(d). Access may remain restricted on an independent lawful ground. Restoration of hosting and a buyer’s refund or license status are decided separately under the Store Terms.
 
-You can stop using AuxRiot or request account deletion at [hello@auxriot.com](mailto:hello@auxriot.com). The Privacy Policy explains deletion and retained records.
+## Safety requests and disputes
 
-## 9. Responsibility and disputes
+### 7A Remove an intimate image shared without consent
 
-AuxRiot is provided "as is" and "as available," to the extent the law allows. We cannot guarantee uninterrupted access, error-free results or prevention of all misuse.
+If an intimate photo, video or realistic digital forgery depicts you and was shared on AuxRiot without your consent, you or your authorized representative can request removal at hello@auxriot.com. You may do this without an account. A subject such as “Private image removal” helps route the request. Identify the content and where to find it, for example by URL, profile or message location. Please do not send a copy of the image.
 
-Where permitted by law, we are not responsible for indirect losses or lost profits. Our total liability for claims relating to AuxRiot is limited to the greater of US $100 or what you paid us in the preceding 12 months. These limits do not apply where the law prohibits them and do not remove mandatory consumer rights.
+Include a physical or electronic signature, contact information where we can reach you, and a brief statement of your good-faith belief that publication was without the depicted individual’s consent, including relevant circumstances. An authorized representative may sign for the individual. For a valid request we remove the depiction as soon as possible and within 48 hours of receipt, and make reasonable efforts within that time to identify and remove known identical copies. This is a separate reporting path from copyright complaints.
 
-The laws of North Carolina govern these Terms. Disputes go to courts in Union County, North Carolina, except where mandatory law gives you other rights or a different forum.
+### 8 Changes and account deletion
 
+We may change features or end the service. We will give reasonable notice when practical and legally required. We notify you of material Terms changes before they take effect and obtain new acceptance where required. Changes apply prospectively. Account closure does not by itself cancel an activated music license or defeat an accrued refund or payment obligation. The Privacy Policy explains what we retain.
+
+### 9 Responsibility and disputes
+
+AuxRiot is offered as available and as is to the extent permitted by law. We make no promise of uninterrupted service or prevention of all misuse. We remain responsible for our express delivery, refund and payment commitments. The producer and buyer are responsible for their respective obligations under the signed license.
+
+Where permitted, AuxRiot excludes indirect or consequential damages and lost profits. Its aggregate liability for claims related to the service is capped at the greater of US $100 or the platform fees the claimant paid or bore in the 12 months before the event. Platform fees exclude tax, card processing and amounts paid to the producer. This limit does not cap promised refunds, seller proceeds owed, required reinstatement of a seller’s net, fraud, willful misconduct, gross negligence, or liability or consumer remedies that applicable law prohibits limiting. The platform cap does not limit claims between the producer and buyer under their license.
+
+North Carolina law and applicable U.S. federal law govern. Subject to mandatory rights, the exclusive court forum is a state court of competent jurisdiction in Union County, North Carolina, or the U.S. District Court for the Western District of North Carolina where federal jurisdiction exists. This preserves eligible small-claims proceedings and any available voluntary Copyright Claims Board process. If one provision is unenforceable, the rest remains effective to the extent lawful.

@@ -28,6 +28,28 @@
 	const underMin = $derived(cents(price) > 0 && cents(price) < data.settings.minPriceCents);
 
 	const STATUS: Record<string, string> = { draft: 'Draft — not on sale yet', listed: 'On sale', unlisted: 'Off the store', sold: 'Sold', removed: 'Removed' };
+	// Rights schedule: each line answered, "none" included.
+	type RK = 'samples' | 'ai' | 'voice' | 'restrictions';
+	const RK: RK[] = ['samples', 'ai', 'voice', 'restrictions'];
+	const HINT: Record<RK, string> = {
+		samples: "What's sampled, from where, and your clearance (license, reference). Both the recording and the composition.",
+		ai: 'Which elements, the tool, and any terms limiting transfer or commercial use.',
+		voice: 'Whose voice or likeness, and the written permission you have.',
+		restrictions: 'Any tool, library or license terms that limit transfer, sync, stems or commercial use.'
+	};
+	let has = $state<Record<RK, 'none' | 'yes' | ''>>({ samples: '', ai: '', voice: '', restrictions: '' });
+	let entity = $state(false);
+	let seededR = false;
+	$effect.pre(() => {
+		if (seededR) return;
+		seededR = true;
+		const r = l.rights;
+		for (const k of RK) has[k] = r ? (r[k] && r[k] !== 'none' ? 'yes' : 'none') : '';
+		entity = !!l.entity;
+	});
+	const answered = $derived(RK.every((k) => has[k]));
+	let commits = $state<boolean[]>([]);
+	const allCommitted = $derived(data.checklist.listing.every((_, i) => commits[i]));
 	const keep = () => async ({ update }: { update: (o?: { reset?: boolean }) => Promise<void> }) => update({ reset: false });
 </script>
 
@@ -41,7 +63,7 @@
 <div class="explain">
 	{#if !data.seller.payoutsOn}<p class="payoutnote"><strong>Set up payouts</strong> so buyers can check out — Stripe pays you weekly on Mondays. <a href="/settings/payouts">Set up payouts →</a></p>{/if}
 	<p><strong>Exclusive only.</strong> One buyer gets the beat, then it's off the market for good. The battle stays up with a SOLD stamp.</p>
-	<p class="small muted"><a href="/store/terms">Store Terms</a> · <a href="/store/license">Exclusive Beat License</a> · <span class="draftnote">drafts pending legal review</span></p>
+	<p class="small muted"><a href="/store/terms">Store Terms</a> · <a href="/store/license">Exclusive Beat License</a> · version 5</p>
 	<p class="small muted">
 		{#if data.battle.buyOpen}
 			Buyers can check out as soon as it's listed.
@@ -137,28 +159,76 @@
 		</section>
 
 		<section class="card stack sign">
-			<h2>Samples &amp; signature</h2>
+			<h2>Rights schedule</h2>
+			<p class="small muted">Goes on the buyer's license. Answer every line; "none" is an answer. AuxRiot doesn't clear samples for you.</p>
 			<div>
-				<label for="sample_disclosure">Sample disclosure</label>
-				<textarea id="sample_disclosure" name="sample_disclosure" rows="2" maxlength="1000" placeholder={'"none" — or what\'s sampled and how it\'s cleared'}>{l.sampleDisclosure}</textarea>
-				<p class="small muted">Shown on the buyer's license. Clearing samples is on you (and the buyer for their own uses) — AuxRiot doesn't clear samples.</p>
+				<label for="writers">{data.checklist.rightsLabels.writers}</label>
+				<textarea id="writers" name="writers" rows="2" maxlength="600" placeholder="e.g. Sole writer and producer, 100%. No publisher.">{l.rights?.writers ?? ''}</textarea>
+				<p class="small muted">Everyone who wrote or co-produced it, their shares, publishers or society (IPI) if any. You need written authority from each.</p>
 			</div>
+			{#each RK as k (k)}
+				<fieldset class="rs">
+					<legend>{data.checklist.rightsLabels[k]}</legend>
+					<div class="yn">
+						<label class="opt"><input type="radio" name="{k}_has" value="none" bind:group={has[k]} /> None</label>
+						<label class="opt"><input type="radio" name="{k}_has" value="yes" bind:group={has[k]} /> Yes</label>
+					</div>
+					{#if has[k] === 'yes'}
+						<textarea name={k} rows="2" maxlength="600" placeholder={HINT[k]}>{l.rights?.[k] && l.rights[k] !== 'none' ? l.rights[k] : ''}</textarea>
+					{/if}
+				</fieldset>
+			{/each}
+		</section>
+
+		<section class="card stack sign">
+			<h2>Credit &amp; signer</h2>
+			<div>
+				<label for="credit">Public credit ("Prod. by …")</label>
+				<input id="credit" name="credit" type="text" maxlength="60" value={l.credit} />
+			</div>
+			<fieldset class="rs">
+				<legend>Signing as</legend>
+				<div class="yn">
+					<label class="opt"><input type="radio" name="signing_as" value="self" checked={!entity} onchange={() => (entity = false)} /> Myself</label>
+					<label class="opt"><input type="radio" name="signing_as" value="entity" checked={entity} onchange={() => (entity = true)} /> A company or entity</label>
+				</div>
+				{#if entity}
+					<div class="two">
+						<div><label for="entity">Legal entity name</label><input id="entity" name="entity" type="text" maxlength="120" value={l.entity} placeholder="Beatworks LLC" /></div>
+						<div><label for="capacity">Your role</label><input id="capacity" name="capacity" type="text" maxlength="60" value={l.capacity === 'self' ? '' : l.capacity} placeholder="Owner" /></div>
+					</div>
+				{/if}
+			</fieldset>
 			<div>
 				<label for="legal_name">Your full legal name</label>
 				<input id="legal_name" name="legal_name" type="text" autocomplete="name" maxlength="120" value={data.seller.legalName} />
-				<p class="small muted">Private. Printed only on licenses for your sales.</p>
+				<p class="small muted">Private. Shown only to the buyer on the signed license.</p>
 			</div>
+		</section>
+
+		<section class="card stack sign offer">
+			<h2>Sign the offer</h2>
 			{#if l.signed}
-				<p class="signed mono small">✓ Signed by {l.signed.name} · {new Date(l.signed.at).toLocaleDateString()}</p>
-				<p class="small muted">Changing the sample disclosure clears this signature, so you'd sign again.</p>
+				<p class="signed mono small">✓ Version {l.signed.version} signed by {l.signed.name} · {new Date(l.signed.at).toLocaleDateString()}</p>
+				<p class="small muted">Changing the price, files, credit, signer or rights schedule needs a new signature.</p>
 			{:else}
-				<label class="check">
-					<input type="checkbox" name="sign" />
-					<span>
-						I sign the <a href="/store/license" target="_blank">Exclusive Beat License</a> for "{data.battle.title}". I own it, it has never been sold or leased anywhere,
-						and once it sells I'll never sell, lease or license it again.
-					</span>
-				</label>
+				{#if l.staleSignature}<p class="warn small">The store terms were updated (version 5). Review and sign this listing again so buyers can check out.</p>{/if}
+				<div class="summary">
+					<p class="mono small muted">What you're offering · listing version {l.version + 1} · license {data.checklist.licenseVersion}</p>
+					<dl>
+						<dt>Beat</dt><dd>"{data.battle.title}"{data.battle.rounds > 1 ? ` · round ${data.battle.round}` : ''} · ID {l.id}</dd>
+						<dt>Files</dt><dd>{l.file ? `${l.file.name} (${(l.file.format ?? '').toUpperCase()}${l.tagged ? ', tagged' : ', untagged'})` : 'not uploaded yet'}{l.stems ? ` + stems ${l.stems.name}` : ''}</dd>
+						<dt>Packages</dt><dd>Exclusive {price ? `$${price}` : '—'}{stems ? ` · Exclusive + Stems $${stems}` : ''}</dd>
+						<dt>Your net</dt><dd>{ex ? money2(ex.netCents) : '—'}{st ? ` · ${money2(st.netCents)} with stems` : ''}</dd>
+						<dt>Preview</dt><dd>The 2:00 battle version (stays public with a SOLD mark)</dd>
+					</dl>
+					<p class="small muted">Read the full <a href="/store/license" target="_blank">Exclusive Beat License</a> and <a href="/store/terms" target="_blank">Store Terms</a>. Save and fix anything before signing.</p>
+				</div>
+				<ul class="commits">
+					{#each data.checklist.listing as text, i (i)}
+						<li><label class="check"><input type="checkbox" name="commit" value={i} bind:checked={commits[i]} /> <span>{text}</span></label></li>
+					{/each}
+				</ul>
 				<div>
 					<label for="signature">Type your full legal name to sign</label>
 					<input id="signature" name="signature" type="text" maxlength="120" autocomplete="off" />
@@ -171,7 +241,11 @@
 		{/if}
 		<div class="row actions">
 			<button>Save {l.status === 'listed' ? 'changes' : 'draft'}</button>
-			{#if l.status !== 'listed'}<button class="primary" name="publish" value="1">Put it on sale</button>{/if}
+			{#if !l.signed}
+				<button class="primary" name="go" value="sign" disabled={!allCommitted || !answered}>Sign and list this beat</button>
+			{:else if l.status !== 'listed'}
+				<button class="primary" name="publish" value="1">Put it on sale</button>
+			{/if}
 		</div>
 	</form>
 	{#if l.status === 'listed'}
@@ -216,7 +290,19 @@
 	.check input { width: 20px; height: 20px; accent-color: var(--pink); flex: none; margin-top: 2px; }
 	.actions { justify-content: flex-end; }
 	.signed { color: var(--pink); margin: 0; }
-	.draftnote { color: var(--warn); }
+	.rs { display: grid; gap: 8px; }
+	.rs legend { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--paper); margin-bottom: 6px; }
+	.yn { display: flex; gap: 18px; flex-wrap: wrap; }
+	.opt { display: inline-flex; gap: 8px; align-items: center; margin: 0; text-transform: none; letter-spacing: 0; font-family: var(--body); font-weight: 400; color: var(--paper); font-size: 0.95rem; cursor: pointer; }
+	.opt input { width: 18px; height: 18px; accent-color: var(--pink); margin: 0; }
+	textarea { width: 100%; box-sizing: border-box; }
+	.summary { background: var(--ink); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 8px; }
+	.summary p { margin: 0; }
+	.summary dl { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; font-size: 0.9rem; }
+	.summary dt { font-family: var(--mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); padding-top: 3px; }
+	.summary dd { margin: 0; overflow-wrap: anywhere; }
+	.commits { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+	.commits .check { font-size: 0.9rem; color: var(--dim); line-height: 1.5; }
 	.ghost { color: var(--dim); }
 	.small-btn { min-height: 36px; padding: 0 12px; font-size: 0.9rem; justify-self: start; }
 	.unlist { margin-top: 10px; text-align: right; }

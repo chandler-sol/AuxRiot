@@ -37,13 +37,23 @@ test('store: buy box, paid order, downloads, license, SOLD', async ({ browser, b
 		await expect(admin.page.locator('.keys li').first()).toBeVisible();
 		const pay = co.locator('button.pay');
 		await co.locator('input[name=legal_name]').fill('Robo Tester');
-		await expect(pay).toBeDisabled(); // not until they agree
+		await expect(pay).toBeDisabled(); // not until they sign
 		await co.locator('input[name=agree]').check();
+		await expect(pay).toBeDisabled(); // and consent to electronic records, separately
+		await co.locator('input[name=records]').check();
 		await expect(pay).toBeEnabled();
-		await expect(co.locator('.agree')).toContainText('Robo Tester');
+		await expect(pay).toHaveText(/^Sign and pay \$/);
+		await expect(co.locator('.agree').first()).toContainText(/I am 18 or older, have authority to sign/);
+		await expect(co.locator('.facts')).toContainText(/statement/i);
 		await co.locator('details.full summary').click();
-		await expect(co.locator('.doc')).toContainText('Robo Tester');
-		await expect(co.locator('.doc')).not.toContainText('{buyer_signature_and_date}');
+		await expect(co.locator('.doc')).toContainText('Robo Tester (signing as self)');
+		await expect(co.locator('.doc')).toContainText('Version 5');
+		await expect(co.locator('.doc')).not.toContainText(/\{\w+\}/);
+		// Signing for a company puts the entity on the license.
+		await co.locator('input[name=signing_as][value=entity]').check();
+		await co.locator('input[name=entity]').fill('Robo Records LLC');
+		await co.locator('input[name=capacity]').fill('Owner');
+		await expect(co.locator('.doc')).toContainText('Robo Records LLC, signed by Robo Tester (Owner)');
 		await expectNoHorizontalScroll(admin.page);
 	} else {
 		await expect(admin.page.locator('#buy')).toContainText(/opens soon/i);
@@ -53,13 +63,15 @@ test('store: buy box, paid order, downloads, license, SOLD', async ({ browser, b
 	const order = `ord${uid()}`;
 	sql(`UPDATE listings SET held_until = ${Date.now() + 1_800_000}, held_by = '${admin.id}' WHERE id = '${l.id}'`);
 	sql(
-		`INSERT INTO orders (id, listing_id, buyer_id, seller_id, list_price_cents, amount_cents, platform_fee_cents, processing_fee_cents, seller_net_cents, status, buyer_legal_name, buyer_signature, buyer_signed_at, license_version, created_at, stripe_session_id)
-		 VALUES ('${order}', '${l.id}', '${admin.id}', '${l.seller_id}', 5000, 5000, 1000, 175, 3825, 'pending', 'Robo <b>Buyer</b>', 'Robo Buyer', ${Date.now()}, 'v', ${Date.now()}, 'cs_${order}')`
+		`INSERT INTO orders (id, listing_id, buyer_id, seller_id, list_price_cents, amount_cents, platform_fee_cents, processing_fee_cents, seller_net_cents, status, buyer_legal_name, buyer_signature, buyer_signed_at, license_version, created_at, stripe_session_id, buyer_capacity, merchant, store_terms_version, listing_version)
+		 VALUES ('${order}', '${l.id}', '${admin.id}', '${l.seller_id}', 5000, 5000, 1000, 175, 3825, 'pending', 'Robo <b>Buyer</b>', 'Robo Buyer', ${Date.now()}, '2026-11-27-v5', ${Date.now()}, 'cs_${order}', 'self', 'Card merchant: AuxRiot · statement descriptor: AUXRIOT', '2026-11-27-v5', 1)`
 	);
 	const session = { id: `cs_${order}`, payment_status: 'paid', payment_intent: `pi_${order}`, metadata: { order_id: order }, total_details: { amount_tax: 0 } };
 	expect((await stripeEvent(baseURL!, 'checkout.session.completed', session)).status).toBe(200);
 	expect((await stripeEvent(baseURL!, 'checkout.session.completed', session)).status).toBe(200); // Stripe retries are harmless
 	expect(one(`SELECT status FROM orders WHERE id = '${order}'`)).toEqual({ status: 'paid' });
+	// Both parties get the completed agreement and a receipt (License §7).
+	await eventually(`SELECT 1 FROM orders WHERE id = '${order}' AND receipt_sent_at IS NOT NULL`, 1);
 	// Paid = reserved: off the market, but no SOLD stamp until the files are delivered.
 	expect(one(`SELECT status, held_until, sold_at FROM listings WHERE id = '${l.id}'`)).toEqual({ status: 'sold', held_until: null, sold_at: null });
 	await eventually(`SELECT 1 FROM notifications WHERE user_id = '${l.seller_id}' AND kind = 'beat_sold' AND actor_id = '${admin.id}' AND url = '/battles/${battleId}'`, 1);
@@ -83,7 +95,8 @@ test('store: buy box, paid order, downloads, license, SOLD', async ({ browser, b
 	expect(html).toContain('&lt;b&gt;Buyer&lt;/b&gt;'); // names are escaped, never rendered as HTML
 	expect(html).toContain(order.toUpperCase());
 	expect(html).not.toMatch(/\{\w+\}/); // every blank is filled, signatures included
-	expect(html).toContain('signed electronically');
+	expect(html).toContain('/s/ Robo &lt;b&gt;Buyer&lt;/b&gt; • self'); // buyer's signature record
+	expect(html).toContain('statement descriptor: AUXRIOT');
 	await expectNoHorizontalScroll(admin.page);
 
 	// The battle now wears a SOLD stamp, and the cancel option is gone.

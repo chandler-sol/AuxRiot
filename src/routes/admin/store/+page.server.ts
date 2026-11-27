@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getEnv } from '#lib/server/util.ts';
 import { logAction, requireAdmin, requireMod } from '#lib/server/mod.ts';
 import { setSetting } from '#lib/server/settings.ts';
+import { DESCRIPTOR_KEY, MERCHANT_KEY, merchantInfo } from '#lib/server/merchant.ts';
 import { stripeMode, stripeV1 } from '#lib/server/stripe.ts';
 import { FEE_KEY, MIN_PRICE_KEY, storeSettings } from '#lib/server/store.ts';
 
@@ -61,6 +62,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		services,
 		isAdmin: me.isAdmin,
 		settings,
+		merchant: await merchantInfo(db),
 		counts: Object.fromEntries(counts.results.map((c) => [c.status, c.n])) as Record<string, number>,
 		medianCents: median?.price_cents ?? null,
 		status,
@@ -82,6 +84,21 @@ export const actions: Actions = {
 		await setSetting(db, MIN_PRICE_KEY, String(min), admin.username);
 		await logAction(db, admin, 'settings.store', 'settings', 'store', `fee ${fee}%, suggested min $${min / 100}`);
 		return { ok: `Saved: ${fee}% fee, $${(min / 100).toFixed(0)} suggested minimum. New sales use these right away.` };
+	},
+
+	/** Store Terms §5: checkout and receipts name the card merchant and the statement descriptor. */
+	merchant: async ({ request, locals }) => {
+		const admin = requireAdmin(locals);
+		const db = getEnv().DB;
+		const f = await request.formData();
+		const name = String(f.get('merchant') ?? '').trim().replace(/\s+/g, ' ').slice(0, 120);
+		const descriptor = String(f.get('descriptor') ?? '').trim().toUpperCase().slice(0, 22);
+		if (name.length < 3) return fail(400, { error: 'Name the legal merchant for card payments.' });
+		if (!/^[A-Z0-9 .\-*]{5,22}$/.test(descriptor)) return fail(400, { error: 'Statement descriptor: 5–22 letters, numbers, spaces, dots or dashes (match Stripe → Settings → Public details).' });
+		await setSetting(db, MERCHANT_KEY, name, admin.username);
+		await setSetting(db, DESCRIPTOR_KEY, descriptor, admin.username);
+		await logAction(db, admin, 'settings.merchant', 'settings', 'store', `${name} · ${descriptor}`);
+		return { ok: 'Saved. Checkout, receipts and new licenses show these now.' };
 	},
 
 	remove: async ({ request, locals }) => {

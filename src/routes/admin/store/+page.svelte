@@ -54,7 +54,14 @@
 			<input id="min" name="min" inputmode="decimal" value={data.settings.minPriceCents / 100} style="width:90px" /> <span class="small muted">$</span>
 			<button>Save</button>
 		</form>
-		<p class="small muted">The minimum is advice shown to producers, not a hard block.</p>
+		<p class="small muted">The minimum is advice shown to producers, not a hard block. <strong>Fee increases:</strong> Store Terms §4 promises sellers at least 30 days' notice first, and signed orders keep their agreed fee.</p>
+		<form method="POST" action="?/merchant" class="merchant" use:enhance={keep}>
+			<label for="merchant">Card merchant (shown at checkout and on receipts)</label>
+			<input id="merchant" name="merchant" value={data.merchant.name} maxlength="120" />
+			<label for="descriptor">Statement descriptor (must match Stripe → Settings → Public details)</label>
+			<input id="descriptor" name="descriptor" value={data.merchant.descriptor} maxlength="22" style="max-width:220px" />
+			<button>Save</button>
+		</form>
 	{:else}
 		<p class="small">Fee {data.settings.feePct}% · suggested minimum {money(data.settings.minPriceCents)} (admins can change these).</p>
 	{/if}
@@ -150,4 +157,6 @@
 	.svc-tab a { color: var(--dim); }
 	.svc-tab a.on { color: var(--pink); }
 	.danger { border-color: #ff5a4e; color: #ff5a4e; }
+	.merchant { display: grid; gap: 6px; margin-top: 12px; max-width: 520px; }
+	.merchant button { justify-self: start; }
 </style>

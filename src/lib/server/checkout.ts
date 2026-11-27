@@ -7,6 +7,10 @@ import { notifySale } from './notify.ts';
 import { notify } from './notifications.ts';
 import { sendEmail, layout } from './email.ts';
 import { businessDeadline, formatDeadline } from './bizdays.ts';
+import { recordAcceptance } from './acceptances.ts';
+import { merchantInfo } from './merchant.ts';
+import { buyerStatement, parseRights, RECORDS_CONSENT, rightsText } from '#lib/signing.ts';
+import { fileLine } from '#lib/license.ts';
 
 /**
  * Exclusive beat checkout (Stripe Checkout, destination charge):
@@ -27,6 +31,9 @@ const TAX_KEY = 'store_tax_enabled';
 type ListingForSale = {
 	id: string; battle_id: string; seller_id: string; status: string; price_cents: number | null; stems_price_cents: number | null;
 	stems_key: string | null; file_key: string | null; held_until: number | null; held_by: string | null;
+	file_name: string | null; file_size: number | null; file_format: string | null; tagged: number; stems_name: string | null;
+	license_version: string | null; producer_signed_at: number | null; producer_signature: string | null; producer_capacity: string | null; producer_entity: string | null;
+	producer_credit: string | null; producer_acceptance_id: string | null; listing_version: number; rights_schedule: string | null;
 	title: string; battle_status: string; round: number; rounds: number;
 	seller_name: string; stripe_account_id: string | null; payouts_enabled: number;
 };
@@ -35,16 +42,29 @@ export async function startCheckout(
 	env: Env,
 	buyer: SessionUser,
 	listingId: string,
-	opts: { stems: boolean; legalName: string; origin: string; returnPath?: string }
+	opts: {
+		stems: boolean; legalName: string; origin: string; returnPath?: string;
+		/** v5 signing: who signs, for whom, and the separate electronic-records consent */
+		entity?: string; capacity?: string; agreed: boolean; recordsConsent: boolean; country?: string | null; request?: Request;
+	}
 ): Promise<{ url: string } | { error: string }> {
 	const db = env.DB;
 	if (!buyer.emailVerified) return { error: 'Confirm your email before buying — check your inbox for the link.' };
+	// Store Terms §1: purchases only in checkout locations we support (the US for now).
+	if (opts.country && opts.country !== 'US' && opts.country !== 'XX') return { error: 'Checkout is open to buyers in the United States for now.' };
 	const name = opts.legalName.trim().replace(/\s+/g, ' ');
 	if (name.length < 3 || name.length > 100) return { error: 'Type your full legal name — it goes on the license.' };
+	const entity = (opts.entity ?? '').trim().replace(/\s+/g, ' ').slice(0, 120);
+	const capacity = entity ? (opts.capacity ?? '').trim().replace(/\s+/g, ' ').slice(0, 60) : 'self';
+	if (entity && capacity.length < 2) return { error: 'Add your role at the company you are signing for.' };
+	if (!opts.agreed) return { error: 'Tick the box to sign the license and Store Terms.' };
+	if (!opts.recordsConsent) return { error: 'Agree to receive the order records electronically to continue.' };
 
 	const l = await db
 		.prepare(
 			`SELECT l.id, l.battle_id, l.seller_id, l.status, l.price_cents, l.stems_price_cents, l.stems_key, l.file_key, l.held_until, l.held_by,
+			        l.file_name, l.file_size, l.file_format, l.tagged, l.stems_name, l.license_version, l.producer_signed_at, l.producer_signature, l.producer_capacity,
+			        l.producer_entity, l.producer_credit, l.producer_acceptance_id, l.listing_version, l.rights_schedule,
 			        b.title, b.status AS battle_status, b.rounds, e.round, u.username AS seller_name, u.stripe_account_id, u.payouts_enabled
 			 FROM listings l JOIN battles b ON b.id = l.battle_id JOIN entries e ON e.id = l.entry_id JOIN users u ON u.id = l.seller_id
 			 WHERE l.id = ?`
@@ -55,6 +75,7 @@ export async function startCheckout(
 	if (l.seller_id === buyer.id) return { error: "You can't buy your own beat." };
 	if (!buyOpen(l.battle_status)) return { error: 'Buying opens when the battle ends.' };
 	if (!l.payouts_enabled || !l.stripe_account_id) return { error: `${l.seller_name} hasn't set up payouts yet, so this beat can't be bought right now.` };
+	if (!l.producer_signed_at || l.license_version !== STORE_DOCS_VERSION) return { error: `${l.seller_name} needs to sign the updated listing before this beat can be bought.` };
 	const stems = opts.stems && !!l.stems_key && !!l.stems_price_cents;
 	const priceCents = stems ? l.stems_price_cents! : l.price_cents;
 
@@ -75,14 +96,33 @@ export async function startCheckout(
 	const { feePct } = await storeSettings(db);
 	const split = splitSale(priceCents, feePct);
 	const orderId = newId();
+	const merchant = await merchantInfo(db);
+	// Freeze what's being licensed: files with their storage identifiers, rights, signer, credit.
+	const [fileHead, stemsHead] = await Promise.all([env.AUDIO.head(l.file_key), stems && l.stems_key ? env.AUDIO.head(l.stems_key) : Promise.resolve(null)]);
+	const manifest = {
+		file: fileLine(l.file_name, l.file_format, !!l.tagged, l.file_size, fileHead?.etag ?? null),
+		stems: stems ? `${l.stems_name ?? 'stems.zip'}${stemsHead?.etag ? ` (file id ${stemsHead.etag})` : ''}` : null,
+		rights: rightsText(parseRights(l.rights_schedule)),
+		credit: l.producer_credit ?? l.seller_name,
+		producer: { name: l.producer_signature ?? '', capacity: l.producer_capacity, entity: l.producer_entity, at: l.producer_signed_at }
+	};
+	const beatAndPackage = `"${l.title}"${l.rounds > 1 ? ` (round ${l.round})` : ''}, ${stems ? 'Exclusive + Stems' : 'Exclusive'}`;
+	const total = `$${(split.paidCents / 100).toFixed(2)}`;
+	const statement = `${buyerStatement(beatAndPackage, total)}\n${RECORDS_CONSENT}`;
+	const acceptanceId = await recordAcceptance(env, {
+		kind: 'order', userId: buyer.id, subjectId: orderId, docVersion: STORE_DOCS_VERSION, signerName: name, capacity, entity: entity || null, statement, request: opts.request,
+		snapshot: { listing_id: l.id, listing_version: l.listing_version, price_cents: split.paidCents, stems, manifest, merchant: merchant.line, producer_acceptance_id: l.producer_acceptance_id }
+	});
 	await db
 		.prepare(
 			`INSERT INTO orders (id, listing_id, buyer_id, seller_id, includes_stems, list_price_cents, amount_cents, platform_fee_cents,
-			   processing_fee_cents, seller_net_cents, status, buyer_legal_name, buyer_signature, buyer_signed_at, license_version, expires_at, created_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`
+			   processing_fee_cents, seller_net_cents, status, buyer_legal_name, buyer_signature, buyer_signed_at, license_version, expires_at, created_at,
+			   buyer_capacity, buyer_entity, buyer_acceptance_id, producer_acceptance_id, listing_version, records_consent_at, store_terms_version, merchant, file_manifest)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		)
 		.bind(orderId, l.id, buyer.id, l.seller_id, stems ? 1 : 0, priceCents, split.paidCents, split.feeCents, split.processingCents, split.netCents,
-			name, name, now, STORE_DOCS_VERSION, now + HOLD_MS, now)
+			name, name, now, STORE_DOCS_VERSION, now + HOLD_MS, now,
+			capacity, entity || null, acceptanceId, l.producer_acceptance_id, l.listing_version, now, STORE_DOCS_VERSION, merchant.line, JSON.stringify(manifest))
 		.run();
 
 	const email = await db.prepare('SELECT email FROM users WHERE id = ?').bind(buyer.id).first<{ email: string }>();
@@ -191,6 +231,73 @@ async function fulfill(env: Env, orderId: string, s: Session) {
 		return;
 	}
 	notifySale(db, orderId);
+	await sendReceipts(env, orderId).catch((e) => console.error('[checkout] receipt', e));
+}
+
+/**
+ * License §7: each party gets the completed agreement and a receipt. The buyer's receipt
+ * names the licensor, the card merchant and statement descriptor (Store Terms §5).
+ */
+export async function sendReceipts(env: Env, orderId: string) {
+	const db = env.DB;
+	const o = await db
+		.prepare(
+			`SELECT o.id, o.amount_cents, o.tax_cents, o.includes_stems, o.paid_at, o.merchant, o.buyer_legal_name, o.receipt_sent_at, o.files_available_at,
+			        b.title, b.rounds, e.round, bu.email AS buyer_email, su.email AS seller_email, su.username AS seller, o.seller_net_cents, o.platform_fee_cents, o.processing_fee_cents
+			 FROM orders o JOIN listings l ON l.id = o.listing_id JOIN battles b ON b.id = l.battle_id JOIN entries e ON e.id = l.entry_id
+			 JOIN users bu ON bu.id = o.buyer_id JOIN users su ON su.id = o.seller_id WHERE o.id = ?`
+		)
+		.bind(orderId)
+		.first<{
+			id: string; amount_cents: number; tax_cents: number; includes_stems: number; paid_at: number; merchant: string | null; buyer_legal_name: string | null;
+			receipt_sent_at: number | null; files_available_at: number | null; title: string; rounds: number; round: number; buyer_email: string; seller_email: string; seller: string;
+			seller_net_cents: number; platform_fee_cents: number; processing_fee_cents: number;
+		}>();
+	if (!o || o.receipt_sent_at) return;
+	await db.prepare('UPDATE orders SET receipt_sent_at = ? WHERE id = ? AND receipt_sent_at IS NULL').bind(Date.now(), orderId).run();
+	const $ = (c: number) => `$${(c / 100).toFixed(2)}`;
+	const title = `${o.title}${o.rounds > 1 ? ` (round ${o.round})` : ''}`;
+	const ref = o.id.toUpperCase();
+	const by = new Date((o.files_available_at ?? o.paid_at) + DELIVERY_DAYS * DAY).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' });
+	const rows = [
+		['Order', ref],
+		['Beat', `"${title}" by @${o.seller}`],
+		['Package', o.includes_stems ? 'Exclusive + Stems license' : 'Exclusive license'],
+		['License price', $(o.amount_cents)],
+		['Tax', $(o.tax_cents)],
+		['Total charged', $(o.amount_cents + o.tax_cents)],
+		['Paid', new Date(o.paid_at).toLocaleString('en-US', { timeZone: 'America/New_York', timeZoneName: 'short' })],
+		['Payment', o.merchant ?? '']
+	];
+	const table = `<table style="border-collapse:collapse;width:100%">${rows.map(([k, v]) => `<tr><td style="padding:4px 8px 4px 0;color:#888">${esc(k)}</td><td style="padding:4px 0">${esc(v)}</td></tr>`).join('')}</table>`;
+	await sendEmail(env, {
+		to: o.buyer_email,
+		idempotencyKey: `receipt-buyer:${orderId}`,
+		subject: `Receipt and license: "${title}"`,
+		html: layout({
+			kicker: 'Receipt · signed agreement',
+			headline: 'Reserved for you',
+			body: `<p>Thanks${o.buyer_legal_name ? `, ${esc(o.buyer_legal_name)}` : ''}. Your signed Exclusive Beat License is ready to view and save.</p>${table}<p>Your exclusive license starts when your first download of the beat or stems finishes. Until then you can cancel for a full refund from your purchases page. Download by ${esc(by)} or the order is canceled and refunded automatically.</p><p>This receipt summarizes the deal. It isn't a government registration or independent verification of ownership.</p>`,
+			button: 'Download and view license',
+			url: `https://auxriot.com/purchases?order=${orderId}`,
+			footer: `Order ${ref} · Questions or refunds: hello@auxriot.com`
+		}),
+		text: `Receipt for "${title}"\n${rows.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\nDownload by ${by}. License and files: https://auxriot.com/purchases?order=${orderId}`
+	}).catch(() => {});
+	await sendEmail(env, {
+		to: o.seller_email,
+		idempotencyKey: `receipt-seller:${orderId}`,
+		subject: `Sold (reserved): "${title}"`,
+		html: layout({
+			kicker: 'Sale · signed agreement',
+			headline: 'Your beat is reserved',
+			body: `<p>A buyer paid for "${esc(title)}" and signed the Exclusive Beat License. The sale becomes final when they finish their first download.</p><ul><li>Price: ${$(o.amount_cents)}</li><li>AuxRiot fee: ${$(o.platform_fee_cents)}</li><li>Card processing: ${$(o.processing_fee_cents)}</li><li>Your net: ${$(o.seller_net_cents)}</li></ul><p>Payouts go out weekly from your available Stripe balance.</p>`,
+			button: 'View the signed license',
+			url: `https://auxriot.com/purchases/${orderId}/license`,
+			footer: `Order ${ref}`
+		}),
+		text: `"${title}" is reserved for a buyer. Net ${$(o.seller_net_cents)}. License: https://auxriot.com/purchases/${orderId}/license`
+	}).catch(() => {});
 }
 
 export async function onSessionClosed(env: Env, s: Session, status: 'expired' | 'failed') {

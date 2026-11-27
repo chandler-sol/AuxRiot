@@ -148,6 +148,13 @@
 	</div>
 {/if}
 
+{#if data.termsUpdate && !page.url.pathname.startsWith('/terms')}
+	<a class="termsbar" href="/terms/updated?next={encodeURIComponent(page.url.pathname)}">
+		<span class="mono k">Updated terms</span>
+		<span>Our Terms of Service and Privacy Policy changed (version 5). Review and accept →</span>
+	</a>
+{/if}
+
 {#if ballots.length}
 	<div class="ballotbar">
 		{#each ballots as x (x.id)}
@@ -178,6 +185,8 @@
 
 <style>
 	.ballotbar { display: grid; border-bottom: 1.5px solid var(--line-2); }
+	.termsbar { display: grid; gap: 2px; padding: 10px 16px; background: var(--ink-2); border-bottom: 1.5px solid var(--warn); color: var(--paper); text-decoration: none; font-size: 0.9rem; }
+	.termsbar .k { color: var(--warn); font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
 	.ballotbar a {
 		display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 8px 16px; text-decoration: none;
 		background: var(--paper); color: var(--ink); border-bottom: 1px solid #d8cfc0;

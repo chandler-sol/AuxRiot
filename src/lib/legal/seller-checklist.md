@@ -1,30 +1,40 @@
 # AuxRiot Seller Agreement Checklist
 
-**DRAFT — pending legal review**
+Version 5 · November 27, 2026
 
-Last updated: November 13, 2026
+*Step one • Enable selling on this account*
 
-## The short version
+These account-level commitments apply to future listings. You will see, check and sign the separate beat-specific offer whenever you publish a listing or materially revise it. Keep a copy of the terms and listing you sign.
 
-- List only beats you control and have never sold or leased.
-- One sale ends all future sales and leases of that beat.
-- You pay the 20% fee and processing and handle collaborator splits.
-- You are responsible for samples, accurate files and copyright refunds.
+- ☐ I am at least 18, have legal capacity and am signing as myself or for the legal entity identified in my seller account. I will provide an accurate legal name and use a separate public production credit if desired.
+- ☐ I agree to the Store Terms and the relevant Stripe connected-account terms. I will complete required identity, payout and tax verification. Weekly payouts depend on available balances.
+- ☐ I understand the 20% platform fee on the approved pretax price, the disclosed processing costs, seller-funded discounts and AuxRiot-funded promotions. I handle my income taxes and my collaborators’ shares.
+- ☐ I understand the refund, chargeback and recovery rules in Store Terms §§ 6-9. If a copyright notice blocks paid access, the buyer may request an immediate refund. If access is still blocked at the 14-business-day deadline, AuxRiot starts a refund automatically. If I owe a balance directly, I get an itemized notice and 30 days to pay the undisputed amount. I may dispute a charge and authorize only the stated lawful recoveries.
+- ☐ I will handle store payments on AuxRiot. Battle Credits cannot purchase a beat. I will cooperate on rights claims and promptly report conflicting sales, grants or registrations. Select “Agree and enable selling.”
 
-## Before my first listing, I agree
+### If a sale is reversed after payout
 
-- [ ] **I am 18+.** I agree to the [Store Terms](/store/terms) and [Exclusive Beat License](/store/license). These promises apply to every listing.
-- [ ] **I control this beat.** It is original apart from disclosed, lawfully licensed material. Collaborators have given written permission, and I will pay their shares myself.
-- [ ] **It has never been sold or leased anywhere.** No conflicting reuse licenses exist. After sale, I will remove other listings and never sell, lease or license it again, even after a refund.
-- [ ] **I accept the rights choices.** I keep copyright, required credit and 50% of the writer's share with corresponding publisher interests, but no master royalty. The buyer gets the exclusive commercial license.
-- [ ] **My files match my listing.** I will privately upload the full beat, disclose WAV/MP3 and tag status, and include stems when purchased. Either package sells the beat once, after voting.
-- [ ] **I understand the costs.** AuxRiot takes 20%, plus disclosed processing from my share, estimated at 2.9% + US $0.30. My codes reduce the fee base; AuxRiot funds its site-wide discounts.
-- [ ] **I will complete Stripe identity and tax verification.** Currently weekly payouts depend on available funds. AuxRiot never holds my money. I handle my income taxes and collaborator payments.
-- [ ] **Samples are my responsibility.** I will disclose them and supply clearances for promised uses. Buyers handle additional-use permissions. AuxRiot clears nothing; disclosure alone does not clear a sample.
-- [ ] **I accept refunds and lawful recovery.** Pre-download cancellations, defects, misdescription, copyright removals and legal rights follow the Store Terms. AuxRiot recovers copyright refunds from me, crediting its returned fee.
-- [ ] **I accept continuing previews and on-site checkout.** Sold battle previews and my portfolio may remain. I will remove conflicting Content ID registrations. I will not arrange off-site payment. Battle Credits cannot pay for beats.
+Using the $100 example in Store Terms § 4, an ordinary refund with unrecovered processing of $3.20 returns the seller’s $76.80 payout and charges the seller the $3.20 processing cost. AuxRiot returns its $20 fee. If a delivered sale is lost to card fraud without seller involvement, the seller can lose the payout and cannot resell the Beat. An unauthorized charge does not make the cardholder a licensee. AuxRiot bears unrecovered processing and dispute costs. Section 8 explains the protections for a platform error or a demonstrably mistaken copyright claim.
 
-Suggested button: **Agree and enable selling**
+### What I see each time I list
 
-Chandler Solomon, Waxhaw, North Carolina, USA. Help: [hello@auxriot.com](mailto:hello@auxriot.com). Copyright: [dmca@auxriot.com](mailto:dmca@auxriot.com). The Store Terms contain North Carolina law and Union County dispute provisions.
+The beat ID, file manifest and tag status, package options, approved prices and discounts, public credit name, preview, rights schedule and version of the Exclusive Beat License are presented together. I can save them and correct an error before signing. Changing those material terms requires a new acceptance.
 
+Store support • hello@auxriot.com | Copyright • dmca@auxriot.com
+
+## Sign each beat listing
+
+*Step two • Seller’s offer for [beat title and ID], version [listing version]*
+
+- ☐ I control or have documented authority to grant all rights offered in the identified recording and composition. I have written authority from all necessary collaborators, owners and publishers. Each direct collector whose cooperation is needed has agreed to honor the income split.
+- ☐ This Beat has never been sold, leased or licensed for another person’s creative reuse. I removed conflicting offers before listing. I will not make another grant while it is listed, reserved or exclusively licensed. After delivery I will never sell or lease the same Beat to another buyer, including under a new name, tag or mix, even following a refund, subject to the statutory rights in License § 2.
+- ☐ I have disclosed samples, material AI-generated elements, relevant tool restrictions and required voice or likeness clearances, or affirmatively selected none. The records cover previews, the advertised release and sync rights and offered stems. I have identified shared material and removed incompatible assets or packages and conflicting fingerprint claims.
+- ☐ The files match the manifest and tag status. Either package reserves both options for one buyer. An unused reservation may be canceled and refunded. First successful private audio or stem delivery activates exclusivity. Only the authorized previews may remain public after sale.
+- ☐ I accept the agreed 50/50 composition economics and no additional producer master royalty, the instrumental authorship rule, the bundled sync allocation and the accounting duties. I have reviewed the particular prices, fees, authorized discounts and expected net.
+- ☐ I electronically sign and offer this exact Exclusive Beat License and rights schedule to the one buyer who qualifies. I authorize completion only of the sale fields listed in License § 7. I will receive the final executed agreement. Type full legal name [seller signer] and capacity [self or entity role]. Select “Sign and list this beat.”
+
+### Buyer acceptance shown at checkout
+
+“I am 18 or older, have authority to sign, and agree to the displayed Store Terms and Exclusive Beat License for [beat and package]. I understand when delivery activates exclusivity and the refund rules. By selecting ‘Sign and pay [total]’ I sign this order electronically.” Typed name [buyer signer]. Use an unchecked consent control.
+
+Where early digital supply requires consent, show the following separate unchecked choice. “I expressly request supply before my withdrawal period ends. I acknowledge that I lose my statutory right to withdraw once digital supply begins.” Show the alternative delivery date and provide a copy of the choice with the order confirmation.

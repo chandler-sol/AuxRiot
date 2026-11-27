@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { recordAcceptance, TERMS_VERSION } from '#lib/server/acceptances.ts';
 import type { Actions, PageServerLoad } from './$types';
 import { getEnv, newId } from '#lib/server/util.ts';
 import { USERNAME_RE, createSession, recordSignals } from '#lib/server/auth.ts';
@@ -58,11 +59,12 @@ export const actions: Actions = {
 		const news = f.get('news') === 'on';
 		await env.DB.batch([
 			env.DB.prepare(
-				'INSERT INTO users (id, username, email, password_hash, created_at, email_verified_at, news_opt_in, news_opt_in_at, terms_accepted_at) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)'
-			).bind(id, username, email, now, verified ? now : null, news ? 1 : 0, news ? now : null, now),
+				'INSERT INTO users (id, username, email, password_hash, created_at, email_verified_at, news_opt_in, news_opt_in_at, terms_accepted_at, terms_version) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)'
+			).bind(id, username, email, now, verified ? now : null, news ? 1 : 0, news ? now : null, now, TERMS_VERSION),
 			env.DB.prepare('INSERT INTO oauth_accounts (provider, provider_user_id, user_id) VALUES (?, ?, ?)').bind(p.provider, p.provider_user_id, id),
 			env.DB.prepare('DELETE FROM oauth_pending WHERE token_hash = ? OR created_at < ?').bind(p.token_hash, now - TTL)
 		]);
+		await recordAcceptance(env, { kind: 'site_terms', userId: id, docVersion: TERMS_VERSION, statement: "I'm 18 or older and agree to the Terms and Privacy Policy.", request });
 		await recordSignals(env.DB, id, locals.ip, locals.deviceId, salt);
 		await recordAttempt(env.DB, locals.ip, salt, 'signup');
 		await applyCrewOnSignup(env.DB, cookies, id);

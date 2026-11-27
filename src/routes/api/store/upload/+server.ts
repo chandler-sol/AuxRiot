@@ -19,6 +19,8 @@ async function ownedListing(db: D1Database, listingId: string, userId: string) {
 	const l = await db.prepare('SELECT * FROM listings WHERE id = ? AND seller_id = ?').bind(listingId, userId).first<ListingRow>();
 	if (!l) error(404, 'Listing not found');
 	if (l.status === 'sold' || l.status === 'removed') error(400, "This beat can't be changed anymore.");
+	// The file manifest is part of the signed offer: take it off the store to swap files (Seller checklist).
+	if (l.status === 'listed') error(400, 'Take the beat off the store to change its files, then sign the updated listing.');
 	return l;
 }
 
@@ -73,8 +75,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const old = up.kind === 'file' ? listing.file_key : listing.stems_key;
 		const sql =
 			up.kind === 'file'
-				? 'UPDATE listings SET file_key = ?, file_name = ?, file_size = ?, file_format = ?, updated_at = ? WHERE id = ?'
-				: 'UPDATE listings SET stems_key = ?, stems_name = ?, stems_size = ?, updated_at = ? WHERE id = ?';
+				? 'UPDATE listings SET file_key = ?, file_name = ?, file_size = ?, file_format = ?, producer_signed_at = NULL, updated_at = ? WHERE id = ?'
+				: 'UPDATE listings SET stems_key = ?, stems_name = ?, stems_size = ?, producer_signed_at = NULL, updated_at = ? WHERE id = ?';
 		const stmt =
 			up.kind === 'file'
 				? db.prepare(sql).bind(up.r2_key, up.file_name, obj.size, ext, Date.now(), listing.id)

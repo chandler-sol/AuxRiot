@@ -1,4 +1,4 @@
-import { buyOpen } from './store.ts';
+import { buyOpen, STORE_DOCS_VERSION } from './store.ts';
 
 /** Public listing card data (store page and storefronts). Never includes private file keys. */
 export interface StoreItem {
@@ -25,6 +25,8 @@ export interface StoreItem {
 	sellerId: string;
 	/** Producer finished Stripe onboarding (checkout needs it). */
 	sellerPayouts: boolean;
+	/** The producer signed this listing under the current license (v5). */
+	signedCurrent: boolean;
 	/** Someone is mid-checkout on this exclusive until then. */
 	heldUntil: number | null;
 	heldBy: string | null;
@@ -41,7 +43,7 @@ export function buyState(item: StoreItem, checkoutLive: boolean, viewerId: strin
 	if (!item.buyOpen) return 'after';
 	if (viewerId && viewerId === item.sellerId) return 'mine';
 	if (!checkoutLive) return 'soon';
-	if (!item.sellerPayouts) return 'unavailable';
+	if (!item.sellerPayouts || !item.signedCurrent) return 'unavailable';
 	if (item.heldUntil && item.heldBy !== viewerId) return 'held';
 	return 'buy';
 }
@@ -53,7 +55,7 @@ export const ITEM_SELECT = `
 	SELECT l.id, l.battle_id, l.status, l.price_cents, l.stems_price_cents, l.stems_key IS NOT NULL AS has_stems, l.bpm, l.music_key, l.genre,
 	       l.moods, l.file_format, l.tagged, l.sold_at, l.created_at, l.seller_id,
 	       b.title, b.status AS battle_status, b.winner_id, b.creator_id, b.color_a, b.color_b,
-	       u.username, u.avatar_key, u.color, u.payouts_enabled AS seller_payouts, l.held_until, l.held_by,
+	       u.username, u.avatar_key, u.color, u.payouts_enabled AS seller_payouts, l.held_until, l.held_by, l.license_version, l.producer_signed_at,
 	       e.audio_key, e.peaks, e.duration_ms, e.slot, e.round, b.rounds
 	FROM listings l
 	JOIN battles b ON b.id = l.battle_id
@@ -66,6 +68,7 @@ type Row = {
 	seller_id: string; title: string; battle_status: string; winner_id: string | null; creator_id: string; color_a: string | null; color_b: string | null;
 	username: string; avatar_key: string | null; color: string | null; audio_key: string; peaks: string; duration_ms: number; slot: number;
 	seller_payouts: number; held_until: number | null; held_by: string | null; round: number; rounds: number;
+	license_version: string | null; producer_signed_at: number | null;
 };
 
 export function toItem(r: Row): StoreItem {
@@ -92,6 +95,7 @@ export function toItem(r: Row): StoreItem {
 		soldAt: r.sold_at,
 		sellerId: r.seller_id,
 		sellerPayouts: !!r.seller_payouts,
+		signedCurrent: !!r.producer_signed_at && r.license_version === STORE_DOCS_VERSION,
 		heldUntil: r.held_until && r.held_until > Date.now() ? r.held_until : null,
 		heldBy: r.held_by,
 		round: r.round,

@@ -20,6 +20,9 @@ export function guardSeed(env: Env, locals: App.Locals) {
 	return locals.user;
 }
 
+/** A plausible v5 rights schedule for test beats. */
+const TEST_RIGHTS = JSON.stringify({ writers: 'Sole writer and producer, 100%. No publisher.', samples: 'none', ai: 'none', voice: 'none', restrictions: 'none' });
+
 // ---------------------------------------------------------------------------
 // Fake producers
 
@@ -294,13 +297,16 @@ export async function listTestBeats(db: D1Database, battleId?: string, bucket?: 
 			db.prepare(
 				`INSERT INTO listings (id, battle_id, entry_id, seller_id, status, price_cents, stems_price_cents, bpm, music_key, genre, moods,
 				   file_key, file_name, file_size, file_format, tagged, stems_key, stems_name, stems_size, attested_at,
-				   sample_disclosure, producer_signature, producer_signed_at, license_version, created_at, updated_at)
-				 VALUES (?, ?, ?, ?, 'listed', ?, ?, ?, ?, ?, ?, ?, 'beat.mp3', 0, 'mp3', 0, ?, ?, ?, ?, 'none', ?, ?, ?, ?, ?)`
+				   sample_disclosure, producer_signature, producer_signed_at, license_version, created_at, updated_at,
+				   producer_credit, producer_capacity, rights_schedule, listing_version)
+				 VALUES (?, ?, ?, ?, 'listed', ?, ?, ?, ?, ?, ?, ?, 'beat.mp3', 0, 'mp3', 0, ?, ?, ?, ?, 'none', ?, ?, ?, ?, ?,
+				   (SELECT username FROM users WHERE id = ?), 'self', ?, 1)`
 			).bind(
 				id, r.battle_id, r.entry_id, r.user_id, price, stems, int(70, 160), pick(KEYS), pick(GENRES),
 				[pick(MOODS), pick(MOODS)].filter((m, i, a) => a.indexOf(m) === i).join(','),
 				fileKey, stems ? fileKey : null, stems ? 'stems.zip' : null, stems ? 0 : null, now,
-				name?.legal_name ?? 'Test Producer', now, STORE_DOCS_VERSION, now, now
+				name?.legal_name ?? 'Test Producer', now, STORE_DOCS_VERSION, now, now,
+				r.user_id, TEST_RIGHTS
 			)
 		]);
 	}

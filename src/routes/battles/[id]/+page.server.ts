@@ -12,7 +12,7 @@ import {
 	type Scores
 } from '#lib/server/battles.ts';
 import { BADGE_SELECT } from '#lib/server/crews.ts';
-import { cancelPending, startCheckout } from '#lib/server/checkout.ts';
+import { cancelPending } from '#lib/server/checkout.ts';
 import { checkoutLive } from '#lib/server/stripe.ts';
 import { answerQuestion, askQuestion, listQuestions } from '#lib/server/questions.ts';
 import { knownUsernames, notifyMentions, tooManyMentions } from '#lib/server/mentions.ts';
@@ -354,15 +354,10 @@ function requireUser(locals: App.Locals, path: string) {
 }
 
 export const actions: Actions = {
-	/** Exclusive purchase: confirm the license here, then pay on Stripe Checkout. */
-	buy: async ({ request, locals, url }) => {
-		const user = requireUser(locals, url.pathname);
-		const f = await request.formData();
-		const listingId = String(f.get('listing_id') ?? '');
-		if (f.get('agree') !== 'on') return fail(400, { buyError: 'Agree to the Exclusive Beat License to continue.', buyId: listingId });
-		const r = await startCheckout(getEnv(), user, listingId, { stems: f.get('stems') === '1', legalName: String(f.get('legal_name') ?? ''), origin: url.origin });
-		if ('error' in r) return fail(400, { buyError: r.error, buyId: listingId });
-		redirect(303, r.url, { external: true });
+	/** Old inline buy form: every purchase now signs on the checkout page (License v5). */
+	buy: async ({ request }) => {
+		const listingId = String((await request.formData()).get('listing_id') ?? '');
+		redirect(303, `/store/${encodeURIComponent(listingId)}/checkout`);
 	},
 
 	respond: async ({ request, params, locals, platform, url }) => {
