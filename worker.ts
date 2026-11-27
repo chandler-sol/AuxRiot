@@ -8,6 +8,7 @@ import { finalizeDue } from '#lib/server/battles.ts';
 import { remindUnfinishedBallots } from '#lib/server/notify.ts';
 import { pruneNotifications } from '#lib/server/notifications.ts';
 import { runOrderTimers } from '#lib/server/checkout.ts';
+import { purgeExpiredSignals } from '#lib/server/retention.ts';
 
 type Handler = { fetch: (req: Request, env: Env, ctx: ExecutionContext) => Promise<Response> };
 
@@ -22,6 +23,8 @@ export default {
 				await pruneNotifications(env.DB).catch((e) => console.error('[cron] prune', e));
 				// Store: auto-refund undelivered orders after 14 days and blocked ones at their deadline.
 				await runOrderTimers(env).catch((e) => console.error('[cron] orders', e));
+				// Privacy §8: security hashes and logs kept up to 12 months.
+				await purgeExpiredSignals(env.DB).catch((e) => console.error('[cron] retention', e));
 			})()
 		);
 	}

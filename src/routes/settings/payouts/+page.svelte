@@ -69,7 +69,8 @@
 	<li><strong>Schedule:</strong> weekly, on Mondays. New accounts may have a short first-payout delay set by Stripe.</li>
 	<li><strong>Fees:</strong> 20% marketplace fee plus card processing (about 2.9% + 30¢), shown before you list.</li>
 	<li><strong>Taxes:</strong> Stripe sends a 1099 if you pass the IRS threshold. Sales tax on purchases is collected by AuxRiot.</li>
-	<li><strong>Refunds:</strong> see the <a href="/store/terms">Store Terms</a> for when a sale can be refunded.</li>
+	<li><strong>Refunds:</strong> see the <a href="/store/terms">Store Terms</a> for when a sale can be refunded. You get an itemized notice for every refund.</li>
+	<li><strong>Statements:</strong> <a href="/settings/payouts/statements">monthly sales, fees and refunds →</a></li>
 </ul>
 
 <style>

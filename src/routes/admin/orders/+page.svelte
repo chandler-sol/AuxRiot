@@ -120,6 +120,7 @@
 							<button type="button" class="small-btn" onclick={() => (openBlock = o.id)}>Copyright block…</button>
 						{/if}
 						<a class="small-btn" href="/purchases/{o.id}/license" target="_blank">License</a>
+						<form method="POST" action="?/sendLinks" use:enhance><input type="hidden" name="order_id" value={o.id} /><button class="small-btn" title="For a verified buyer who can't sign in">Email download links</button></form>
 					</div>
 				{/if}
 			{/if}

@@ -4,6 +4,7 @@
 	import type { LayoutProps } from './$types';
 	import { page } from '$app/state';
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import Avatar from '#lib/components/Avatar.svelte';
 
 	let { children, data }: LayoutProps = $props();
@@ -148,6 +149,15 @@
 	</div>
 {/if}
 
+{#if data.askViewConsent && !page.url.pathname.startsWith('/cookies')}
+	<div class="consentbar">
+		<span>May we use a random device ID to count battle views? Security features work either way.</span>
+		<form method="POST" action="/cookies?/allow" use:enhance={() => async () => invalidateAll()}><button class="small-btn">Allow</button></form>
+		<form method="POST" action="/cookies?/decline" use:enhance={() => async () => invalidateAll()}><button class="small-btn ghost">No thanks</button></form>
+		<a class="mono small" href="/cookies">Details</a>
+	</div>
+{/if}
+
 {#if data.termsUpdate && !page.url.pathname.startsWith('/terms')}
 	<a class="termsbar" href="/terms/updated?next={encodeURIComponent(page.url.pathname)}">
 		<span class="mono k">Updated terms</span>
@@ -178,13 +188,20 @@
 	<span>·</span>
 	<a href="/dmca">DMCA / copyright</a>
 	<span>·</span>
+	<a href="/report-image">Remove a private image</a>
+	<span>·</span>
 	<a href="/terms">Terms</a>
 	<span>·</span>
 	<a href="/privacy">Privacy</a>
+	<span>·</span>
+	<a href="/cookies">Cookies</a>
 </footer>
 
 <style>
 	.ballotbar { display: grid; border-bottom: 1.5px solid var(--line-2); }
+	.consentbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 10px 16px; background: var(--ink-2); border-bottom: 1.5px solid var(--line-2); font-size: 0.88rem; }
+	.consentbar span { flex: 1 1 260px; }
+	.consentbar a { color: var(--dim); }
 	.termsbar { display: grid; gap: 2px; padding: 10px 16px; background: var(--ink-2); border-bottom: 1.5px solid var(--warn); color: var(--paper); text-decoration: none; font-size: 0.9rem; }
 	.termsbar .k { color: var(--warn); font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
 	.ballotbar a {

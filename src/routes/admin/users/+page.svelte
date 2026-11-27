@@ -150,6 +150,7 @@
 			<div class="tags mono">
 				{#if u.is_admin}<span class="tag pink">Admin</span>{:else if u.is_mod}<span class="tag pink">Moderator</span>{/if}
 				{#if u.verified_label}<span class="tag cyan">✓ {u.verified_label} · crew {u.crew_size}</span>{/if}
+				{#if u.copyright_strikes}<span class="tag bad" title="Repeat-infringer record (Terms §7)">{u.copyright_strikes} copyright strike{u.copyright_strikes === 1 ? '' : 's'}</span>{/if}
 				{#if u.suspended_at}<span class="tag bad">Suspended {ago(u.suspended_at, data.now)}{u.suspended_reason ? ` — ${u.suspended_reason}` : ''}</span>{/if}
 				{#if !u.email_verified_at}<span class="tag warn">Unconfirmed</span>{/if}
 				{#if u.shadowbanned}<span class="tag bad">Shadowbanned</span>{/if}

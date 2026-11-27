@@ -5,7 +5,8 @@ export const LIMITS = {
 	login_fail: { max: 10, windowMs: 15 * 60_000, message: 'Too many failed logins. Wait 15 minutes and try again.' },
 	signup: { max: 20, windowMs: 60 * 60_000, message: 'Too many new accounts from this network. Try again in an hour.' },
 	forgot: { max: 5, windowMs: 60 * 60_000, message: 'Too many reset requests. Try again in an hour.' },
-	oauth: { max: 30, windowMs: 15 * 60_000, message: 'Too many sign-in attempts. Wait a few minutes.' }
+	oauth: { max: 30, windowMs: 15 * 60_000, message: 'Too many sign-in attempts. Wait a few minutes.' },
+	report: { max: 10, windowMs: 60 * 60_000, message: 'Too many requests. Email hello@auxriot.com with the subject “Private image removal”.' }
 } as const;
 export type LimitKind = keyof typeof LIMITS;
 

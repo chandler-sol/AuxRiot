@@ -70,6 +70,7 @@
 				<label class="check"><input type="checkbox" name="good_faith" required /> I have a good-faith belief that use of the material is not authorized by the copyright owner, its agent, or the law.</label>
 				<label class="check"><input type="checkbox" name="accuracy" required /> The information in this notice is accurate, and under penalty of perjury, I am the owner or authorized to act on behalf of the owner.</label>
 				<div>
+					<p class="small muted">We forward the notice, including your name and contact details, to the person who uploaded the material, and redact unrelated personal information. If they send a valid counter-notice, we share their details with you.</p>
 					<label for="signature">Electronic signature (type your full name)</label>
 					<input id="signature" name="signature" type="text" required value={form?.signature ?? ''} />
 				</div>

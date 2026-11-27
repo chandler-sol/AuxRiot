@@ -5,8 +5,9 @@ import { unreadThreads } from '#lib/server/messages.ts';
 import { unfinishedBallots } from '#lib/server/multibeat.ts';
 import { unreadNotifications } from '#lib/server/notifications.ts';
 import { TERMS_VERSION } from '#lib/server/acceptances.ts';
+import { consentRequired, countryOf, VIEW_CONSENT_COOKIE } from '#lib/server/consent.ts';
 
-export const load: LayoutServerLoad = async ({ locals, depends, cookies }) => {
+export const load: LayoutServerLoad = async ({ locals, depends, cookies, request }) => {
 	// The thread page invalidates this after marking a conversation read, so the badge clears.
 	depends('app:unread');
 	depends('app:notes');
@@ -14,6 +15,8 @@ export const load: LayoutServerLoad = async ({ locals, depends, cookies }) => {
 		unread: locals.user ? await unreadThreads(getEnv().DB, locals.user.id) : 0,
 		notes: locals.user ? await unreadNotifications(getEnv().DB, locals.user.id) : 0,
 		beta: getEnv().ENVIRONMENT === 'beta',
+		// Ask about view counting once, only where the law needs permission.
+		askViewConsent: consentRequired(countryOf(request)) && !cookies.get(VIEW_CONSENT_COOKIE),
 		// Beta test lab: an admin is browsing as a test producer and can switch back.
 		seedReturn: getEnv().ENVIRONMENT === 'beta' && !!cookies.get('seed_return'),
 		// Started-but-unfinished multi-beat ballots, for the "finish judging" bar.

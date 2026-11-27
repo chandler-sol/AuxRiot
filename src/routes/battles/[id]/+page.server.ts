@@ -13,6 +13,7 @@ import {
 } from '#lib/server/battles.ts';
 import { BADGE_SELECT } from '#lib/server/crews.ts';
 import { cancelPending } from '#lib/server/checkout.ts';
+import { mayCountViews } from '#lib/server/consent.ts';
 import { checkoutLive } from '#lib/server/stripe.ts';
 import { answerQuestion, askQuestion, listQuestions } from '#lib/server/questions.ts';
 import { knownUsernames, notifyMentions, tooManyMentions } from '#lib/server/mentions.ts';
@@ -68,7 +69,7 @@ async function getBattle(db: D1Database, id: string) {
 		.first<BattleRow>();
 }
 
-export const load: PageServerLoad = async ({ params, platform, locals, url }) => {
+export const load: PageServerLoad = async ({ params, platform, locals, url, request, cookies }) => {
 	const env = getEnv(platform);
 	let battle = await getBattle(env.DB, params.id);
 	if (!battle || battle.status === 'removed') error(404, 'Battle not found');
@@ -84,7 +85,8 @@ export const load: PageServerLoad = async ({ params, platform, locals, url }) =>
 
 	const user = locals.user;
 	if (user && url.searchParams.get('canceled')) await cancelPending(env.DB, url.searchParams.get('canceled')!, user.id);
-	const newView = await countView(env, battle.id, locals.deviceId);
+	// Privacy §5: in consent regions the device ID only counts views after the visitor agrees.
+	const newView = mayCountViews(request, cookies) ? await countView(env, battle.id, locals.deviceId) : false;
 	const isBattler = !!user && (user.id === battle.creator_id || user.id === battle.challenger_id);
 	const promo = isBattler || user?.isAdmin ? await promoStatus(env.DB, battle.id, Date.now()) : null;
 

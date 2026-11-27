@@ -18,10 +18,11 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 			        (SELECT COUNT(*) FROM comments WHERE held = 1 AND hidden = 0) AS held,
 			        (SELECT COUNT(*) FROM battles WHERE status = 'voting') AS live,
 			        (SELECT COUNT(*) FROM users WHERE suspended_at IS NOT NULL) AS suspended,
-			        (SELECT COUNT(*) FROM mod_log WHERE created_at > ?) AS actionsToday`
+			        (SELECT COUNT(*) FROM mod_log WHERE created_at > ?) AS actionsToday,
+			        (SELECT COUNT(*) FROM removal_requests WHERE status = 'open') AS removals`
 		)
 		.bind(Date.now() - 86_400_000)
-		.first<{ reports: number; held: number; live: number; suspended: number; actionsToday: number }>();
+		.first<{ reports: number; held: number; live: number; suspended: number; actionsToday: number; removals: number }>();
 
 	const [linked, discounted, banned] = await Promise.all([
 		// Accounts sharing an IP or device hash: likely alts.
@@ -41,7 +42,7 @@ export const load: PageServerLoad = async ({ locals, platform }) => {
 	]);
 	const mod = {
 		isAdmin: me.isAdmin,
-		counts: counts ?? { reports: 0, held: 0, live: 0, suspended: 0, actionsToday: 0 },
+		counts: counts ?? { reports: 0, held: 0, live: 0, suspended: 0, actionsToday: 0, removals: 0 },
 		linked: linked.results,
 		discounted: discounted.results,
 		banned: banned.results.map((b) => b.username)

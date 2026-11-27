@@ -112,6 +112,7 @@
 	>
 		<textarea name="body" rows="3" maxlength="2000" placeholder="Write a message…" bind:value={body} required></textarea>
 		{#if form?.error}<p class="error small">{form.error}</p>{/if}
+		<p class="small muted note">Private, with limits: automated checks flag phone numbers, emails and payment apps to warn about off-site deals, and a moderator may read this conversation if someone reports it. Don't send card, bank or ID documents here.</p>
 		<div class="row"><button class="primary" disabled={busy || !body.trim()}>{busy ? 'Sending…' : 'Send'}</button></div>
 	</form>
 {:else}
@@ -149,4 +150,5 @@
 	.compose .row { justify-content: flex-end; }
 	.blockf { margin-top: 18px; text-align: right; }
 	.blockf .link-btn { color: var(--muted); }
+	.note { margin: 6px 0 0; line-height: 1.5; }
 </style>

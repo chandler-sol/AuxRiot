@@ -4,6 +4,8 @@ import { getEnv } from '#lib/server/util.ts';
 import { logAction, requireAdmin } from '#lib/server/mod.ts';
 import { blockForCopyright, refundOrder, unblockOrder, type RefundFault, type RefundReason } from '#lib/server/checkout.ts';
 import { stripeMode } from '#lib/server/stripe.ts';
+import { LINK_DAYS, signDelivery } from '#lib/server/deliverylink.ts';
+import { layout, sendEmail } from '#lib/server/email.ts';
 
 const STATUSES = ['paid', 'refunded', 'disputed', 'pending', 'all'] as const;
 const REASONS: RefundReason[] = ['buyer_request', 'defect', 'copyright', 'copyright_block', 'other'];
@@ -75,6 +77,33 @@ export const actions: Actions = {
 		}
 		await logAction(env.DB, admin, 'order.block', 'order', id, note);
 		return { ok: 'Files blocked. Both sides were emailed the exact refund deadline.', id };
+	},
+	/** Store Terms §6: a verified buyer who can't sign in (e.g. suspended) gets 7-day links to their files. */
+	sendLinks: async ({ request, locals, url }) => {
+		const admin = requireAdmin(locals);
+		const env = getEnv();
+		const id = String((await request.formData()).get('order_id') ?? '');
+		const o = await env.DB.prepare(
+			`SELECT o.id, o.status, o.blocked_at, o.includes_stems, l.stems_key, b.title, u.email FROM orders o JOIN listings l ON l.id = o.listing_id
+			 JOIN battles b ON b.id = l.battle_id JOIN users u ON u.id = o.buyer_id WHERE o.id = ?`
+		)
+			.bind(id)
+			.first<{ id: string; status: string; blocked_at: number | null; includes_stems: number; stems_key: string | null; title: string; email: string }>();
+		if (!o || o.status !== 'paid') return fail(400, { error: 'Only active orders have files to send.', id });
+		if (o.blocked_at) return fail(400, { error: 'These files are blocked by a copyright notice.', id });
+		const file = await signDelivery(env, o.id, 'file', url.origin);
+		const stems = o.includes_stems && o.stems_key ? await signDelivery(env, o.id, 'stems', url.origin) : null;
+		const links = `<p><a href="${file.url}">Download the beat</a></p>${stems ? `<p><a href="${stems.url}">Download the stems</a></p>` : ''}`;
+		const r = await sendEmail(env, {
+			to: o.email,
+			idempotencyKey: `links:${o.id}:${file.exp}`,
+			subject: `Your files for "${o.title}"`,
+			html: layout({ kicker: 'Your purchase', headline: 'Your download links', body: `<p>As requested, here are private links to the files you bought. They work for ${LINK_DAYS} days. Save your own copies.</p>${links}<p>Your signed license and order records stay available on request at hello@auxriot.com.</p>`, button: 'Download the beat', url: file.url, footer: `Order ${o.id.toUpperCase()}` }),
+			text: `Your files for "${o.title}" (links work ${LINK_DAYS} days):\n${file.url}${stems ? `\n${stems.url}` : ''}`
+		});
+		if (!r.ok) return fail(502, { error: `Email failed: ${r.error}`, id });
+		await logAction(env.DB, admin, 'order.send_links', 'order', id, '');
+		return { ok: `Emailed ${LINK_DAYS}-day download links to the buyer.`, id };
 	},
 	unblock: async ({ request, locals }) => {
 		const admin = requireAdmin(locals);

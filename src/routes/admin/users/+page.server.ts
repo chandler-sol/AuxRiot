@@ -46,7 +46,7 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 	const rows = await db
 		.prepare(
 			`SELECT u.id, u.username, u.email, u.created_at, u.email_verified_at, u.credits, u.wins, u.losses, u.ties,
-			        u.shadowbanned, u.is_admin, u.is_mod, u.suspended_at, u.suspended_reason, u.news_opt_in, u.avatar_key, u.color, u.verified_label,
+			        u.shadowbanned, u.is_admin, u.is_mod, u.suspended_at, u.suspended_reason, u.news_opt_in, u.avatar_key, u.color, u.verified_label, u.copyright_strikes,
 			        (SELECT COUNT(*) FROM users cm WHERE cm.crew_id = u.id) AS crew_size,
 			        (SELECT COUNT(*) FROM entries e WHERE e.user_id = u.id) AS battles,
 			        (SELECT COUNT(*) FROM votes v WHERE v.voter_id = u.id) AS votes,
@@ -61,7 +61,7 @@ export const load: PageServerLoad = async ({ locals, platform, url }) => {
 		.all<{
 			id: string; username: string; email: string; created_at: number; email_verified_at: number | null; credits: number;
 			wins: number; losses: number; ties: number; shadowbanned: number; is_admin: number; is_mod: number;
-			suspended_at: number | null; suspended_reason: string | null; news_opt_in: number; verified_label: string | null; crew_size: number;
+			suspended_at: number | null; suspended_reason: string | null; news_opt_in: number; verified_label: string | null; copyright_strikes: number; crew_size: number;
 			avatar_key: string | null; color: string | null; battles: number; votes: number; last_seen: number | null; linked: number;
 		}>();
 	const total = await db.prepare('SELECT COUNT(*) AS n FROM users').first<{ n: number }>();

@@ -22,6 +22,7 @@
 
 <nav class="tiles" aria-label="Moderation tools">
 	<a href="/admin/reports" class:hot={data.counts.reports > 0}><span class="display">{data.counts.reports}</span><span class="mono">Open reports</span></a>
+	<a href="/admin/removals" class:hot={data.counts.removals > 0}><span class="display">{data.counts.removals}</span><span class="mono">Image removals (48h)</span></a>
 	<a href="/admin/comments?status=held" class:hot={data.counts.held > 0}><span class="display">{data.counts.held}</span><span class="mono">Held comments</span></a>
 	<a href="/admin/battles"><span class="display">{data.counts.live}</span><span class="mono">Live battles</span></a>
 	<a href="/admin/users?filter=suspended"><span class="display">{data.counts.suspended}</span><span class="mono">Suspended</span></a>
