@@ -3,7 +3,7 @@ import { expectNoHorizontalScroll, guest, signup } from './helpers';
 
 // Every main page loads, throws no browser errors, and fits a phone screen.
 
-const PUBLIC = ['/', '/battles', '/store', '/services', '/rules', '/faq', '/credits', '/signup', '/login', '/store/terms', '/store/license', '/dmca', '/terms', '/privacy'];
+const PUBLIC = ['/', '/battles', '/store', '/services', '/rules', '/faq', '/credits', '/signup', '/login', '/store/terms', '/store/license', '/store/faq', '/report-image', '/cookies', '/dmca', '/terms', '/privacy'];
 const SIGNED_IN = ['/notifications', '/purchases', '/settings/payouts', '/settings/profile', '/messages', '/battles/new'];
 
 test('public pages load and fit a phone', async ({ browser }) => {

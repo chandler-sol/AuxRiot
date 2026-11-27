@@ -51,11 +51,24 @@ test('seller signs the account checklist and the listing offer (v5)', async ({ b
 	expect(acc).toMatchObject({ kind: 'listing', signer_name: 'Tess Producer', capacity: 'self' });
 	expect(JSON.parse(acc.snapshot)).toMatchObject({ beat_id: l.id, listing_version: 1 });
 
+	// The next unsigned listing starts from these answers (still reviewed and signed).
+	sql(`UPDATE listings SET status = 'unlisted', producer_signed_at = NULL, rights_schedule = NULL, producer_credit = NULL WHERE id = '${l.id}'`);
+	await page.reload();
+	await expect(page.locator('.prefill')).toContainText(/last signed listing/i);
+	await expect(page.locator('#writers')).toHaveValue('Sole writer and producer, 100%. No publisher.');
+	await expect(page.locator('input[name=samples_has][value=none]')).toBeChecked();
+	await expect(page.locator('input[name=commit]').first()).not.toBeChecked();
+	for (const c of await commits.all()) await c.check();
+	await page.locator('#signature').fill('Tess Producer');
+	await sign.click();
+	await expect(page.locator('.success')).toContainText(/on sale/i);
+	expect(one(`SELECT listing_version FROM listings WHERE id = '${l.id}'`)).toEqual({ listing_version: 2 });
+
 	// A material change while listed needs a new signature.
 	await page.locator('#credit').fill('A Different Credit');
 	await page.getByRole('button', { name: /save changes/i }).click();
 	await expect(page.locator('.error')).toContainText(/sign again/i);
-	expect(one(`SELECT listing_version FROM listings WHERE id = '${l.id}'`)).toEqual({ listing_version: 1 });
+	expect(one(`SELECT listing_version FROM listings WHERE id = '${l.id}'`)).toEqual({ listing_version: 2 });
 });
 
 test('existing users review and accept the updated terms once', async ({ browser }) => {

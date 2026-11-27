@@ -138,7 +138,7 @@
 	</section>
 {/if}
 
-<p class="mono small muted legal"><a href="/store/terms">Store Terms</a> · <a href="/store/license">Exclusive Beat License</a></p>
+<p class="mono small muted legal"><a href="/store/faq">Store FAQ</a> · <a href="/store/terms">Store Terms</a> · <a href="/store/license">Exclusive Beat License</a></p>
 
 <style>
 	.kicker { margin: 8px 0 12px; }

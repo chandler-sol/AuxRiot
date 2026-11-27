@@ -63,7 +63,7 @@
 <div class="explain">
 	{#if !data.seller.payoutsOn}<p class="payoutnote"><strong>Set up payouts</strong> so buyers can check out — Stripe pays you weekly on Mondays. <a href="/settings/payouts">Set up payouts →</a></p>{/if}
 	<p><strong>Exclusive only.</strong> One buyer gets the beat, then it's off the market for good. The battle stays up with a SOLD stamp.</p>
-	<p class="small muted"><a href="/store/terms">Store Terms</a> · <a href="/store/license">Exclusive Beat License</a> · version 5</p>
+	<p class="small muted"><a href="/store/terms">Store Terms</a> · <a href="/store/license">Exclusive Beat License</a> · version 5 · <a href="/store/faq">Store FAQ</a></p>
 	<p class="small muted">
 		{#if data.battle.buyOpen}
 			Buyers can check out as soon as it's listed.
@@ -160,6 +160,7 @@
 
 		<section class="card stack sign">
 			<h2>Rights schedule</h2>
+			{#if l.fromDefaults}<p class="small prefill">Filled in from your last signed listing. Check each answer for this beat before you sign.</p>{/if}
 			<p class="small muted">Goes on the buyer's license. Answer every line; "none" is an answer. AuxRiot doesn't clear samples for you.</p>
 			<div>
 				<label for="writers">{data.checklist.rightsLabels.writers}</label>
@@ -291,6 +292,7 @@
 	.actions { justify-content: flex-end; }
 	.signed { color: var(--pink); margin: 0; }
 	.rs { display: grid; gap: 8px; }
+	.prefill { color: var(--warn); border-left: 3px solid var(--warn); padding-left: 8px; margin: 0; }
 	.rs legend { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--paper); margin-bottom: 6px; }
 	.yn { display: flex; gap: 18px; flex-wrap: wrap; }
 	.opt { display: inline-flex; gap: 8px; align-items: center; margin: 0; text-transform: none; letter-spacing: 0; font-family: var(--body); font-weight: 400; color: var(--paper); font-size: 0.95rem; cursor: pointer; }

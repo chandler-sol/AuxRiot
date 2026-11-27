@@ -6,6 +6,8 @@ import { GENRES, KEYS, MOODS, splitSale } from '#lib/store.ts';
 import { clean, recordAcceptance } from '#lib/server/acceptances.ts';
 import { LISTING_ITEMS, SELLER_ACCOUNT_ITEMS, RIGHTS_LABELS, type RightsSchedule } from '#lib/checklist.ts';
 
+type ListingDefaults = { credit: string; entity: string; capacity: string; rights: RightsSchedule };
+
 const RIGHT_KEYS = Object.keys(RIGHTS_LABELS) as (keyof RightsSchedule)[];
 const parseRights = (s: string | null): RightsSchedule | null => {
 	try {
@@ -44,9 +46,18 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const { db, battle, listing } = await context(locals, params.id, url.pathname, roundOf(url));
 	const settings = await storeSettings(db);
 	const seller = await db
-		.prepare('SELECT username, legal_name, seller_agreed_at, seller_agreement_version, payouts_enabled FROM users WHERE id = ?')
+		.prepare('SELECT username, legal_name, seller_agreed_at, seller_agreement_version, payouts_enabled, listing_defaults FROM users WHERE id = ?')
 		.bind(locals.user!.id)
-		.first<{ username: string; legal_name: string | null; seller_agreed_at: number | null; seller_agreement_version: string | null; payouts_enabled: number }>();
+		.first<{ username: string; legal_name: string | null; seller_agreed_at: number | null; seller_agreement_version: string | null; payouts_enabled: number; listing_defaults: string | null }>();
+	// Answers from their last signed listing pre-fill a fresh one (they still review and sign it).
+	const defaults = (() => {
+		try {
+			return seller?.listing_defaults ? (JSON.parse(seller.listing_defaults) as ListingDefaults) : null;
+		} catch {
+			return null;
+		}
+	})();
+	const useDefaults = !!defaults && !listing.rights_schedule && !listing.producer_signed_at;
 	const opponent = listing.seller_id === battle.creator_id ? battle.challenger : battle.creator;
 	return {
 		battle: { id: battle.id, title: battle.title, status: battle.status, opponent, buyOpen: buyOpen(battle.status), rounds: battle.rounds, round: roundOf(url) },
@@ -59,11 +70,12 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			musicKey: listing.music_key,
 			genre: listing.genre,
 			moods: listing.moods ? listing.moods.split(',') : [],
-			tagged: !!listing.tagged,
-			rights: parseRights(listing.rights_schedule),
-			credit: listing.producer_credit ?? seller?.username ?? '',
-			entity: listing.producer_entity ?? '',
-			capacity: listing.producer_capacity ?? 'self',
+			rights: useDefaults ? defaults!.rights : parseRights(listing.rights_schedule),
+			credit: listing.producer_credit ?? (useDefaults ? defaults!.credit : null) ?? seller?.username ?? '',
+			entity: listing.producer_entity ?? (useDefaults ? defaults!.entity : '') ?? '',
+			capacity: listing.producer_capacity ?? (useDefaults ? defaults!.capacity : 'self') ?? 'self',
+			tagged: !!listing.tagged, // describes this file, so never carried over
+			fromDefaults: useDefaults,
 			version: listing.listing_version,
 			signed:
 				listing.producer_signed_at && listing.license_version === STORE_DOCS_VERSION
@@ -171,6 +183,8 @@ export const actions: Actions = {
 				fee_pct: feePct, estimated_net: { exclusive: price ? splitSale(price, feePct).netCents : null, exclusive_stems: stems ? splitSale(stems, feePct).netCents : null },
 				credit, rights_schedule: rights, preview: `entry:${listing.entry_id}`
 			};
+			const remember: ListingDefaults = { credit, entity, capacity, rights };
+			await db.prepare('UPDATE users SET listing_defaults = ? WHERE id = ?').bind(JSON.stringify(remember), user.id).run();
 			acceptanceId = await recordAcceptance(getEnv(), {
 				kind: 'listing', userId: user.id, subjectId: listing.id, docVersion: STORE_DOCS_VERSION, signerName: signName, capacity, entity: entity || null, request, snapshot,
 				statement: `Sign and list this beat (version ${version}):\n- ${LISTING_ITEMS.join('\n- ')}`

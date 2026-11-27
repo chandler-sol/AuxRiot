@@ -24,7 +24,7 @@
 	<p class="mono kicker">The store — exclusives only</p>
 	<h1 class="headline">Beats that <span>battled.</span></h1>
 	<p class="sub">One buyer per beat. When it sells, it's gone — and the battle gets a SOLD stamp.</p>
-	<p class="mono small links"><a href="/store/terms">Store Terms</a> · <a href="/store/license">Exclusive Beat License</a></p>
+	<p class="mono small links"><a href="/store/faq">Store FAQ</a> · <a href="/store/terms">Store Terms</a> · <a href="/store/license">Exclusive Beat License</a></p>
 </section>
 
 <nav class="tabs" data-sveltekit-noscroll>

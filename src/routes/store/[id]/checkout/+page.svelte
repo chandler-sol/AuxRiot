@@ -142,7 +142,7 @@
 		</dl>
 		{#if form?.error}<p class="error small">{form.error}</p>{/if}
 		<button class="primary full pay" disabled={busy || !ready || data.outsideUS}>{busy ? 'Opening secure payment…' : `Sign and pay ${totalText}`}</button>
-		<p class="small muted fine">Payment is handled by Stripe; AuxRiot never sees your card. Nothing is charged until you confirm on the next screen. The beat is held for you for 30 minutes. You'll get the signed agreement and a receipt by email.</p>
+		<p class="small muted fine">Payment is handled by Stripe; AuxRiot never sees your card. Nothing is charged until you confirm on the next screen. The beat is held for you for 30 minutes. You'll get the signed agreement and a receipt by email. Questions? <a href="/store/faq" target="_blank">Store FAQ</a></p>
 	</section>
 </form>
 

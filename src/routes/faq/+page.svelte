@@ -32,6 +32,10 @@
 			]
 		},
 		{
+			h: 'The store',
+			qs: [{ q: 'How does buying and selling beats work?', a: 'See the <a href="/store/faq">Store FAQ</a>: licenses, downloads, refunds, fees and payouts in plain English.' }]
+		},
+		{
 			h: 'Your account',
 			qs: [
 				{ q: 'I forgot my password.', a: 'Use <a href="/forgot">Forgot password</a> on the login page — we\'ll email you a reset link that works for an hour.' },
