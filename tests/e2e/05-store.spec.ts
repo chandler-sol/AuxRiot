@@ -60,17 +60,24 @@ test('store: buy box, paid order, downloads, license, SOLD', async ({ browser, b
 	expect((await stripeEvent(baseURL!, 'checkout.session.completed', session)).status).toBe(200);
 	expect((await stripeEvent(baseURL!, 'checkout.session.completed', session)).status).toBe(200); // Stripe retries are harmless
 	expect(one(`SELECT status FROM orders WHERE id = '${order}'`)).toEqual({ status: 'paid' });
-	expect(one(`SELECT status, held_until FROM listings WHERE id = '${l.id}'`)).toEqual({ status: 'sold', held_until: null });
+	// Paid = reserved: off the market, but no SOLD stamp until the files are delivered.
+	expect(one(`SELECT status, held_until, sold_at FROM listings WHERE id = '${l.id}'`)).toEqual({ status: 'sold', held_until: null, sold_at: null });
 	await eventually(`SELECT 1 FROM notifications WHERE user_id = '${l.seller_id}' AND kind = 'beat_sold' AND actor_id = '${admin.id}' AND url = '/battles/${battleId}'`, 1);
 
-	// The buyer's purchases page, download (makes the sale final) and license.
+	await admin.page.goto(`/battles/${battleId}`);
+	await expect(admin.page.locator('#buy .soldtag')).toHaveText('Reserved');
+
+	// The buyer's purchases page: reserved, cancelable; the first completed download activates the license.
 	await admin.page.goto(`/purchases?order=${order}`);
 	await expect(admin.page.locator('.order.hl')).toContainText(/download beat/i);
+	await expect(admin.page.locator('.order.hl')).toContainText(/reserved for you/i);
+	await expect(admin.page.locator('.order.hl').getByRole('button', { name: /cancel for a full refund/i })).toBeVisible();
 	const dl = await admin.page.request.get(`/purchases/${order}/download/file`);
 	expect(dl.status()).toBe(200);
 	expect(dl.headers()['content-disposition']).toContain('attachment');
 	expect((await dl.body()).length).toBeGreaterThan(10_000);
-	expect(one<{ final: number }>(`SELECT first_download_at IS NOT NULL AS final FROM orders WHERE id = '${order}'`).final).toBe(1);
+	await eventually(`SELECT 1 FROM orders WHERE id = '${order}' AND delivered_at IS NOT NULL`, 1);
+	await eventually(`SELECT 1 FROM listings WHERE id = '${l.id}' AND sold_at IS NOT NULL`, 1);
 	await admin.page.goto(`/purchases/${order}/license`);
 	const html = await admin.page.locator('.legal').innerHTML();
 	expect(html).toContain('&lt;b&gt;Buyer&lt;/b&gt;'); // names are escaped, never rendered as HTML
@@ -79,17 +86,20 @@ test('store: buy box, paid order, downloads, license, SOLD', async ({ browser, b
 	expect(html).toContain('signed electronically');
 	await expectNoHorizontalScroll(admin.page);
 
-	// The battle wears a SOLD stamp.
+	// The battle now wears a SOLD stamp, and the cancel option is gone.
 	await admin.page.goto(`/battles/${battleId}`);
-	await expect(admin.page.locator('#buy .soldtag')).toBeVisible();
+	await expect(admin.page.locator('#buy .soldtag')).toHaveText('Sold');
+	await admin.page.goto(`/purchases?order=${order}`);
+	await expect(admin.page.locator('.order.hl')).toContainText(/license active/i);
+	await expect(admin.page.locator('.order.hl').getByRole('button', { name: /cancel/i })).toHaveCount(0);
 
-	// Admin → Orders: a downloaded sale can't be refunded as "buyer asked" without the override.
+	// Admin → Orders: a delivered sale can't be refunded as "buyer asked" without the override.
 	await admin.page.goto('/admin/orders');
 	const row = admin.page.locator('.order', { hasText: order.slice(0, 8).toUpperCase() });
 	await row.getByRole('button', { name: 'Refund…' }).click();
 	await row.locator('input[value=buyer_request]').check();
 	await row.getByRole('button', { name: 'Refund in full' }).click();
-	await expect(row.locator('.error')).toContainText(/already downloaded/i);
+	await expect(row.locator('.error')).toContainText(/change of mind/i);
 });
 
 test('store: abandoned checkout frees the beat; chargebacks', async ({ browser, baseURL }) => {

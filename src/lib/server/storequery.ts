@@ -36,7 +36,8 @@ export interface StoreItem {
 
 /** Can this viewer buy it right now? Used to decide between a Buy button and a status chip. */
 export function buyState(item: StoreItem, checkoutLive: boolean, viewerId: string | null): BuyState {
-	if (item.status === 'sold') return 'sold';
+	// Paid but not yet delivered: reserved for that buyer (Store Terms §2).
+	if (item.status === 'sold') return item.soldAt ? 'sold' : 'reserved';
 	if (!item.buyOpen) return 'after';
 	if (viewerId && viewerId === item.sellerId) return 'mine';
 	if (!checkoutLive) return 'soon';
@@ -44,7 +45,7 @@ export function buyState(item: StoreItem, checkoutLive: boolean, viewerId: strin
 	if (item.heldUntil && item.heldBy !== viewerId) return 'held';
 	return 'buy';
 }
-export type BuyState = 'sold' | 'after' | 'mine' | 'soon' | 'unavailable' | 'held' | 'buy';
+export type BuyState = 'sold' | 'reserved' | 'after' | 'mine' | 'soon' | 'unavailable' | 'held' | 'buy';
 
 export const withBuy = (items: StoreItem[], live: boolean, viewerId: string | null) => items.map((i) => ({ ...i, buy: buyState(i, live, viewerId) as BuyState }));
 

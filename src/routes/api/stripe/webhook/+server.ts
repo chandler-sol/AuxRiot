@@ -39,7 +39,17 @@ export const POST: RequestHandler = async ({ request }) => {
 					)
 						.bind(Date.now(), c.payment_intent)
 						.all<{ id: string }>();
-					for (const o of r.results) await notifyRefund(env.DB, o.id);
+					for (const o of r.results) {
+						// Same beat rules as any refund: delivered (or download started) never returns to market.
+						const d = await env.DB.prepare('SELECT listing_id, delivered_at, first_download_at FROM orders WHERE id = ?').bind(o.id).first<{ listing_id: string; delivered_at: number | null; first_download_at: number | null }>();
+						if (d) {
+							const next = d.delivered_at || d.first_download_at ? 'removed' : 'unlisted';
+							await env.DB.prepare(`UPDATE listings SET status = ?, buyer_id = NULL, sold_at = NULL, producer_signed_at = CASE WHEN ? = 'unlisted' THEN NULL ELSE producer_signed_at END, updated_at = ? WHERE id = ? AND status = 'sold'`)
+								.bind(next, next, Date.now(), d.listing_id)
+								.run();
+						}
+						await notifyRefund(env, o.id);
+					}
 				}
 				break;
 			}

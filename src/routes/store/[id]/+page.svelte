@@ -32,7 +32,7 @@
 <p class="mono muted kicker"><a href="/store">← The store</a></p>
 
 <article class="beat" style:--c={it.color}>
-	{#if it.status === 'sold'}<span class="stamp display">Sold</span>{/if}
+	{#if it.status === 'sold'}<span class="stamp display">{it.soldAt ? 'Sold' : 'Reserved'}</span>{/if}
 
 	<header class="head">
 		<h1 class="display title">{it.title}{#if it.rounds > 1}<span class="mono rnd"> · round {it.round}</span>{/if}</h1>
@@ -61,6 +61,8 @@
 		<p class="mono small muted sub">Exclusive license · one buyer, then it's gone</p>
 		{#if it.buy === 'sold'}
 			<p class="status mono">Sold — off the market for good.</p>
+		{:else if it.buy === 'reserved'}
+			<p class="status mono">Reserved for a buyer. If they cancel before taking delivery, the producer may relist it.</p>
 		{:else if it.buy === 'buy'}
 			<a class="btn primary full buybtn" href={data.user ? `/store/${it.id}/checkout${stems ? '?stems=1' : ''}` : `/login?next=/store/${it.id}`}>
 				{data.user ? `Buy · ${money(stems ? it.stemsPriceCents : it.priceCents)}` : 'Log in to buy'}

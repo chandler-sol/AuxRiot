@@ -5,6 +5,8 @@
  * Keys live only in Worker secrets; nothing here is ever sent to the browser.
  */
 const API = 'https://api.stripe.com';
+/** Placeholder key the CI robot uses (see .github/workflows/deploy.yml). Never a real key. */
+const ROBOT_KEY = 'sk_test_robot_not_real';
 export const STRIPE_V2_VERSION = '2026-10-28.preview';
 
 export class StripeError extends Error {
@@ -52,7 +54,15 @@ export async function stripeV1<T = Record<string, unknown>>(
 	params: Params = {},
 	opts: { account?: string; idempotencyKey?: string } = {}
 ): Promise<T> {
-	const headers: Record<string, string> = { Authorization: `Bearer ${key(env)}` };
+	const k = key(env);
+	// The test robot runs with this placeholder key and never reaches Stripe. Money movements
+	// (refunds, reversals, transfers) answer like Stripe would, so refund paths can be tested
+	// end to end; anything else fails the way a bad key does.
+	if (k === ROBOT_KEY) {
+		if (/^\/v1\/(refunds|transfers|application_fees|payment_intents)/.test(path)) return { id: `robot_${Date.now()}`, object: 'robot' } as T;
+		throw new StripeError('Invalid API Key provided (test robot).', 401, 'api_key_invalid');
+	}
+	const headers: Record<string, string> = { Authorization: `Bearer ${k}` };
 	if (opts.account) headers['Stripe-Account'] = opts.account;
 	if (opts.idempotencyKey) headers['Idempotency-Key'] = opts.idempotencyKey;
 	const qs = encode(params).toString();

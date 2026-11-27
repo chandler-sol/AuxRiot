@@ -477,7 +477,7 @@
 						</div>
 						<div class="sale-act">
 							{#if s.status === 'sold'}
-								<span class="display soldtag">Sold</span>
+								<span class="display soldtag">{s.reserved ? 'Reserved' : 'Sold'}</span>
 							{:else if canBuy}
 								<a class="btn primary" href="/store/{s.listingId}/checkout">Buy</a>
 							{:else if s.status === 'listed' && s.buyOpen && !data.user}

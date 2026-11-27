@@ -270,12 +270,12 @@ export const load: PageServerLoad = async ({ params, platform, locals, url }) =>
 async function saleInfo(db: D1Database, battleId: string, status: string, userId: string | null) {
 	const rows = await db
 		.prepare(
-			`SELECT l.id, l.status, l.price_cents, l.stems_price_cents, l.stems_key IS NOT NULL AS has_stems, l.file_format, l.tagged, l.seller_id, l.held_until, l.held_by, e.slot, e.round,
+			`SELECT l.id, l.status, l.price_cents, l.stems_price_cents, l.stems_key IS NOT NULL AS has_stems, l.file_format, l.tagged, l.seller_id, l.held_until, l.held_by, l.sold_at, e.slot, e.round,
 			        u.payouts_enabled AS seller_payouts
 			 FROM listings l JOIN entries e ON e.id = l.entry_id JOIN users u ON u.id = l.seller_id WHERE l.battle_id = ?`
 		)
 		.bind(battleId)
-		.all<{ id: string; status: string; price_cents: number | null; stems_price_cents: number | null; has_stems: number; file_format: string | null; tagged: number; seller_id: string; held_until: number | null; held_by: string | null; slot: number; round: number; seller_payouts: number }>();
+		.all<{ id: string; status: string; price_cents: number | null; stems_price_cents: number | null; has_stems: number; file_format: string | null; tagged: number; seller_id: string; held_until: number | null; held_by: string | null; sold_at: number | null; slot: number; round: number; seller_payouts: number }>();
 	const open = buyOpen(status);
 	const visible = rows.results.filter((r) => r.status === 'listed' || r.status === 'sold' || r.seller_id === userId);
 	const ids = visible.map((r) => r.id);
@@ -288,6 +288,7 @@ async function saleInfo(db: D1Database, battleId: string, status: string, userId
 			slot: r.slot,
 			round: r.round,
 			status: r.status,
+			reserved: r.status === 'sold' && !r.sold_at,
 			mine: r.seller_id === userId,
 			priceCents: r.price_cents,
 			stemsPriceCents: r.has_stems ? r.stems_price_cents : null,

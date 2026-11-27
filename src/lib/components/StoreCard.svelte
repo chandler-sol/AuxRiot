@@ -6,11 +6,12 @@
 
 	let { item, showSeller = true }: { item: StoreItem; showSeller?: boolean } = $props();
 	const sold = $derived(item.status === 'sold');
+	const reserved = $derived(sold && !item.soldAt);
 	const meta = $derived([item.bpm ? `${item.bpm} BPM` : '', item.musicKey ?? '', item.genre ?? ''].filter(Boolean));
 </script>
 
 <article class="item" class:sold style:--c={item.color}>
-	{#if sold}<span class="stamp display">Sold</span>{/if}
+	{#if sold}<span class="stamp display" class:res={reserved}>{reserved ? 'Reserved' : 'Sold'}</span>{/if}
 	<div class="top">
 		{#if showSeller}
 			<a class="seller mono" href="/u/{item.seller.username}">
@@ -31,7 +32,7 @@
 			{#if item.hasStems}<span class="mono small">+ Stems {money(item.stemsPriceCents)}</span>{/if}
 		</div>
 		{#if sold}
-			<span class="mono small muted">Off the market</span>
+			<span class="mono small muted">{reserved ? 'Reserved for a buyer' : 'Off the market'}</span>
 		{:else if item.buy === 'buy'}
 			<a class="btn primary" href="/store/{item.id}#buy">Buy</a>
 		{:else}
