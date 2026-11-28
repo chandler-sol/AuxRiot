@@ -31,6 +31,7 @@
 	<a href="/admin/log"><span class="display">{data.counts.actionsToday}</span><span class="mono">Mod log · last 24h</span></a>
 	{#if data.isAdmin && data.beta}<a href="/admin/seed" class="hot"><span class="display">Test lab</span><span class="mono">Fake users, beats &amp; battles</span></a>{/if}
 	<a href="/admin/store"><span class="display">Store</span><span class="mono">Listings &amp; fee</span></a>
+	{#if data.isAdmin}<a href="/admin/announcements"><span class="display">Announce</span><span class="mono">Site pop-ups</span></a>{/if}
 	{#if data.isAdmin}<a href="/admin/orders"><span class="display">Orders</span><span class="mono">Sales, refunds &amp; chargebacks</span></a>{/if}
 	{#if data.isAdmin}<a href="/admin/news"><span class="display">News</span><span class="mono">Compose a send</span></a>{/if}
 </nav>

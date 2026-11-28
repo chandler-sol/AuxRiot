@@ -6,6 +6,7 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import Avatar from '#lib/components/Avatar.svelte';
+	import AnnouncementModal from '#lib/components/AnnouncementModal.svelte';
 
 	let { children, data }: LayoutProps = $props();
 	let menuOpen = $state(false);
@@ -147,6 +148,10 @@
 			{/if}
 		</div>
 	</div>
+{/if}
+
+{#if data.announcement && !/\/checkout$|^\/admin\/announcements|^\/terms\/updated/.test(page.url.pathname)}
+	{#key data.announcement.id}<AnnouncementModal announcement={data.announcement} />{/key}
 {/if}
 
 {#if data.askViewConsent && !page.url.pathname.startsWith('/cookies')}

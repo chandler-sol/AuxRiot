@@ -5,6 +5,7 @@ import { unreadThreads } from '#lib/server/messages.ts';
 import { unfinishedBallots } from '#lib/server/multibeat.ts';
 import { unreadNotifications } from '#lib/server/notifications.ts';
 import { TERMS_VERSION } from '#lib/server/acceptances.ts';
+import { currentAnnouncement } from '#lib/server/announcements.ts';
 import { consentRequired, countryOf, VIEW_CONSENT_COOKIE } from '#lib/server/consent.ts';
 
 export const load: LayoutServerLoad = async ({ locals, depends, cookies, request }) => {
@@ -16,6 +17,8 @@ export const load: LayoutServerLoad = async ({ locals, depends, cookies, request
 		notes: locals.user ? await unreadNotifications(getEnv().DB, locals.user.id) : 0,
 		beta: getEnv().ENVIRONMENT === 'beta',
 		// Ask about view counting once, only where the law needs permission.
+		// One on-site announcement at a time; dismissed ones never come back.
+		announcement: await currentAnnouncement(getEnv().DB, locals.user?.id ?? null, cookies),
 		askViewConsent: consentRequired(countryOf(request)) && !cookies.get(VIEW_CONSENT_COOKIE),
 		// Beta test lab: an admin is browsing as a test producer and can switch back.
 		seedReturn: getEnv().ENVIRONMENT === 'beta' && !!cookies.get('seed_return'),
